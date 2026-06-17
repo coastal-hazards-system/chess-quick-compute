@@ -194,7 +194,7 @@ main.landing { display: block; max-width: 1100px; margin: 0 auto; padding: 16px;
 .hero .hero-sub { margin: 10px 0 0; color: var(--accent); font-weight: 600;
   font-size: clamp(15px, 2.4vw, 22px); }
 .hero .tagline { max-width: 720px; margin: 18px auto 0; color: var(--label); font-size: 15px; }
-.hero .hero-note { max-width: 720px; margin: 10px auto 0; color: var(--danger); font-size: 13px; font-style: italic; }
+.hero .hero-note { max-width: 720px; margin: 10px auto 0; color: var(--danger); font-size: 13px; font-style: italic; font-weight: 700; }
 .cta-row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 28px; }
 .cta { text-decoration: none; padding: 12px 22px; border-radius: var(--ctl-radius); font-weight: 700;
   border: var(--bw) solid var(--border); }
