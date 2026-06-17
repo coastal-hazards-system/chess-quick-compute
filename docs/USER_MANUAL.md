@@ -1,7 +1,7 @@
 # CHESS-QC — User Manual
 *Coastal Hazards, Engineering, and Structures System (CHESS) — Quick Compute (QC)*
 
-*Auto-generated from the application contracts by `common/gen_docs.py`; do not edit by hand.* Each tool computes in SI internally and displays in the selected unit system; ranges/defaults below are shown in display units.
+Each tool computes in SI internally and displays in the selected unit system; ranges/defaults below are shown in display units. *Auto-generated from the application contracts by `common/gen_docs.py`; do not edit by hand.*
 
 Each app header carries a fidelity class: **A** exact · **B** standard · **C** provisional.
 
