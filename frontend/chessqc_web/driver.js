@@ -75,9 +75,12 @@ async function boot() {
   if (!entry) { fail(`unknown app '${id}'`); return; }
   try {
     py = await loadPyodide();
-    await py.loadPackage(["numpy", ...(entry.packages || [])]);
     const appSrc = await (await fetch(entry.src)).text();
     const brSrc = await (await fetch("../../common/bridge.py")).text();
+    // load numpy only when the app actually imports it; stdlib-only apps skip it (faster boot)
+    const pkgs = [...(entry.packages || [])];
+    if (/import\s+numpy|from\s+numpy/.test(appSrc)) pkgs.push("numpy");
+    if (pkgs.length) await py.loadPackage(pkgs);
     py.FS.writeFile("/chessqc_app.py", appSrc);
     py.FS.writeFile("/bridge.py", brSrc);
     py.runPython(`
