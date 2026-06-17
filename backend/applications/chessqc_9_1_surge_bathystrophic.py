@@ -8,7 +8,7 @@ Pararas-Carayannis 1975, TM-50).
 Classification: provisional. The analytic sub-models (gradient wind, pressure setup, wind
 and bottom stresses) are exact, but the integrated surge reproduces the Bodine TM-35
 oracle only to ballpark (~13.4 ft): Bodine read the wind-isovel field and the bathymetry
-from graphs, so the reference's own inputs are not recoverable, and Bodine himself cites a
+from graphs, so the reference's own inputs are not recoverable, and Bodine (1971) cites a
 possible factor-of-two uncertainty. Already flagged "Screening only" (superseded by ADCIRC
 for operational use).
 

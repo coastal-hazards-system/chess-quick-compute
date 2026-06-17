@@ -1114,7 +1114,7 @@ specified maximum wind through `B = ρ_a e V_max² / ΔP`.
 > **Status and Caveats:** Screening only. The bathystrophic method is a quasi-one-dimensional
 > approximation along a single traverse; it omits the alongshore and two-dimensional dynamics,
 > nonlinear advection, and the inlet and bay effects that a full model captures. For structure
-> design or risk assessment use **ADCIRC**. Bodine himself notes the method can
+> design or risk assessment use **ADCIRC**. Bodine (1971) notes the method can
 > be in error by up to a factor of two. CHESS-QC additionally uses a parametric (analytic)
 > wind field in place of Bodine's hand-digitized isovel chart, so the surge matches the original
 > worked example only in the ballpark.
