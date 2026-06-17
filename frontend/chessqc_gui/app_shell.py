@@ -36,10 +36,12 @@ def _clamp_bound(x: float) -> float:
 
 
 class CalculatorWindow(QtWidgets.QMainWindow):
-    def __init__(self, app, on_home=None, parent=None):
+    def __init__(self, app, on_home=None, apps=None, on_switch=None, parent=None):
         super().__init__(parent)
         self.app = app
         self._on_home = on_home
+        self._apps = apps or {}              # {aces_id: module} for the in-window app switcher
+        self._on_switch = on_switch          # callback(aces_id) -> open that app
         self.meta = app.APP_META
         self.inputs = list(app.INPUTS)
         self.outputs = list(app.OUTPUTS)
@@ -72,6 +74,14 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             self._on_compute()
             return
         super().keyPressEvent(event)
+
+    def _on_switch_app(self, idx):
+        """Switch to another application from the in-window combo (parity with the web
+        app switcher): open the selected app, then close this window."""
+        aces_id = self.app_combo.itemData(idx)
+        if aces_id and aces_id != self.meta.aces_id and self._on_switch is not None:
+            self._on_switch(aces_id)
+            QtCore.QTimer.singleShot(0, self.close)
 
     # ---- field unit helpers ----
     def _unit(self, f) -> str:
@@ -112,6 +122,17 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             btn_home = QtWidgets.QPushButton("← Applications")
             btn_home.clicked.connect(self._on_home)
             top.addWidget(btn_home)
+        if self._apps and self._on_switch is not None:
+            self.app_combo = QtWidgets.QComboBox()   # switch apps without returning to the hub
+            self.app_combo.setMaxVisibleItems(20)
+            for aid in sorted(self._apps):
+                m = self._apps[aid].APP_META
+                self.app_combo.addItem(f"{m.aces_id}  {m.name}", aid)
+            ix = self.app_combo.findData(self.meta.aces_id)
+            if ix >= 0:
+                self.app_combo.setCurrentIndex(ix)
+            self.app_combo.activated.connect(self._on_switch_app)
+            top.addWidget(self.app_combo)
         top.addWidget(QtWidgets.QLabel("Units:"))
         self.rb_si = QtWidgets.QRadioButton("SI")
         self.rb_us = QtWidgets.QRadioButton("US")
@@ -172,13 +193,13 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         return w
 
     def _build_results_box(self) -> QtWidgets.QGroupBox:
-        box = QtWidgets.QGroupBox("Results")
+        box = QtWidgets.QGroupBox("Outputs")
         v = QtWidgets.QVBoxLayout(box)
         # scalar + point value rows
         rows = QtWidgets.QWidget()
         self._rows_form = QtWidgets.QFormLayout(rows)
         for o in self.outputs:
-            if o.kind == "profile":
+            if o.kind in ("profile", "grid"):
                 continue
             lab = QtWidgets.QLabel("-")
             lab.setObjectName("resultValue")
@@ -187,9 +208,10 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             name = self._field_label(o.label)
             self._rows_form.addRow(name, lab)
         v.addWidget(rows)
-        # tabs: Plot | Table  (only if profiles exist)
+        # tabs: Plot | Table  (only if the app has profile or grid outputs)
         self._has_profiles = any(o.kind == "profile" for o in self.outputs)
-        if self._has_profiles:
+        self._has_grid = any(o.kind == "grid" for o in self.outputs)
+        if self._has_profiles or self._has_grid:
             tabs = QtWidgets.QTabWidget()
             self.figure = Figure(figsize=(4.6, 3.6), constrained_layout=True)
             self.canvas = FigureCanvas(self.figure)
@@ -205,7 +227,7 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         b_report = QtWidgets.QPushButton("Save Report")
         b_report.clicked.connect(self._save_report)
         btns.addWidget(b_report)
-        if self._has_profiles:
+        if self._has_profiles or self._has_grid:
             b_copy = QtWidgets.QPushButton("Copy")
             b_copy.clicked.connect(self._copy_table)
             b_csv = QtWidgets.QPushButton("Export CSV")
@@ -356,7 +378,7 @@ class CalculatorWindow(QtWidgets.QMainWindow):
     def _render(self, r):
         # scalar/point value rows (convert SI -> current unit)
         for o in self.outputs:
-            if o.kind == "profile":
+            if o.kind in ("profile", "grid"):
                 continue
             val_si = getattr(r, o.key, None)
             if val_si is None:
@@ -364,7 +386,10 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             disp = units.from_si(float(val_si), self._out_unit(o))
             u = self._out_unit(o)
             self._value_labels[o.key].setText(f"{self._fmt(disp)} {u}".rstrip())
-        if self._has_profiles:
+        if self._has_grid:
+            self._render_heatmap(r)
+            self._render_grid_table(r)
+        elif self._has_profiles:
             self._render_plot(r)
             self._render_table(r)
         note = getattr(r, "notes", "")
@@ -374,8 +399,11 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         """Re-render the matplotlib plot for the current Light/Dark mode. Qt widgets
         are restyled by the application stylesheet, but plot colors are baked in at
         draw time, so the canvas must be redrawn when the mode toggles."""
-        if self._has_profiles and self._last_result is not None:
-            self._render_plot(self._last_result)
+        if self._last_result is not None:
+            if self._has_grid:
+                self._render_heatmap(self._last_result)
+            elif self._has_profiles:
+                self._render_plot(self._last_result)
 
     def _style_ax(self, ax, pal):
         ax.set_facecolor(pal["bg"])
@@ -408,6 +436,56 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             else:
                 groups.append({"unit": u, "series": [(short(o), arr)]})
         return x, groups
+
+    def _render_heatmap(self, r):
+        """Render the first grid output as a heatmap (parity with the web drawHeatmap):
+        grid_x / grid_y give the axes; the 2-D field has shape (len(grid_y), len(grid_x))."""
+        pal = get_plot_palette(settings.get_theme())
+        self.figure.clear()
+        self.figure.set_facecolor(pal["bg"])
+        profs = [o for o in self.outputs if o.kind == "profile"]
+        grids = [o for o in self.outputs if o.kind == "grid"]
+        if not profs or not grids:
+            self.canvas.draw_idle(); return
+        xo = next((o for o in profs if o.key == "grid_x"), profs[0])
+        yo = next((o for o in profs if o.key == "grid_y"), profs[1] if len(profs) > 1 else profs[0])
+        zo = grids[0]
+        short = lambda o: o.label.split(":", 1)[-1].strip()
+        xu, yu, zu = self._out_unit(xo), self._out_unit(yo), self._out_unit(zo)
+        xs = np.asarray(units.from_si(getattr(r, xo.key), xu), dtype=float)
+        ys = np.asarray(units.from_si(getattr(r, yo.key), yu), dtype=float)
+        Z = np.asarray(units.from_si(getattr(r, zo.key), zu), dtype=float)
+        ax = self.figure.add_subplot(1, 1, 1)
+        mesh = ax.pcolormesh(xs, ys, Z, shading="nearest", cmap="viridis")
+        cbar = self.figure.colorbar(mesh, ax=ax)
+        cbar.ax.tick_params(labelsize=7, colors=pal["text"])
+        cbar.set_label(f"{short(zo)}{(' (' + zu + ')') if zu else ''}", fontsize=8, color=pal["fg"])
+        ax.set_xlabel(f"{short(xo)} ({xu})", fontsize=8, color=pal["fg"])
+        ax.set_ylabel(f"{short(yo)} ({yu})", fontsize=8, color=pal["fg"])
+        self._style_ax(ax, pal)
+        ax.grid(False)
+        self.canvas.draw_idle()
+
+    def _render_grid_table(self, r):
+        """Fill the data table with the first grid output (rows = grid_y, cols = grid_x)."""
+        profs = [o for o in self.outputs if o.kind == "profile"]
+        grids = [o for o in self.outputs if o.kind == "grid"]
+        if not profs or not grids:
+            return
+        xo = next((o for o in profs if o.key == "grid_x"), profs[0])
+        yo = next((o for o in profs if o.key == "grid_y"), profs[1] if len(profs) > 1 else profs[0])
+        zo = grids[0]
+        xs = np.asarray(units.from_si(getattr(r, xo.key), self._out_unit(xo)), dtype=float)
+        ys = np.asarray(units.from_si(getattr(r, yo.key), self._out_unit(yo)), dtype=float)
+        Z = np.asarray(units.from_si(getattr(r, zo.key), self._out_unit(zo)), dtype=float)
+        self.table.clear()
+        self.table.setRowCount(len(ys))
+        self.table.setColumnCount(len(xs))
+        self.table.setHorizontalHeaderLabels([self._fmt(v) for v in xs])
+        self.table.setVerticalHeaderLabels([self._fmt(v) for v in ys])
+        for j in range(len(ys)):
+            for i in range(len(xs)):
+                self.table.setItem(j, i, QtWidgets.QTableWidgetItem(self._fmt(float(Z[j][i]))))
 
     def _render_plot(self, r):
         pal = get_plot_palette(settings.get_theme())

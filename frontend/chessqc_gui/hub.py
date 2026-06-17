@@ -36,7 +36,7 @@ class HubWindow(QtWidgets.QMainWindow):
         col = QtWidgets.QVBoxLayout()
         title = QtWidgets.QLabel("CHESS-QC")
         title.setStyleSheet("font-size:22px; font-weight:800;")
-        sub = QtWidgets.QLabel("Quick Compute · coastal engineering applications")
+        sub = QtWidgets.QLabel("Coastal Hazards, Engineering, and Structures System (CHESS) — Quick Compute (QC)")
         sub.setObjectName("fieldLabel")
         col.addWidget(title)
         col.addWidget(sub)
@@ -92,11 +92,17 @@ class HubWindow(QtWidgets.QMainWindow):
         return btn
 
     def _open(self, mod):
-        win = CalculatorWindow(mod, on_home=self._raise_hub)
+        win = CalculatorWindow(mod, on_home=self._raise_hub,
+                               apps=self.apps, on_switch=self._open_by_id)
         self._open_windows.append(win)
         win.show()
         win.raise_()
         win.activateWindow()
+
+    def _open_by_id(self, aces_id):
+        mod = self.apps.get(aces_id)
+        if mod is not None:
+            self._open(mod)
 
     def _sync_mode_label(self):
         self.lbl_mode.setText("Dark mode" if settings.get_theme() == "Dark" else "Light mode")
