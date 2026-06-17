@@ -165,6 +165,7 @@ th { background: var(--header-bg); }
 .app-card:hover { border-color: var(--accent); background: var(--btn-hover); }
 .app-card .aid { font-weight: 700; color: var(--label); }
 .app-card .badge { position: absolute; right: 10px; top: 12px; }
+.app-select { max-width: 260px; }
 .homelink { text-decoration: none; color: var(--accent); font-weight: 600; margin-right: 6px; }
 .homelink:hover { text-decoration: underline; }
 

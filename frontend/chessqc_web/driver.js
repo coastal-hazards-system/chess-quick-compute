@@ -70,41 +70,80 @@ const fieldUnit = (fld) => (system === "SI" ? fld.unit_si : fld.unit_us);
 const outUnit = (o) => (system === "SI" ? o.unit_si : o.unit_us);
 
 async function boot() {
-  const id = new URLSearchParams(location.search).get("app") || (CHESSQC_APPS[0] && CHESSQC_APPS[0].id);
-  const entry = CHESSQC_APPS.find((a) => a.id === id);
-  if (!entry) { fail(`unknown app '${id}'`); return; }
   try {
     py = await loadPyodide();
-    const appSrc = await (await fetch(entry.src)).text();
+    // bridge.py is written and imported ONCE; app modules are (re)loaded per selection in
+    // loadApp(), so Pyodide and numpy stay warm when switching apps (no per-app re-boot).
     const brSrc = await (await fetch("../../common/bridge.py")).text();
-    // load numpy only when the app actually imports it; stdlib-only apps skip it (faster boot)
-    const pkgs = [...(entry.packages || [])];
-    if (/import\s+numpy|from\s+numpy/.test(appSrc)) pkgs.push("numpy");
-    if (pkgs.length) await py.loadPackage(pkgs);
-    py.FS.writeFile("/chessqc_app.py", appSrc);
     py.FS.writeFile("/bridge.py", brSrc);
     py.runPython(`
 import sys, importlib.util
-for _nm, _p in [("chessqc_app","/chessqc_app.py"), ("bridge","/bridge.py")]:
-    _s = importlib.util.spec_from_file_location(_nm, _p)
-    _m = importlib.util.module_from_spec(_s)
-    sys.modules[_nm] = _m            # register before exec (dataclass annotations)
-    _s.loader.exec_module(_m)
+_s = importlib.util.spec_from_file_location("bridge", "/bridge.py")
+_m = importlib.util.module_from_spec(_s); sys.modules["bridge"] = _m; _s.loader.exec_module(_m)
 `);
     bridge = py.pyimport("bridge");
-    appmod = py.pyimport("chessqc_app");
-    contract = JSON.parse(bridge.contract(appmod));
-    // launcher-set units (CHESSQC_PREFS.units) take precedence; else the app's own default
-    const prefU = (window.CHESSQC_PREFS || {}).units;
-    const appSys = contract.meta && contract.meta.default_system === "US" ? "US" : "SI";
-    system = prefU === "SI" || prefU === "US" ? prefU : appSys;
-    const rb = document.querySelector(`input[name="units"][value="${system}"]`);
-    if (rb) rb.checked = true;
-    buildForm();
+    buildAppSelect();
+    const id = new URLSearchParams(location.search).get("app") || (CHESSQC_APPS[0] && CHESSQC_APPS[0].id);
+    await loadApp(id);
     $("overlay").style.display = "none";
-    doCompute();
-    focusFirstInput();
   } catch (e) { fail(String(e)); }
+}
+
+// Populate the in-header application switcher (grouped by functional area).
+function buildAppSelect() {
+  const sel = $("appSelect");
+  if (!sel) return;
+  const byArea = {};
+  for (const a of CHESSQC_APPS) (byArea[a.area] ||= []).push(a);
+  const order = CHESSQC_AREAS.filter((x) => x in byArea)
+    .concat(Object.keys(byArea).filter((x) => !CHESSQC_AREAS.includes(x)));
+  sel.innerHTML = "";
+  for (const area of order) {
+    const og = document.createElement("optgroup"); og.label = area;
+    for (const a of byArea[area].sort((x, y) => x.id.localeCompare(y.id))) {
+      const o = document.createElement("option");
+      o.value = a.id; o.textContent = `${a.id} · ${a.name}`;
+      og.appendChild(o);
+    }
+    sel.appendChild(og);
+  }
+  sel.addEventListener("change", () => {
+    const id = sel.value;
+    history.pushState({ app: id }, "", `?app=${encodeURIComponent(id)}`);
+    loadApp(id);
+  });
+}
+
+// Load (or switch to) an application in the already-running interpreter. Only the app
+// module is re-imported; Pyodide, numpy and bridge.py stay warm.
+async function loadApp(id) {
+  const entry = CHESSQC_APPS.find((a) => a.id === id);
+  if (!entry) { fail(`unknown app '${id}'`); return; }
+  setStatus(`loading ${id}…`, true);
+  const appSrc = await (await fetch(entry.src)).text();
+  // load numpy only when the app imports it; stdlib-only apps skip it (faster)
+  const pkgs = [...(entry.packages || [])];
+  if (/import\s+numpy|from\s+numpy/.test(appSrc)) pkgs.push("numpy");
+  if (pkgs.length) await py.loadPackage(pkgs);
+  py.FS.writeFile("/chessqc_app.py", appSrc);
+  py.runPython(`
+import sys, importlib.util
+sys.modules.pop("chessqc_app", None)   # drop the previous app so the re-import is fresh
+_s = importlib.util.spec_from_file_location("chessqc_app", "/chessqc_app.py")
+_m = importlib.util.module_from_spec(_s); sys.modules["chessqc_app"] = _m; _s.loader.exec_module(_m)
+`);
+  appmod = py.pyimport("chessqc_app");
+  contract = JSON.parse(bridge.contract(appmod));
+  // launcher-set units (CHESSQC_PREFS.units) take precedence; else the app's own default
+  const prefU = (window.CHESSQC_PREFS || {}).units;
+  const appSys = contract.meta && contract.meta.default_system === "US" ? "US" : "SI";
+  system = prefU === "SI" || prefU === "US" ? prefU : appSys;
+  const rb = document.querySelector(`input[name="units"][value="${system}"]`);
+  if (rb) rb.checked = true;
+  const sel = $("appSelect"); if (sel) sel.value = id;
+  buildForm();
+  doCompute();
+  focusFirstInput();
 }
 
 function buildForm() {
@@ -567,6 +606,11 @@ document.addEventListener("DOMContentLoaded", () => {
   // Enter anywhere in the inputs (except multi-line JSON/table textareas) runs Compute.
   $("inputs").addEventListener("keydown", (e) => {
     if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") { e.preventDefault(); doCompute(); }
+  });
+  // Browser back/forward switches the active app (history entries set in buildAppSelect).
+  window.addEventListener("popstate", () => {
+    const id = new URLSearchParams(location.search).get("app");
+    if (id) loadApp(id);
   });
   document.querySelectorAll('input[name="units"]').forEach((r) =>
     r.addEventListener("change", (e) => onUnits(e.target.value)));
