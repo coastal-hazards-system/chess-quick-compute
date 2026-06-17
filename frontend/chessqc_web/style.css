@@ -104,6 +104,8 @@ fieldset {
 }
 legend { font-weight: 600; color: var(--label); padding: 0 4px;
   text-transform: var(--label-transform); letter-spacing: var(--label-spacing); font-family: var(--label-font); }
+/* emphasize the Inputs / Outputs section headers on the calculator page */
+#inputsBox > legend, #resultsBox > legend { font-weight: 700; font-size: 15px; color: var(--accent); }
 .center { display: flex; align-items: center; justify-content: center; min-height: 200px; }
 
 .row { display: grid; grid-template-columns: 1fr 130px 40px; align-items: center; gap: 8px; margin: 6px 0; }
