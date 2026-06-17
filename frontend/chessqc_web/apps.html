@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>CHESS-QC — Applications</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23008cb0'/%3E%3Ctext x='8' y='12' font-size='10' font-family='Segoe UI,sans-serif' font-weight='700' fill='white' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+  <script src="_prefs.js"></script>
+  <script src="theme.js"></script>
+  <script src="apps.js"></script>
+</head>
+<body>
+  <header>
+    <a class="title" href="index.html">CHESS-QC</a>
+    <nav class="topnav">
+      <a href="apps.html" class="active">Applications</a>
+      <a href="docs.html">Documentation</a>
+      <a href="https://github.com/Coastal-Hazards-System/CHESS-Quick-Compute" target="_blank" rel="noopener">GitHub</a>
+    </nav>
+    <span class="spacer"></span>
+    <label class="muted" id="modeLbl" for="modeToggle"></label>
+    <label class="switch" title="Switch Light/Dark mode">
+      <input type="checkbox" id="modeToggle"><span class="track"></span><span class="thumb"></span>
+    </label>
+  </header>
+
+  <div class="apps-toolbar">
+    <input id="search" type="search" placeholder="Filter applications by id, name, or area…" autocomplete="off">
+    <div class="legend" title="Fidelity classification">
+      <span class="badge cls-a">A</span> exact
+      <span class="badge cls-b">B</span> standard
+      <span class="badge cls-c">C</span> provisional
+    </div>
+  </div>
+
+  <div id="hub" class="hub"></div>
+  <div id="status"></div>
+
+  <script>
+    // Fidelity classification -> compact badge letter (A exact, B standard, C provisional).
+    const CLASS_LETTER = { exact: "A", standard: "B", provisional: "C" };
+    const classLetter = (c) => CLASS_LETTER[c] || c || "";
+    const hub = document.getElementById("hub");
+    const byArea = {};
+    for (const a of CHESSQC_APPS) (byArea[a.area] ||= []).push(a);
+    const order = CHESSQC_AREAS.filter((x) => x in byArea)
+      .concat(Object.keys(byArea).filter((x) => !CHESSQC_AREAS.includes(x)));
+    if (!CHESSQC_APPS.length) hub.innerHTML = "<p>No applications registered in apps.js.</p>";
+    for (const area of order) {
+      const sec = document.createElement("fieldset");
+      sec.dataset.area = area;
+      sec.innerHTML = `<legend>${area}</legend>`;
+      const grid = document.createElement("div");
+      grid.className = "hub-grid";
+      const ai = CHESSQC_AREAS.indexOf(area);          // 0-based area index -> --area-N
+      for (const a of byArea[area].sort((x, y) => x.id.localeCompare(y.id))) {
+        const card = document.createElement("a");
+        card.className = "app-card";
+        card.href = `calc.html?app=${encodeURIComponent(a.id)}`;
+        card.style.borderLeft = `5px solid var(--area-${ai >= 0 ? ai + 1 : 1})`;
+        card.dataset.search = `${a.id} ${a.name} ${a.area}`.toLowerCase();
+        card.innerHTML = `<span class="aid">${a.id}</span> ${a.name}
+                          <span class="badge cls-${classLetter(a.classification).toLowerCase()}" title="${a.classification}">${classLetter(a.classification)}</span>`;
+        grid.appendChild(card);
+      }
+      sec.appendChild(grid);
+      hub.appendChild(sec);
+    }
+
+    // Live filter: hide non-matching cards, and hide a whole area section when empty.
+    const status = document.getElementById("status");
+    const search = document.getElementById("search");
+    const setStatus = () => {
+      const shown = hub.querySelectorAll(".app-card:not([hidden])").length;
+      status.textContent = `${shown} of ${CHESSQC_APPS.length} application(s)`;
+    };
+    const applyFilter = () => {
+      const q = search.value.trim().toLowerCase();
+      for (const sec of hub.querySelectorAll("fieldset")) {
+        let any = false;
+        for (const card of sec.querySelectorAll(".app-card")) {
+          const match = !q || card.dataset.search.includes(q);
+          card.hidden = !match;
+          any = any || match;
+        }
+        sec.hidden = !any;
+      }
+      setStatus();
+    };
+    search.addEventListener("input", applyFilter);
+    setStatus();
+
+    CHESSQCUI.wireToggle("modeToggle", "modeLbl");
+  </script>
+</body>
+</html>

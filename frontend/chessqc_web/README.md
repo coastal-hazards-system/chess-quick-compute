@@ -6,18 +6,23 @@ A static page that runs the **same** `chessqc_*` application Python in the brows
 Compute, results right; SI/US toggle; canvas plot of the profile arrays; data table).
 
 ## Files
-- `index.html`, **landing page (hub)**: lists applications by area; each links to
-  `calc.html?app=<id>`.
-- `calc.html`, **the calculator**; reads `?app=<id>`, has a "← Applications" link
-  back to the hub.
-- `apps.js`, shared **application manifest** (`CHESSQC_APPS`) used by both the hub and
-  the driver; add one entry per implemented application.
+- `index.html`, **landing page**: hero, highlights, and a functional-areas overview;
+  links to the applications and documentation.
+- `apps.html`, **application selection**: lists applications by area with a search
+  filter and a fidelity legend; each card links to `calc.html?app=<id>`.
+- `calc.html`, **the calculator**; reads `?app=<id>`, with "← Applications" and "Docs" links.
+- `docs.html` + `docs.js`, **in-site documentation viewer**: renders the Markdown in
+  `../../docs/*.md` with marked (loaded from a CDN), themed by `style.css`.
+- `apps.js`, shared **application manifest** (`CHESSQC_APPS` / `CHESSQC_AREAS`) used by
+  the landing, selection page, and the driver; add one entry per implemented application.
+- `theme.js`, applies mode (light/dark), vibe, badge, and **palette** (Original/Vibrant,
+  launcher-set) from `_prefs.js`; exposes `CHESSQCUI` (incl. `wireToggle`).
 - `driver.js`, boots Pyodide, loads numpy, fetches the app `.py` + `bridge.py`,
   reads the contract, builds the form, runs `compute()`, renders results + canvas plot.
 - `bridge.py`, pure-Python `contract(mod)` / `run(mod, json)` (serialize contract,
   run compute → JSON). Runs identically under Pyodide and CPython (so it is
   unit-testable without a browser, see Verification).
-- `style.css`, mirrors the desktop `chessqc_gui/style.qss`.
+- `style.css`, the shared stylesheet (WaveMaker tokens; mirrors the desktop look).
 
 ## Run
 Easiest, the top-level launcher (starts the server + opens the hub for you):
@@ -29,7 +34,8 @@ Or manually (Pyodide needs `fetch()`, so serve over http, not `file://`). From t
 **repo root**:
 ```
 python -m http.server 8000
-# hub:        http://localhost:8000/chessqc_web/index.html
+# landing:    http://localhost:8000/chessqc_web/index.html
+# apps:       http://localhost:8000/chessqc_web/apps.html
 # direct app: http://localhost:8000/chessqc_web/calc.html?app=2-1
 ```
 `calc.html` fetches the application from `../applications/...` (relative to the page),

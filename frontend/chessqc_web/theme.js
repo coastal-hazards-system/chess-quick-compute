@@ -49,5 +49,20 @@
     return next;
   };
 
-  window.CHESSQCUI = { getDecimals, currentMode, currentVibe, currentPalette, toggleMode, apply };
+  // Wire a Light/Dark switch checkbox + optional label (shared by landing/apps/docs pages).
+  const wireToggle = (toggleId, labelId) => {
+    const mt = document.getElementById(toggleId);
+    if (!mt) return;
+    const ml = labelId ? document.getElementById(labelId) : null;
+    const sync = () => {
+      const dark = currentMode() === "Dark";
+      mt.checked = dark;
+      if (ml) ml.textContent = dark ? "Dark mode" : "Light mode";
+    };
+    mt.addEventListener("change", () => { toggleMode(); sync(); });
+    sync();
+  };
+
+  window.CHESSQCUI = { getDecimals, currentMode, currentVibe, currentPalette,
+                       toggleMode, wireToggle, apply };
 })();

@@ -3,8 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>CHESS-QC — Quick Compute</title>
-  <link rel="icon" href="data:,">
+  <title>CHESS-QC — Coastal Hazards, Engineering, and Structures System (Quick Compute)</title>
+  <meta name="description" content="Quick Compute (QC): 36 validated coastal-engineering calculators reimplementing USACE ACES, running in your browser with no install.">
+  <meta property="og:title" content="CHESS-QC — Quick Compute">
+  <meta property="og:description" content="36 validated coastal-engineering calculators reimplementing USACE ACES, in the browser.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23008cb0'/%3E%3Ctext x='8' y='12' font-size='10' font-family='Segoe UI,sans-serif' font-weight='700' fill='white' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="style.css">
   <script src="_prefs.js"></script>
   <script src="theme.js"></script>
@@ -12,56 +16,91 @@
 </head>
 <body>
   <header>
-    <span class="title">CHESS-QC</span>
-    <span class="subtitle">Coastal Hazards, Engineering, and Structures System (CHESS) — Quick Compute (QC)</span>
+    <a class="title" href="index.html">CHESS-QC</a>
+    <nav class="topnav">
+      <a href="apps.html">Applications</a>
+      <a href="docs.html">Documentation</a>
+      <a href="https://github.com/Coastal-Hazards-System/CHESS-Quick-Compute" target="_blank" rel="noopener">GitHub</a>
+    </nav>
     <span class="spacer"></span>
     <label class="muted" id="modeLbl" for="modeToggle"></label>
     <label class="switch" title="Switch Light/Dark mode">
       <input type="checkbox" id="modeToggle"><span class="track"></span><span class="thumb"></span>
     </label>
   </header>
-  <div id="hub" class="hub"></div>
-  <div id="status"></div>
+
+  <main class="landing">
+    <section class="hero">
+      <h1 class="wordmark">CHESS-QC</h1>
+      <p class="hero-sub">Coastal Hazards, Engineering, and Structures System (CHESS) — Quick Compute (QC)</p>
+      <p class="tagline">36 validated coastal-engineering calculators — wave prediction and theory,
+        transformation, structural design, runup and overtopping, littoral processes, inlets,
+        harbors, and storm surge — that run in your browser with no install.</p>
+      <div class="cta-row">
+        <a class="cta cta-primary" href="apps.html">Launch calculators →</a>
+        <a class="cta cta-secondary" href="docs.html">Documentation</a>
+      </div>
+    </section>
+
+    <section class="highlights">
+      <div class="hl-card">
+        <h3>Serverless</h3>
+        <p>Runs entirely in the browser via Pyodide — no backend, no install. The same Python
+           application files power the desktop and command-line front-ends.</p>
+      </div>
+      <div class="hl-card">
+        <h3>Validated</h3>
+        <p>Each tool is checked against the ACES <em>User's Guide</em> worked examples or analytic
+           limits, with a fidelity label: 28 exact, 3 standard, 5 provisional.</p>
+      </div>
+      <div class="hl-card">
+        <h3>SI &amp; US units</h3>
+        <p>Switch unit systems per calculator; values convert at the edge while the physics
+           runs in SI internally.</p>
+      </div>
+      <div class="hl-card">
+        <h3>Open source</h3>
+        <p>Every application is a single, dependency-light Python module that runs its own
+           validation and prints a worked example.</p>
+      </div>
+    </section>
+
+    <section class="areas-section">
+      <h2>Functional areas</h2>
+      <div id="areas" class="areas-grid"></div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="foot-links">
+      <a href="apps.html">Applications</a>
+      <a href="docs.html">Documentation</a>
+      <a href="https://github.com/Coastal-Hazards-System/CHESS-Quick-Compute" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <p class="disclaimer">CHESS-QC reimplements the methods of ACES; each application cites ACES and its
+      underlying published sources. Intended for engineering screening, teaching, and research —
+      results should be reviewed by a qualified coastal engineer before use in design.</p>
+  </footer>
 
   <script>
-    // Fidelity classification -> compact badge letter (A exact, B standard, C provisional).
-    const CLASS_LETTER = { exact: "A", standard: "B", provisional: "C" };
-    const classLetter = (c) => CLASS_LETTER[c] || c || "";
-    const hub = document.getElementById("hub");
+    // Functional-areas overview, built from the same registry the selection page uses.
     const byArea = {};
     for (const a of CHESSQC_APPS) (byArea[a.area] ||= []).push(a);
     const order = CHESSQC_AREAS.filter((x) => x in byArea)
       .concat(Object.keys(byArea).filter((x) => !CHESSQC_AREAS.includes(x)));
-    if (!CHESSQC_APPS.length) hub.innerHTML = "<p>No applications registered in apps.js.</p>";
+    const grid = document.getElementById("areas");
     for (const area of order) {
-      const sec = document.createElement("fieldset");
-      sec.innerHTML = `<legend>${area}</legend>`;
-      const grid = document.createElement("div");
-      grid.className = "hub-grid";
-      const ai = CHESSQC_AREAS.indexOf(area);          // 0-based area index -> --area-N
-      for (const a of byArea[area].sort((x, y) => x.id.localeCompare(y.id))) {
-        const card = document.createElement("a");
-        card.className = "app-card";
-        card.href = `calc.html?app=${encodeURIComponent(a.id)}`;
-        card.style.borderLeft = `5px solid var(--area-${ai >= 0 ? ai + 1 : 1})`;
-        card.innerHTML = `<span class="aid">${a.id}</span> ${a.name}
-                          <span class="badge cls-${classLetter(a.classification).toLowerCase()}" title="${a.classification}">${classLetter(a.classification)}</span>`;
-        grid.appendChild(card);
-      }
-      sec.appendChild(grid);
-      hub.appendChild(sec);
+      const ai = CHESSQC_AREAS.indexOf(area);
+      const n = byArea[area].length;
+      const card = document.createElement("a");
+      card.className = "area-card";
+      card.href = "apps.html";
+      card.style.borderLeft = `5px solid var(--area-${ai >= 0 ? ai + 1 : 1})`;
+      card.innerHTML = `<span class="area-name">${area}</span>
+                        <span class="area-count">${n} app${n === 1 ? "" : "s"}</span>`;
+      grid.appendChild(card);
     }
-    document.getElementById("status").textContent =
-      `${CHESSQC_APPS.length} application(s) available`;
-
-    // Light/Dark toggle switch (persists for this launch; calc pages pick it up on navigation)
-    const mt = document.getElementById("modeToggle"), ml = document.getElementById("modeLbl");
-    const syncMode = () => {
-      const dark = CHESSQCUI.currentMode() === "Dark";
-      mt.checked = dark; ml.textContent = dark ? "Dark mode" : "Light mode";
-    };
-    mt.addEventListener("change", () => { CHESSQCUI.toggleMode(); syncMode(); });
-    syncMode();
+    CHESSQCUI.wireToggle("modeToggle", "modeLbl");
   </script>
 </body>
 </html>
