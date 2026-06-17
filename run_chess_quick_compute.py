@@ -48,13 +48,13 @@ PALETTE_CHOICES = ["Original", "Vibrant"]
 # Light/Dark is also switchable at run time on the landing page; units per calculator.
 DEFAULT_MODE = "Dark"        # Light | Dark
 DEFAULT_PALETTE = "Original"  # Original | Vibrant  (one palette used across both modes; web)
-DEFAULT_TAG = "βeta"         # release tag shown as a superscript on the landing wordmark
-                             # (Greek beta + "eta"; e.g. "βeta", "rc", "v1"); set to "" to hide it
-DEFAULT_TAG_SIZE = 0.30      # release-tag font size, in em relative to the CHESS-QC wordmark
 DEFAULT_VIBE = "Trail"       # Signal | Trail | Forge
 DEFAULT_BADGE = "Solid"      # Solid / Tinted
 DEFAULT_UNITS = "SI"         # SI | US  (unit system the calculators open in)
 DEFAULT_DECIMALS = 2         # 0-8
+DEFAULT_TAG = "βeta"         # release tag shown as a superscript on the landing wordmark
+                             # (Greek beta + "eta"; e.g. "βeta", "rc", "v1"); set to "" to hide it
+DEFAULT_TAG_SIZE = 0.50      # release-tag font size, in em relative to the CHESS-QC wordmark
 # -----------------------------------------------------------------------------
 
 
