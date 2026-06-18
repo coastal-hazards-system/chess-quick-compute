@@ -7,6 +7,12 @@ armor-unit placement density (SPM 1984 Ch. 7; EM 1110-2-2904).
 Classification: exact (closed-form Hudson stability equation and the related SPM crest-
 width / thickness / placement-density formulas; reproduces the User's Guide Example 4-1 to
 the digit. K_D, k_delta and porosity are user-supplied table coefficients, as in ACES.)
+A selectable Van der Meer (1988) rock-armor stability method is also provided (the modern
+CIRIA Rock Manual standard, accounting for wave period, storm duration N, notional
+permeability P and damage level S). Hudson stays the default so the Example 4-1
+reproduction is preserved; the Van der Meer path is validated for internal consistency and
+physical limits (plunging/surging branch, stability-number range), as ACES has no oracle
+for it.
 
 Self-contained (zero sibling imports): embeds the AppMeta/Field/Out/Result dataclasses.
 No wave kinematics -> value-rows-only (no profile plot).
@@ -27,6 +33,7 @@ _FT = 0.3048               # ft -> m
 _LBF_PER_FT3 = 157.08746   # lb/ft^3 -> N/m^3
 _LBF = 4.4482216           # lbf -> N
 _TON = 8896.4432           # US short ton-force (2000 lbf) -> N
+G = 9.80665                # m/s^2 (Van der Meer wave-steepness)
 
 
 # --- contract dataclasses -------------------------------------------------------
@@ -87,6 +94,9 @@ INPUTS = (
     Field("armor_type", "Type of armor unit", "choice", "", "",
           default="Tribar (trunk, nonbreaking)", choices=_ARMOR_TYPES,
           note="optional/informational; pick K_D, k_delta, P from SPM tables accordingly"),
+    Field("method", "Sizing method", "choice", "", "", default="Hudson",
+          choices=("Hudson", "Van der Meer"),
+          note="Hudson (ACES; reproduces Example 4-1) or Van der Meer (1988) rock-armor stability"),
     Field("w_r", "Armor unit weight", "float", "kN/m^3", "lb/ft^3", default=165.0 * _LBF_PER_FT3,
           lo=1.0, hi=1e6, note="unit weight of armor material; must exceed water unit weight"),
     Field("H", "Wave height", "float", "m", "ft", default=11.50 * _FT, lo=1e-6, hi=1e4,
@@ -103,6 +113,15 @@ INPUTS = (
           note="cot(theta); theta = seaward slope angle"),
     Field("n", "Number of armor units (layer thickness)", "int", "", "", default=2, lo=1, hi=10,
           note="number of armor-unit layers (>= 2 typical)"),
+    # --- Van der Meer (1988) parameters (used only when method = Van der Meer) ---
+    Field("Tm", "Mean wave period (Van der Meer)", "float", "s", "s", default=8.0, lo=1e-2, hi=1e3,
+          note="Van der Meer only: mean period T_m for the surf-similarity parameter"),
+    Field("N_waves", "Number of waves (Van der Meer)", "int", "", "", default=7500, lo=1, hi=1000000,
+          note="Van der Meer only: storm duration in waves (typ. <= 7500)"),
+    Field("perm", "Notional permeability P (Van der Meer)", "float", "", "", default=0.4, lo=0.1, hi=0.6,
+          note="Van der Meer only: 0.1 impermeable core ... 0.5-0.6 homogeneous mound"),
+    Field("S_damage", "Damage level S (Van der Meer)", "float", "", "", default=2.0, lo=1.0, hi=30.0,
+          note="Van der Meer only: 2 = start of damage; higher = more allowed damage"),
 )
 
 # Complete output list (ACES User's Guide 4-1).
@@ -111,6 +130,7 @@ OUTPUTS = (
     Out("B",   "Crest width of breakwater",       "m",  "ft",   "scalar"),
     Out("r",   "Average cover layer thickness",   "m",  "ft",   "scalar"),
     Out("N_r", "Armor units per 1000 ft^2",       "",   "",     "scalar"),
+    Out("Ns",  "Stability number Hs/(d_n50)",     "",   "",     "scalar"),
 )
 
 _N_CREST = 3      # ACES/SPM: crest width uses a minimum of 3 armor units
@@ -118,14 +138,14 @@ _N_CREST = 3      # ACES/SPM: crest width uses a minimum of 3 armor units
 
 @dataclass
 class Result:
-    W: float; B: float; r: float; N_r: float
+    W: float; B: float; r: float; N_r: float; Ns: float
     notes: str = ""
 
 
 def _validate(inp: dict) -> None:
     for f in INPUTS:
         if f.kind in ("float", "int", "angle"):
-            v = inp[f.key]
+            v = inp.get(f.key, f.default)     # optional Van der Meer inputs fall back to defaults
             if not (f.lo <= v <= f.hi):
                 raise ValueError(f"{f.label} ({f.key}) = {v} outside [{f.lo}, {f.hi}] ({f.note})")
     if inp["w_r"] <= inp["w_w"]:
@@ -140,11 +160,35 @@ def compute(inp: dict) -> Result:
     w_r = float(inp["w_r"]); H = float(inp["H"]); w_w = float(inp["w_w"])
     K_D = float(inp["K_D"]); k_delta = float(inp["k_delta"]); P = float(inp["P"])
     cot_theta = float(inp["cot_theta"]); n = int(inp["n"])
+    method = str(inp.get("method", "Hudson"))
 
     S_r = w_r / w_w                                         # specific gravity of armor
-    # (1) Hudson armor-unit weight (W in N, since w_r in N/m^3 and H in m)
-    W = w_r * H ** 3 / (K_D * (S_r - 1.0) ** 3 * cot_theta)
-    cube = (W / w_r) ** (1.0 / 3.0)                         # (W/w_r)^(1/3)  [m]
+    Delta = S_r - 1.0                                       # relative buoyant density
+    if method == "Van der Meer":
+        # Van der Meer (1988) deep-water rock-armor stability (W in N, via D_n50 [m]).
+        Tm = float(inp.get("Tm", 8.0)); N_w = float(inp.get("N_waves", 7500))
+        perm = float(inp.get("perm", 0.4)); S = float(inp.get("S_damage", 2.0))
+        tan_a = 1.0 / cot_theta
+        s_om = 2.0 * math.pi * H / (G * Tm * Tm)            # mean wave steepness Hs/L_om
+        xi_m = tan_a / math.sqrt(s_om)                      # surf-similarity parameter
+        xi_mc = (6.2 * perm ** 0.31 * math.sqrt(tan_a)) ** (1.0 / (perm + 0.5))
+        SN = (S / math.sqrt(N_w)) ** 0.2
+        if xi_m < xi_mc:                                    # plunging waves
+            Ns = 6.2 * perm ** 0.18 * SN * xi_m ** -0.5
+            branch = "plunging"
+        else:                                              # surging waves
+            Ns = perm ** -0.13 * SN * math.sqrt(cot_theta) * xi_m ** perm
+            branch = "surging"
+        Dn50 = H / (Delta * Ns)                            # nominal median diameter [m]
+        W = w_r * Dn50 ** 3                                # weight (N)
+        method_note = (f"Van der Meer 1988 ({branch}); xi_m={xi_m:.2f} (xi_mc={xi_mc:.2f}), "
+                       f"N_s={Ns:.2f}, P={perm}, S={S:.0f}, N={int(N_w)}")
+    else:
+        # (1) Hudson armor-unit weight (W in N, since w_r in N/m^3 and H in m)
+        W = w_r * H ** 3 / (K_D * (S_r - 1.0) ** 3 * cot_theta)
+        method_note = f"Hudson; K_D={K_D}"
+
+    cube = (W / w_r) ** (1.0 / 3.0)                         # (W/w_r)^(1/3) = D_n50  [m]
     # (2) crest width (ACES uses n = 3 armor units for the crest)
     B = _N_CREST * k_delta * cube
     # (3) average cover-layer thickness (uses the input number of layers n)
@@ -154,9 +198,10 @@ def compute(inp: dict) -> Result:
     w_r_us = w_r / _LBF_PER_FT3
     W_us = W / _LBF
     N_r = 1000.0 * n * k_delta * (1.0 - P / 100.0) * (w_r_us / W_us) ** (2.0 / 3.0)
+    Ns_out = H / (Delta * cube)                            # stability number Hs/(Delta*Dn50)
 
-    notes = f"{inp.get('armor_type', 'armor')}; S_r={S_r:.3f}; n={n} (crest uses {_N_CREST})"
-    return Result(W=W, B=B, r=r, N_r=N_r, notes=notes)
+    notes = f"{inp.get('armor_type', 'armor')}; {method_note}; S_r={S_r:.3f}; n={n} (crest uses {_N_CREST})"
+    return Result(W=W, B=B, r=r, N_r=N_r, Ns=Ns_out, notes=notes)
 
 
 # --- self-tests + manual-example tabulation -------------------------------------
@@ -169,7 +214,16 @@ def _self_tests() -> None:
     # sanity: heavier armor (larger K_D) -> lighter unit
     r2 = compute({**{f.key: f.default for f in INPUTS}, "K_D": 20.0})
     assert r2.W < r.W
-    print("  self-tests: PASS (matches User's Guide Example 4-1)")
+    # Van der Meer (1988): selectable; validate internal consistency + physical ranges
+    base = {f.key: f.default for f in INPUTS}
+    vd = compute({**base, "method": "Van der Meer"})
+    assert 1.0 < vd.Ns < 4.0, vd.Ns                        # rock stability number, sane range
+    assert vd.W > 0 and vd.B > 0 and vd.r > 0
+    vd_S = compute({**base, "method": "Van der Meer", "S_damage": 8.0})
+    assert vd_S.W < vd.W                                   # more allowed damage -> smaller unit
+    vd_H = compute({**base, "method": "Van der Meer", "H": 16.0 * _FT})
+    assert vd_H.W > vd.W                                   # larger wave -> larger unit
+    print("  self-tests: PASS (Hudson matches Example 4-1; Van der Meer consistent)")
 
 
 def _tab() -> None:

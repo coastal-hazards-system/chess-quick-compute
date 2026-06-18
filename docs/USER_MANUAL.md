@@ -719,6 +719,7 @@ Sizes the primary armor units of a rubble-mound breakwater/revetment from the Hu
 | Input | key | units (US/SI) | range | default | notes |
 | --- | --- | --- | --- | --- | --- |
 | Type of armor unit | armor_type | (none) | choices: Quarrystone (smooth, rounded), Quarrystone (rough, angular), Graded riprap, Tribar (trunk, nonbreaking), Tribar (trunk, breaking), Tetrapod, Quadripod, Dolos, Modified cube, Hexapod, Toskane, Other | Tribar (trunk, nonbreaking) | optional/informational; pick K_D, k_delta, P from SPM tables accordingly |
+| Sizing method | method | (none) | choices: Hudson, Van der Meer | Hudson | Hudson (ACES; reproduces Example 4-1) or Van der Meer (1988) rock-armor stability |
 | Armor unit weight | w_r | lb/ft^3 / kN/m^3 | 0.00636588 to 6365.88 | 165 | unit weight of armor material; must exceed water unit weight |
 | Wave height | H | ft / m | 3.28084e-06 to 32808.4 | 11.5 | design wave height (H or H_i) |
 | Water unit weight | w_w | lb/ft^3 / kN/m^3 | 0.00636588 to 6365.88 | 64 | 64 lb/ft^3 seawater, 62.4 lb/ft^3 fresh |
@@ -727,6 +728,10 @@ Sizes the primary armor units of a rubble-mound breakwater/revetment from the Hu
 | Average porosity of armor layer | P | % | 0 to 99 | 54 | cover-layer porosity, percent (SPM Table 7-13) |
 | Cotangent of structure slope | cot_theta | (none) | 0.001 to 1000 | 2 | cot(theta); theta = seaward slope angle |
 | Number of armor units (layer thickness) | n | (none) | 1 to 10 | 2 | number of armor-unit layers (>= 2 typical) |
+| Mean wave period (Van der Meer) | Tm | s | 0.01 to 1000 | 8 | Van der Meer only: mean period T_m for the surf-similarity parameter |
+| Number of waves (Van der Meer) | N_waves | (none) | 1 to 1e+06 | 7500 | Van der Meer only: storm duration in waves (typ. <= 7500) |
+| Notional permeability P (Van der Meer) | perm | (none) | 0.1 to 0.6 | 0.4 | Van der Meer only: 0.1 impermeable core ... 0.5-0.6 homogeneous mound |
+| Damage level S (Van der Meer) | S_damage | (none) | 1 to 30 | 2 | Van der Meer only: 2 = start of damage; higher = more allowed damage |
 
 **Outputs**
 
@@ -736,6 +741,7 @@ Sizes the primary armor units of a rubble-mound breakwater/revetment from the Hu
 | Crest width of breakwater | B | ft / m | scalar |
 | Average cover layer thickness | r | ft / m | scalar |
 | Armor units per 1000 ft^2 | N_r | (none) | scalar |
+| Stability number Hs/(d_n50) | Ns | (none) | scalar |
 
 *Reference:* Hudson (1953-61); SPM (1984) Ch.7; EM 1110-2-2904; TR 4-1
 
