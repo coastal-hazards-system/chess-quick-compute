@@ -81,6 +81,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    group: str = ""        # profile panel id; profiles sharing a group plot together
 
 
 # --- application metadata --------------------------------------------------------
@@ -142,9 +143,12 @@ OUTPUTS = (
     Out("n_samples", "Samples used in fit", "", "", "scalar"),
     Out("rms_residual", "RMS residual about trend", "m", "ft", "scalar"),
     Out("profile_year", "Profile: year", "yr", "yr", "profile"),
-    Out("profile_original", "Profile: original level", "m", "ft", "profile"),
-    Out("profile_trend", "Profile: trend line", "m", "ft", "profile"),
-    Out("profile_detrended", "Profile: detrended level", "m", "ft", "profile"),
+    # Panel 1 (group "obs"): observed level with the fitted linear trend on top.
+    Out("profile_original", "Profile: observed", "m", "ft", "profile", group="obs"),
+    Out("profile_trend", "Profile: linear trend", "m", "ft", "profile", group="obs"),
+    # Panel 2 (group "detr"): detrended level with the horizontal datum.
+    Out("profile_detrended", "Profile: detrended", "m", "ft", "profile", group="detr"),
+    Out("profile_datum", "Profile: datum", "m", "ft", "profile", group="detr"),
 )
 
 
@@ -160,6 +164,7 @@ class Result:
     profile_original: np.ndarray
     profile_trend: np.ndarray
     profile_detrended: np.ndarray
+    profile_datum: np.ndarray
     notes: str = ""
 
 
@@ -278,16 +283,18 @@ def compute(inp: dict) -> Result:
 
     trend_comp = slope * (t - pivot)       # the linear component removed (zero at pivot)
     detrended = y - trend_comp
-    # absolute trend line that overlays the data (residuals = detrended about mean)
-    trend_line = float(np.mean(detrended)) + trend_comp
+    datum = float(np.mean(detrended))      # horizontal reference level of the detrended series
+    # absolute trend line that overlays the observed data (slope through the centroid)
+    trend_line = datum + trend_comp
 
-    resid = detrended - float(np.mean(detrended))
+    resid = detrended - datum
     rms = float(np.sqrt(np.mean(resid * resid)))
     record_years = float(t[-1] - t[0])
     total_trend = slope * record_years
     n = len(t)
 
-    pt, po, ptr, pd = _decimate(t, y, trend_line, detrended)
+    pt, po, ptr, pdt = _decimate(t, y, trend_line, detrended)
+    pdatum = np.full(len(pt), datum)
     notes = [
         f"{'NTDE midpoint pivot' if pivot != float(np.mean(t)) else 'centered'} "
         f"at {pivot:.2f}; slope {slope:.5f} m/yr ({slope * 1000:.2f} mm/yr); "
@@ -300,7 +307,7 @@ def compute(inp: dict) -> Result:
         slope_per_year=slope, pivot_year=pivot, total_trend=total_trend,
         record_years=record_years, n_samples=float(n), rms_residual=rms,
         profile_year=pt, profile_original=po, profile_trend=ptr,
-        profile_detrended=pd, notes="; ".join(notes),
+        profile_detrended=pdt, profile_datum=pdatum, notes="; ".join(notes),
     )
 
 

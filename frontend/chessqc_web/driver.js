@@ -394,14 +394,30 @@ function profileSeries(res) {
   const colors = [cssVar("--plot-eta", "#008cb0"), cssVar("--plot-u", "#008cb0"),
                   cssVar("--plot-w", "#a86f2f"), cssVar("--plot-fg", "#333"),
                   cssVar("--plot-text", "#777")];
+  // within-panel color cycle (distinct adjacent colors for overlays like data + trend)
+  const gcolors = [cssVar("--plot-eta", "#008cb0"), cssVar("--plot-w", "#a86f2f"),
+                   cssVar("--plot-fg", "#333"), cssVar("--plot-text", "#777")];
+  const ys = profs.filter((o) => o !== xo);
   const groups = [];
-  profs.filter((o) => o !== xo).forEach((o, i) => {
-    const u = outUnit(o);
-    const s = { name: _shortLabel(o), data: res[o.key].map((v) => fromSI(v, u)),
-                color: colors[i % colors.length] };
-    const g = (i ? groups.slice(1) : []).find((g) => g.unit === u);
-    if (g) g.series.push(s); else groups.push({ unit: u, series: [s] });
-  });
+  if (ys.some((o) => o.group)) {
+    // explicit grouping: profiles sharing a `group` plot on the same panel
+    const by = {};
+    for (const o of ys) {
+      const gk = o.group || o.key, u = outUnit(o);
+      if (!(gk in by)) { by[gk] = { unit: u, series: [] }; groups.push(by[gk]); }
+      const idx = by[gk].series.length;
+      by[gk].series.push({ name: _shortLabel(o), data: res[o.key].map((v) => fromSI(v, u)),
+                           color: gcolors[idx % gcolors.length] });
+    }
+  } else {
+    ys.forEach((o, i) => {
+      const u = outUnit(o);
+      const s = { name: _shortLabel(o), data: res[o.key].map((v) => fromSI(v, u)),
+                  color: colors[i % colors.length] };
+      const g = (i ? groups.slice(1) : []).find((g) => g.unit === u);
+      if (g) g.series.push(s); else groups.push({ unit: u, series: [s] });
+    });
+  }
   return { x, groups };
 }
 const fmtTick = (v) => {

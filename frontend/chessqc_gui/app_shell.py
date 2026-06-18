@@ -518,6 +518,22 @@ class CalculatorWindow(QtWidgets.QMainWindow):
              units.from_si(np.asarray(getattr(r, xo.key), dtype=float), self._out_unit(xo)))
         ys = [o for o in profs if o is not xo]
         groups = []
+        if any(getattr(o, "group", "") for o in ys):
+            # explicit grouping: profiles sharing a `group` plot on the same panel,
+            # colored by within-panel index so overlays (data + trend) contrast
+            pal = get_plot_palette(settings.get_theme())
+            ecolors = [pal["eta"], pal["w"], pal["fg"], pal["text"]]
+            by = {}
+            for o in ys:
+                gk = getattr(o, "group", "") or o.key
+                u = self._out_unit(o)
+                arr = units.from_si(np.asarray(getattr(r, o.key), dtype=float), u)
+                if gk not in by:
+                    by[gk] = {"unit": u, "series": []}
+                    groups.append(by[gk])
+                idx = len(by[gk]["series"])
+                by[gk]["series"].append((short(o), arr, ecolors[idx % len(ecolors)]))
+            return x, groups
         for i, o in enumerate(ys):
             u = self._out_unit(o)
             arr = units.from_si(np.asarray(getattr(r, o.key), dtype=float), u)
@@ -590,8 +606,12 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         n, ci, axes = len(groups), 0, []
         for gi, g in enumerate(groups):
             ax = self.figure.add_subplot(n, 1, gi + 1, sharex=axes[0] if axes else None)
-            for lab, arr in g["series"]:
-                ax.plot(X, arr, label=lab, color=colors[ci % len(colors)]); ci += 1
+            for s in g["series"]:
+                lab, arr = s[0], s[1]
+                color = s[2] if len(s) > 2 and s[2] else colors[ci % len(colors)]
+                if not (len(s) > 2 and s[2]):
+                    ci += 1
+                ax.plot(X, arr, label=lab, color=color)
             ax.axhline(0, color=pal["axis"], lw=.6)
             ylab = g["series"][0][0] + " " if len(g["series"]) == 1 else ""
             ax.set_ylabel(f"{ylab}({g['unit']})".strip(), fontsize=8, color=pal["fg"])
@@ -610,8 +630,8 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         (xlab, xu, X), groups = self._profile_series(r)
         cols = [(f"{xlab} ({xu})", X)]
         for g in groups:
-            for lab, arr in g["series"]:
-                cols.append((f"{lab} ({g['unit']})", arr))
+            for s in g["series"]:
+                cols.append((f"{s[0]} ({g['unit']})", s[1]))
         self.table.setRowCount(len(X))
         self.table.setColumnCount(len(cols))
         self.table.setHorizontalHeaderLabels([h for h, _ in cols])
