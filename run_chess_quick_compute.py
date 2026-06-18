@@ -47,7 +47,7 @@ SPEED_CHOICES = ["m/s", "km/h"]   # SI metric display unit for m/s quantities
 # ---- USER-EDITABLE DEFAULTS (the splash only asks Desktop vs Browser) -------
 # Edit to set the look, or override per run with --decimals / --units / --vibe / --mode / --badge.
 # Light/Dark is also switchable at run time on the landing page; units per calculator.
-DEFAULT_MODE = "Dark"        # Light | Dark
+DEFAULT_MODE = "Light"        # Light | Dark
 DEFAULT_PALETTE = "Original"  # Original | Vibrant  (one palette used across both modes; web)
 DEFAULT_VIBE = "Trail"       # Signal | Trail | Forge
 DEFAULT_BADGE = "Solid"      # Solid / Tinted
