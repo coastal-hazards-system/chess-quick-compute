@@ -5,9 +5,9 @@ Each tool computes in SI internally and displays in the selected unit system; ra
 
 Each app header carries a fidelity class:
 
-- **(A) exact** — every coefficient and variable-relationship is known from the source (nothing guessed) and the results are validated.
-- **(B) standard** — a named method that involves a self-made convention/inference or only partial validation.
-- **(C) provisional** — a needed coefficient or relationship had to be guessed or is not recoverable from the sources (or there is no numeric oracle).
+- **(I) exact** — every coefficient and variable-relationship is known from the source (nothing guessed) and the results are validated.
+- **(II) standard** — a named method that involves a self-made convention/inference or only partial validation.
+- **(III) provisional** — a needed coefficient or relationship had to be guessed or is not recoverable from the sources (or there is no numeric oracle).
 
 ## Contents
 - **Wave Prediction**
@@ -60,7 +60,7 @@ Each app header carries a fidelity class:
 
 ## Wave Prediction
 
-### 1-1 — Windspeed Adjustment and Wave Growth  `[A]`
+### 1-1 — Windspeed Adjustment and Wave Growth  `[I]`
 
 **Status:** Current.
 
@@ -102,7 +102,7 @@ Originating ACES application: 1-1 "Windspeed Adjustment and Wave Growth" (functi
 
 *Module:* `backend/applications/chessqc_1_1_windspeed_wave_growth.py`
 
-### 1-2 — Beta-Rayleigh Distribution  `[B]`
+### 1-2 — Beta-Rayleigh Distribution  `[II]`
 
 **Status:** Current.
 
@@ -139,7 +139,7 @@ Originating ACES application: 1-2 "Beta-Rayleigh Distribution" (functional area:
 
 *Module:* `backend/applications/chessqc_1_2_beta_rayleigh.py`
 
-### 1-3 — Extremal Significant Wave Height Analysis  `[A]`
+### 1-3 — Extremal Significant Wave Height Analysis  `[I]`
 
 **Status:** Current.
 
@@ -173,7 +173,7 @@ Originating ACES application: 1-3 "Extremal Significant Wave Height Analysis" (f
 
 *Module:* `backend/applications/chessqc_1_3_extremal_hs.py`
 
-### 1-4 — Constituent Tide Record Generation  `[A]`
+### 1-4 — Constituent Tide Record Generation  `[I]`
 
 **Status:** Current.
 
@@ -209,7 +209,7 @@ Originating ACES application: 1-4 "Constituent Tide Record Generation" (function
 
 *Module:* `backend/applications/chessqc_1_4_tide_record.py`
 
-### 1-5 — Near-surface Wind Speeds  `[C]`
+### 1-5 — Near-surface Wind Speeds  `[III]`
 
 **Status:** Current.
 
@@ -245,7 +245,7 @@ Originating ACES application: 1-5 "Near-surface Wind Speeds" (functional area: W
 
 *Module:* `backend/applications/chessqc_1_5_near_surface_wind.py`
 
-### 1-6 — Holland Hurricane Wind Model  `[A]`
+### 1-6 — Holland Hurricane Wind Model  `[I]`
 
 **Status:** Current.
 
@@ -289,7 +289,7 @@ Originating ACES application: 1-6 "Holland Hurricane Wind Model" (functional are
 
 ## Wave Theory
 
-### 2-1 — Linear Wave Theory  `[A]`
+### 2-1 — Linear Wave Theory  `[I]`
 
 **Status:** Current.
 
@@ -334,7 +334,7 @@ Originating ACES application: 2-1 "Linear Wave Theory" (functional area: Wave Th
 
 *Module:* `backend/applications/chessqc_2_1_linear_wave_theory.py`
 
-### 2-2 — Cnoidal Wave Theory  `[A]`
+### 2-2 — Cnoidal Wave Theory  `[I]`
 
 **Status:** Current.
 
@@ -377,7 +377,7 @@ Originating ACES application: 2-2 "Cnoidal Wave Theory" (functional area: Wave T
 
 *Module:* `backend/applications/chessqc_2_2_cnoidal_wave_theory.py`
 
-### 2-3 — Fourier Series Wave Theory  `[A]`
+### 2-3 — Fourier Series Wave Theory  `[I]`
 
 **Status:** Current.
 
@@ -431,7 +431,7 @@ Originating ACES application: 2-3 "Fenton's Fourier Series Wave Theory" (functio
 
 *Module:* `backend/applications/chessqc_2_3_fenton_fourier.py`
 
-### 2-4 — Wave Parameters  `[A]`
+### 2-4 — Wave Parameters  `[I]`
 
 **Status:** Current.
 
@@ -506,7 +506,7 @@ Originating ACES grouping: 2-4 "Wave Parameters" (functional area: Wave Theory).
 
 *Module:* `backend/applications/chessqc_2_4_wave_parameters.py`
 
-### 2-5 — Solitary Wave Theory  `[A]`
+### 2-5 — Solitary Wave Theory  `[I]`
 
 **Status:** Current.
 
@@ -545,7 +545,7 @@ Originating ACES grouping: 2-5 "Solitary Wave Theory" (functional area: Wave The
 
 ## Wave Transformation
 
-### 3-1 — Linear Wave Theory with Snell's Law  `[A]`
+### 3-1 — Linear Wave Theory with Snell's Law  `[I]`
 
 **Status:** Current.
 
@@ -598,7 +598,7 @@ Transforms a wave of known height/period/direction at one depth to deep water an
 
 *Module:* `backend/applications/chessqc_3_1_snell.py`
 
-### 3-2 — Irregular Wave Transformation (Goda's Method)  `[C]`
+### 3-2 — Irregular Wave Transformation (Goda's Method)  `[III]`
 
 **Status:** Current.
 
@@ -635,7 +635,7 @@ Originating ACES grouping: 3-2 "Irregular Wave Transformation (Goda's method)" (
 
 *Module:* `backend/applications/chessqc_3_2_goda_transformation.py`
 
-### 3-3 — Combined Diffraction and Reflection by a Vertical Wedge  `[A]`
+### 3-3 — Combined Diffraction and Reflection by a Vertical Wedge  `[I]`
 
 **Status:** Current.
 
@@ -666,7 +666,7 @@ Originating ACES grouping: 3-3 "Combined Diffraction and Reflection by a Vertica
 
 *Module:* `backend/applications/chessqc_3_3_wedge_diffraction.py`
 
-### 3-4 — Vertical-Wedge Diffraction/Reflection on a Uniform Grid  `[A]`
+### 3-4 — Vertical-Wedge Diffraction/Reflection on a Uniform Grid  `[I]`
 
 **Status:** Current.
 
@@ -708,7 +708,7 @@ Originating ACES grouping: 3-4 "Combined Diffraction and Reflection by a Vertica
 
 ## Structural Design
 
-### 4-1 — Breakwater Design (Hudson)  `[A]`
+### 4-1 — Breakwater Design (Hudson)  `[I]`
 
 **Status:** Current. Newer method: Van der Meer (1988) stability formulae (preferred for many cases).
 
@@ -741,7 +741,7 @@ Sizes the primary armor units of a rubble-mound breakwater/revetment from the Hu
 
 *Module:* `backend/applications/chessqc_4_1_breakwater_hudson.py`
 
-### 4-2 — Toe Protection Design  `[A]`
+### 4-2 — Toe Protection Design  `[I]`
 
 **Status:** Current.
 
@@ -774,7 +774,7 @@ Designs the toe-apron width and toe-stone weight for a vertical wall / bulkhead 
 
 *Module:* `backend/applications/chessqc_4_2_toe_protection.py`
 
-### 4-3 — Nonbreaking Wave Forces at Vertical Walls  `[A]`
+### 4-3 — Nonbreaking Wave Forces at Vertical Walls  `[I]`
 
 **Status:** Current.
 
@@ -810,7 +810,7 @@ Standing-wave (clapotis) forces and overturning moments on a vertical wall, by t
 
 *Module:* `backend/applications/chessqc_4_3_vertical_wall_forces.py`
 
-### 4-4 — Rubble-Mound Revetment Design  `[A]`
+### 4-4 — Rubble-Mound Revetment Design  `[I]`
 
 **Status:** Current.
 
@@ -851,7 +851,7 @@ Originating ACES grouping: 4-4 "Rubble-Mound Revetment Design" (functional area:
 
 ## Wave Runup, Transmission, and Overtopping
 
-### 5-1 — Irregular Wave Runup on Beaches  `[A]`
+### 5-1 — Irregular Wave Runup on Beaches  `[I]`
 
 **Status:** Current.
 
@@ -881,7 +881,7 @@ Originating ACES grouping: 5-1 "Irregular Wave Runup on Beaches" (functional are
 
 *Module:* `backend/applications/chessqc_5_1_irregular_runup_beaches.py`
 
-### 5-2 — Wave Runup and Overtopping on Impermeable Structures  `[A]`
+### 5-2 — Wave Runup and Overtopping on Impermeable Structures  `[I]`
 
 **Status:** Current.
 
@@ -926,7 +926,7 @@ Originating ACES grouping: 5-2 "Wave Runup and Overtopping on Impermeable Struct
 
 *Module:* `backend/applications/chessqc_5_2_runup_overtopping_impermeable.py`
 
-### 5-3 — Wave Transmission on Impermeable Structures  `[A]`
+### 5-3 — Wave Transmission on Impermeable Structures  `[I]`
 
 **Status:** Current.
 
@@ -962,7 +962,7 @@ Originating ACES grouping: 5-3 "Wave Transmission on Impermeable Structures" (fu
 
 *Module:* `backend/applications/chessqc_5_3_transmission_impermeable.py`
 
-### 5-4 — Wave Transmission through Permeable Structures  `[C]`
+### 5-4 — Wave Transmission through Permeable Structures  `[III]`
 
 **Status:** Current.
 
@@ -1001,7 +1001,7 @@ Originating ACES grouping: 5-4 "Wave Transmission through Permeable Structures" 
 
 *Module:* `backend/applications/chessqc_5_4_transmission_permeable.py`
 
-### 5-5 — Wave Setup  `[A]`
+### 5-5 — Wave Setup  `[I]`
 
 **Status:** Current.
 
@@ -1044,7 +1044,7 @@ Originating ACES grouping: 5-5 "Wave Setup" (functional area: Wave Runup, Transm
 
 ## Littoral Processes
 
-### 6-1 — Longshore Sediment Transport  `[A]`
+### 6-1 — Longshore Sediment Transport  `[I]`
 
 **Status:** Current.
 
@@ -1075,7 +1075,7 @@ Originating ACES application: 6-1 "Longshore Sediment Transport" (functional are
 
 *Module:* `backend/applications/chessqc_6_1_longshore_transport.py`
 
-### 6-2 — Time-Dependent Beach and Dune Erosion  `[A]`
+### 6-2 — Time-Dependent Beach and Dune Erosion  `[I]`
 
 **Status:** Current.
 
@@ -1109,7 +1109,7 @@ Originating ACES grouping: 6-2 "Time-Dependent Beach and Dune Erosion" (function
 
 *Module:* `backend/applications/chessqc_6_2_dune_erosion.py`
 
-### 6-3 — Longshore Transport using CEDRS Statistics  `[B]`
+### 6-3 — Longshore Transport using CEDRS Statistics  `[II]`
 
 **Status:** Current.
 
@@ -1142,7 +1142,7 @@ Originating ACES application: 6-3 "Longshore Sediment Transport using CEDRS perc
 
 *Module:* `backend/applications/chessqc_6_3_cedrs_transport.py`
 
-### 6-4 — Beach Nourishment Overfill Ratio and Volume  `[A]`
+### 6-4 — Beach Nourishment Overfill Ratio and Volume  `[I]`
 
 **Status:** Current.
 
@@ -1174,7 +1174,7 @@ Originating ACES application: 6-4 "Beach Nourishment Overfill Ratio and Volume" 
 
 *Module:* `backend/applications/chessqc_6_4_beach_nourishment.py`
 
-### 6-5 — Composite Grain-Size Distribution  `[A]`
+### 6-5 — Composite Grain-Size Distribution  `[I]`
 
 **Status:** Current.
 
@@ -1210,7 +1210,7 @@ Originating ACES application: 6-5 "Composite Grain Size" (functional area: Litto
 
 ## Inlet Processes
 
-### 7-1 — Spatially Integrated Numerical Model for Inlet Hydraulics  `[C]`
+### 7-1 — Spatially Integrated Numerical Model for Inlet Hydraulics  `[III]`
 
 **Status:** Current.
 
@@ -1260,7 +1260,7 @@ Originating ACES grouping: 7-1 "A Spatially Integrated Numerical Model for Inlet
 
 *Module:* `backend/applications/chessqc_7_1_inlet_hydraulics.py`
 
-### 7-2 — Wave-Current Interaction in Channels  `[A]`
+### 7-2 — Wave-Current Interaction in Channels  `[I]`
 
 **Status:** Current.
 
@@ -1293,7 +1293,7 @@ Originating ACES application: 7-2 "Wave-current Interaction in Channels" (functi
 
 ## Harbor Design
 
-### 8-1 — Properties of Rectangular Basins  `[A]`
+### 8-1 — Properties of Rectangular Basins  `[I]`
 
 **Status:** Current.
 
@@ -1334,7 +1334,7 @@ Originating ACES grouping: 8-1 "Properties of Rectangular Basins" (functional ar
 
 *Module:* `backend/applications/chessqc_8_1_rectangular_basins.py`
 
-### 8-2 — Vessel-Generated Waves  `[A]`
+### 8-2 — Vessel-Generated Waves  `[I]`
 
 **Status:** Current.
 
@@ -1367,7 +1367,7 @@ Originating ACES application: 8-2 "Vessel-Generated Waves" (functional area: Har
 
 *Module:* `backend/applications/chessqc_8_2_vessel_waves.py`
 
-### 8-3 — Surging of a Moored Vessel  `[A]`
+### 8-3 — Surging of a Moored Vessel  `[I]`
 
 **Status:** Current.
 
@@ -1402,7 +1402,7 @@ Originating ACES application: 8-3 "Surging of a Moored Vessel" (functional area:
 
 ## Storm Surge
 
-### 9-1 — Bathystrophic Storm Surge  `[C]`
+### 9-1 — Bathystrophic Storm Surge  `[III]`
 
 **Status:** Screening only. Newer method: ADCIRC (risk assessment).
 
@@ -1452,7 +1452,7 @@ First Quick Compute tool beyond the original 34 ACES applications (functional ar
 
 ## Miscellaneous Routines
 
-### M-1 — Miscellaneous Breaker and Steepness Routines  `[B]`
+### M-1 — Miscellaneous Breaker and Steepness Routines  `[II]`
 
 **Status:** Current.
 

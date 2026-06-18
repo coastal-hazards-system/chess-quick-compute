@@ -7,9 +7,9 @@ Validation evidence for every built CHESS-QC application, compiled from each app
 
 **Fidelity classes:**
 
-- **(A) exact** — every coefficient and variable-relationship is known from the source (nothing guessed) and the results are validated.
-- **(B) standard** — a named method that involves a self-made convention/inference or only partial validation.
-- **(C) provisional** — a needed coefficient or relationship had to be guessed or is not recoverable from the sources (or there is no numeric oracle).
+- **(I) exact** — every coefficient and variable-relationship is known from the source (nothing guessed) and the results are validated.
+- **(II) standard** — a named method that involves a self-made convention/inference or only partial validation.
+- **(III) provisional** — a needed coefficient or relationship had to be guessed or is not recoverable from the sources (or there is no numeric oracle).
 
 Empirical formulations are exact when their coefficients are known and the results validate.
 
@@ -17,47 +17,47 @@ Empirical formulations are exact when their coefficients are known and the resul
 
 | App | Name | Class | Status | Oracle / method |
 |---|---|---|---|---|
-| 1-1 | Windspeed Adjustment and Wave Growth | A | Current | analytic / literature |
-| 1-2 | Beta-Rayleigh Distribution | B | Current | User's Guide oracle |
-| 1-3 | Extremal Significant Wave Height Analysis | A | Current | User's Guide oracle |
-| 1-4 | Constituent Tide Record Generation | A | Current | User's Guide oracle |
-| 1-5 | Near-surface Wind Speeds | C | Current | analytic / literature |
-| 1-6 | Holland Hurricane Wind Model | A | Current | see notes |
-| 2-1 | Linear Wave Theory | A | Current | User's Guide oracle |
-| 2-2 | Cnoidal Wave Theory | A | Current | User's Guide oracle |
-| 2-3 | Fourier Series Wave Theory | A | Current | User's Guide oracle |
-| 2-4 | Wave Parameters | A | Current | User's Guide oracle |
-| 2-5 | Solitary Wave Theory | A | Current | analytic / literature |
-| 3-1 | Linear Wave Theory with Snell's Law | A | Current | User's Guide oracle |
-| 3-2 | Irregular Wave Transformation (Goda's Method) | C | Current | analytic / literature |
-| 3-3 | Combined Diffraction and Reflection by a Vertical Wedge | A | Current | User's Guide oracle |
-| 3-4 | Vertical-Wedge Diffraction/Reflection on a Uniform Grid | A | Current | User's Guide oracle |
-| 4-1 | Breakwater Design (Hudson) | A | Current | User's Guide oracle |
-| 4-2 | Toe Protection Design | A | Current | User's Guide oracle |
-| 4-3 | Nonbreaking Wave Forces at Vertical Walls | A | Current | User's Guide oracle |
-| 4-4 | Rubble-Mound Revetment Design | A | Current | User's Guide oracle |
-| 5-1 | Irregular Wave Runup on Beaches | A | Current | User's Guide oracle |
-| 5-2 | Wave Runup and Overtopping on Impermeable Structures | A | Current | User's Guide oracle |
-| 5-3 | Wave Transmission on Impermeable Structures | A | Current | User's Guide oracle |
-| 5-4 | Wave Transmission through Permeable Structures | C | Current | User's Guide oracle |
-| 5-5 | Wave Setup | A | Current | User's Guide oracle |
-| 6-1 | Longshore Sediment Transport | A | Current | analytic / literature |
-| 6-2 | Time-Dependent Beach and Dune Erosion | A | Current | analytic / literature |
-| 6-3 | Longshore Transport using CEDRS Statistics | B | Current | see notes |
-| 6-4 | Beach Nourishment Overfill Ratio and Volume | A | Current | User's Guide oracle |
-| 6-5 | Composite Grain-Size Distribution | A | Current | User's Guide oracle |
-| 7-1 | Spatially Integrated Numerical Model for Inlet Hydraulics | C | Current | User's Guide oracle |
-| 7-2 | Wave-Current Interaction in Channels | A | Current | see notes |
-| 8-1 | Properties of Rectangular Basins | A | Current | analytic / literature |
-| 8-2 | Vessel-Generated Waves | A | Current | analytic / literature |
-| 8-3 | Surging of a Moored Vessel | A | Current | see notes |
-| 9-1 | Bathystrophic Storm Surge | C | Screening only | analytic / literature |
-| M-1 | Miscellaneous Breaker and Steepness Routines | B | Current | analytic / literature |
+| 1-1 | Windspeed Adjustment and Wave Growth | I | Current | analytic / literature |
+| 1-2 | Beta-Rayleigh Distribution | II | Current | User's Guide oracle |
+| 1-3 | Extremal Significant Wave Height Analysis | I | Current | User's Guide oracle |
+| 1-4 | Constituent Tide Record Generation | I | Current | User's Guide oracle |
+| 1-5 | Near-surface Wind Speeds | III | Current | analytic / literature |
+| 1-6 | Holland Hurricane Wind Model | I | Current | see notes |
+| 2-1 | Linear Wave Theory | I | Current | User's Guide oracle |
+| 2-2 | Cnoidal Wave Theory | I | Current | User's Guide oracle |
+| 2-3 | Fourier Series Wave Theory | I | Current | User's Guide oracle |
+| 2-4 | Wave Parameters | I | Current | User's Guide oracle |
+| 2-5 | Solitary Wave Theory | I | Current | analytic / literature |
+| 3-1 | Linear Wave Theory with Snell's Law | I | Current | User's Guide oracle |
+| 3-2 | Irregular Wave Transformation (Goda's Method) | III | Current | analytic / literature |
+| 3-3 | Combined Diffraction and Reflection by a Vertical Wedge | I | Current | User's Guide oracle |
+| 3-4 | Vertical-Wedge Diffraction/Reflection on a Uniform Grid | I | Current | User's Guide oracle |
+| 4-1 | Breakwater Design (Hudson) | I | Current | User's Guide oracle |
+| 4-2 | Toe Protection Design | I | Current | User's Guide oracle |
+| 4-3 | Nonbreaking Wave Forces at Vertical Walls | I | Current | User's Guide oracle |
+| 4-4 | Rubble-Mound Revetment Design | I | Current | User's Guide oracle |
+| 5-1 | Irregular Wave Runup on Beaches | I | Current | User's Guide oracle |
+| 5-2 | Wave Runup and Overtopping on Impermeable Structures | I | Current | User's Guide oracle |
+| 5-3 | Wave Transmission on Impermeable Structures | I | Current | User's Guide oracle |
+| 5-4 | Wave Transmission through Permeable Structures | III | Current | User's Guide oracle |
+| 5-5 | Wave Setup | I | Current | User's Guide oracle |
+| 6-1 | Longshore Sediment Transport | I | Current | analytic / literature |
+| 6-2 | Time-Dependent Beach and Dune Erosion | I | Current | analytic / literature |
+| 6-3 | Longshore Transport using CEDRS Statistics | II | Current | see notes |
+| 6-4 | Beach Nourishment Overfill Ratio and Volume | I | Current | User's Guide oracle |
+| 6-5 | Composite Grain-Size Distribution | I | Current | User's Guide oracle |
+| 7-1 | Spatially Integrated Numerical Model for Inlet Hydraulics | III | Current | User's Guide oracle |
+| 7-2 | Wave-Current Interaction in Channels | I | Current | see notes |
+| 8-1 | Properties of Rectangular Basins | I | Current | analytic / literature |
+| 8-2 | Vessel-Generated Waves | I | Current | analytic / literature |
+| 8-3 | Surging of a Moored Vessel | I | Current | see notes |
+| 9-1 | Bathystrophic Storm Surge | III | Screening only | analytic / literature |
+| M-1 | Miscellaneous Breaker and Steepness Routines | II | Current | analytic / literature |
 
 
 ## Wave Prediction
 
-### 1-1 — Windspeed Adjustment and Wave Growth  (A — exact)
+### 1-1 — Windspeed Adjustment and Wave Growth  (I — exact)
 
 - **Source / references:** SPM (1984) Ch.3; Resio & Vincent (1977); Smith (1991); TR 1-1
 - **Module:** `backend/applications/chessqc_1_1_windspeed_wave_growth.py`
@@ -65,7 +65,7 @@ Empirical formulations are exact when their coefficients are known and the resul
 
 Validated by the regression test above: Example 1-1 open + Example 3 restricted geometry.
 
-### 1-2 — Beta-Rayleigh Distribution  (B — standard)
+### 1-2 — Beta-Rayleigh Distribution  (II — standard)
 
 - **Source / references:** Hughes & Borgman (1987); Thompson & Vincent (1985); TR 1-2
 - **Module:** `backend/applications/chessqc_1_2_beta_rayleigh.py`
@@ -73,7 +73,7 @@ Validated by the regression test above: Example 1-1 open + Example 3 restricted 
 
 Validation note. Of the five characteristic heights in Example 1-2, four reproduce to within ~1.5% (H_rms 3.72, H_med 3.26, H_1/3 5.18, H_1/100 7.48 ft). The fifth, H_1/10, is reported as 6.55 ft in the User's Guide but computes to 6.30 ft from the documented Beta-Rayleigh method (confirmed grid-independent and across discrete and interpolated quadrature). The manual value sits closer to the pure-Rayleigh value than its neighbours, which is physically inconsistent with a depth-truncated tail, so it is taken to be a documentation or legacy-code artifact and 6.30 ft is reported.
 
-### 1-3 — Extremal Significant Wave Height Analysis  (A — exact)
+### 1-3 — Extremal Significant Wave Height Analysis  (I — exact)
 
 - **Source / references:** Goda (1988); Gringorten (1963); EM 1110-2-1414; TR 1-3
 - **Module:** `backend/applications/chessqc_1_3_extremal_hs.py`
@@ -81,7 +81,7 @@ Validation note. Of the five characteristic heights in Example 1-2, four reprodu
 
 Validated by the regression test above: matches User's Guide Example 1-3.
 
-### 1-4 — Constituent Tide Record Generation  (A — exact)
+### 1-4 — Constituent Tide Record Generation  (I — exact)
 
 - **Source / references:** Schureman (1971); Table A-5; TR 1-4
 - **Module:** `backend/applications/chessqc_1_4_tide_record.py`
@@ -89,7 +89,7 @@ Validated by the regression test above: matches User's Guide Example 1-3.
 
 Validated by the regression test above: matches User's Guide Example 1-4 Table 1-4-1.
 
-### 1-5 — Near-surface Wind Speeds  (C — provisional)
+### 1-5 — Near-surface Wind Speeds  (III — provisional)
 
 - **Source / references:** Garratt (1992); Blackadar & Tennekes (1968); ACES TR 1-1; ACES manual
 - **Module:** `backend/applications/chessqc_1_5_near_surface_wind.py`
@@ -97,7 +97,7 @@ Validated by the regression test above: matches User's Guide Example 1-4 Table 1
 
 Validated by the regression test above: neutral log law, C_D band, U*~3%G, stability sign.
 
-### 1-6 — Holland Hurricane Wind Model  (A — exact)
+### 1-6 — Holland Hurricane Wind Model  (I — exact)
 
 - **Source / references:** Holland (1980) Mon. Wea. Rev. 108; ACES manual
 - **Module:** `backend/applications/chessqc_1_6_holland_hurricane.py`
@@ -107,7 +107,7 @@ _Validation note in the app docstring / build notes._
 
 ## Wave Theory
 
-### 2-1 — Linear Wave Theory  (A — exact)
+### 2-1 — Linear Wave Theory  (I — exact)
 
 - **Source / references:** Airy (1845); Hunt (1979); TR 2-1
 - **Module:** `backend/applications/chessqc_2_1_linear_wave_theory.py`
@@ -115,7 +115,7 @@ _Validation note in the app docstring / build notes._
 
 Validated by the regression test above: matches User's Guide Example 2-1.
 
-### 2-2 — Cnoidal Wave Theory  (A — exact)
+### 2-2 — Cnoidal Wave Theory  (I — exact)
 
 - **Source / references:** Isobe (1985); Hardy & Kraus (1987); TR 2-2
 - **Module:** `backend/applications/chessqc_2_2_cnoidal_wave_theory.py`
@@ -123,7 +123,7 @@ Validated by the regression test above: matches User's Guide Example 2-1.
 
 Validated by the regression test above: matches User's Guide Example 2-2, 1st order.
 
-### 2-3 — Fourier Series Wave Theory  (A — exact)
+### 2-3 — Fourier Series Wave Theory  (I — exact)
 
 - **Source / references:** Rienecker & Fenton (1981); Fenton (1988); TR 2-3
 - **Module:** `backend/applications/chessqc_2_3_fenton_fourier.py`
@@ -131,7 +131,7 @@ Validated by the regression test above: matches User's Guide Example 2-2, 1st or
 
 Validated by the regression test above: matches User's Guide Example 2-3.
 
-### 2-4 — Wave Parameters  (A — exact)
+### 2-4 — Wave Parameters  (I — exact)
 
 - **Source / references:** Airy (1845); SPM (1984) App. C; Hunt (1979)
 - **Module:** `backend/applications/chessqc_2_4_wave_parameters.py`
@@ -139,7 +139,7 @@ Validated by the regression test above: matches User's Guide Example 2-3.
 
 Validation strategy (no dedicated User's Guide section for this app): the shared linear-theory outputs (L, C, Cg, E, P, Ur, and the point kinematics) are required to reproduce the User's Guide Example 2-1 numbers (so this app inherits the 2-1 oracle), plus a pressure-inversion round-trip and the deep/shallow analytic limits.
 
-### 2-5 — Solitary Wave Theory  (A — exact)
+### 2-5 — Solitary Wave Theory  (I — exact)
 
 - **Source / references:** McCowan (1891); Munk (1949); SPM (1984); CEM (EM 1110-2-1100); Zaroodny (1972)
 - **Module:** `backend/applications/chessqc_2_5_solitary_wave.py`
@@ -150,7 +150,7 @@ Validated by the regression test above: analytic; celerity/crest/breaking/M-N/en
 
 ## Wave Transformation
 
-### 3-1 — Linear Wave Theory with Snell's Law  (A — exact)
+### 3-1 — Linear Wave Theory with Snell's Law  (I — exact)
 
 - **Source / references:** O'Brien (1942); Hunt (1979); Weggel (1972); TR 3-1
 - **Module:** `backend/applications/chessqc_3_1_snell.py`
@@ -158,7 +158,7 @@ Validated by the regression test above: analytic; celerity/crest/breaking/M-N/en
 
 Validated by the regression test above: Snell transformation matches User's Guide Example 3-1.
 
-### 3-2 — Irregular Wave Transformation (Goda's Method)  (C — provisional)
+### 3-2 — Irregular Wave Transformation (Goda's Method)  (III — provisional)
 
 - **Source / references:** Goda (1975, 1985); Mitsuyasu (1975); Shuto (1974)
 - **Module:** `backend/applications/chessqc_3_2_goda_transformation.py`
@@ -166,7 +166,7 @@ Validated by the regression test above: Snell transformation matches User's Guid
 
 Validated by the regression test above: Ks exact; headline Hs/Hrms ~4%; high quantiles approx.
 
-### 3-3 — Combined Diffraction and Reflection by a Vertical Wedge  (A — exact)
+### 3-3 — Combined Diffraction and Reflection by a Vertical Wedge  (I — exact)
 
 - **Source / references:** Chen (1987); Stoker (1957); Penny & Price (1952)
 - **Module:** `backend/applications/chessqc_3_3_wedge_diffraction.py`
@@ -174,7 +174,7 @@ Validated by the regression test above: Ks exact; headline Hs/Hrms ~4%; high qua
 
 Validation: reproduces the ACES User's Guide Example 1 (semi-infinite breakwater, wedge angle 0 so nu=2; incident H 2 ft, T 6 s, depth 12 ft, wave angle 133 deg, point at (33, -17) ft): wavelength 109.82 ft and modification factor 0.58 (modified height 1.16 ft). The phase comes out -2.48 rad versus the published -2.58; the ~0.1 rad offset is a phase-reference convention in PCDFRAC and does not affect the modification factor or height.
 
-### 3-4 — Vertical-Wedge Diffraction/Reflection on a Uniform Grid  (A — exact)
+### 3-4 — Vertical-Wedge Diffraction/Reflection on a Uniform Grid  (I — exact)
 
 - **Source / references:** Chen (1987); Stoker (1957); Penny & Price (1952)
 - **Module:** `backend/applications/chessqc_3_4_wedge_grid.py`
@@ -185,7 +185,7 @@ Validation: reproduces the ACES User's Guide Example 3 (semi-infinite breakwater
 
 ## Structural Design
 
-### 4-1 — Breakwater Design (Hudson)  (A — exact)
+### 4-1 — Breakwater Design (Hudson)  (I — exact)
 
 - **Source / references:** Hudson (1953-61); SPM (1984) Ch.7; EM 1110-2-2904; TR 4-1
 - **Module:** `backend/applications/chessqc_4_1_breakwater_hudson.py`
@@ -193,7 +193,7 @@ Validation: reproduces the ACES User's Guide Example 3 (semi-infinite breakwater
 
 Validated by the regression test above: matches User's Guide Example 4-1.
 
-### 4-2 — Toe Protection Design  (A — exact)
+### 4-2 — Toe Protection Design  (I — exact)
 
 - **Source / references:** EM 1110-2-1614; Tanimoto, Yagyu & Goda (1982); Hunt (1979); TR 4-2
 - **Module:** `backend/applications/chessqc_4_2_toe_protection.py`
@@ -201,7 +201,7 @@ Validated by the regression test above: matches User's Guide Example 4-1.
 
 Validated by the regression test above: matches User's Guide Example 4-2 #1.
 
-### 4-3 — Nonbreaking Wave Forces at Vertical Walls  (A — exact)
+### 4-3 — Nonbreaking Wave Forces at Vertical Walls  (I — exact)
 
 - **Source / references:** Sainflou (1928); Miche (1944); Rundgren (1958); Hunt (1979); TR 4-3
 - **Module:** `backend/applications/chessqc_4_3_vertical_wall_forces.py`
@@ -209,7 +209,7 @@ Validated by the regression test above: matches User's Guide Example 4-2 #1.
 
 Validated by the regression test above: matches User's Guide Example 4-3.
 
-### 4-4 — Rubble-Mound Revetment Design  (A — exact)
+### 4-4 — Rubble-Mound Revetment Design  (I — exact)
 
 - **Source / references:** Ahrens (1981); van der Meer (1988); Hudson (1958); Ahrens & Heimbaugh (1988)
 - **Module:** `backend/applications/chessqc_4_4_revetment_design.py`
@@ -220,7 +220,7 @@ Validation: reproduces the ACES User's Guide Example (H_s = 5 ft, T_s = 10 s, d_
 
 ## Wave Runup, Transmission, and Overtopping
 
-### 5-1 — Irregular Wave Runup on Beaches  (A — exact)
+### 5-1 — Irregular Wave Runup on Beaches  (I — exact)
 
 - **Source / references:** Mase (1989); Hunt (1959); Walton & Ahrens (1989)
 - **Module:** `backend/applications/chessqc_5_1_irregular_runup_beaches.py`
@@ -228,7 +228,7 @@ Validation: reproduces the ACES User's Guide Example (H_s = 5 ft, T_s = 10 s, d_
 
 Validation strategy: the five statistics reproduce the ACES User's Guide worked example (H_s0 = 4.60 ft, T_p = 9.50 s, cot theta = 13.0 -> R_max = 8.74, R_2% = 7.11, R_1/10 = 6.50, R_1/3 = 5.29, R_bar = 3.38 ft) to 0.01 ft; ordering and the linear scaling in H_s0 are checked as closed-form consistency tests.
 
-### 5-2 — Wave Runup and Overtopping on Impermeable Structures  (A — exact)
+### 5-2 — Wave Runup and Overtopping on Impermeable Structures  (I — exact)
 
 - **Source / references:** Ahrens & McCartney (1975); Ahrens & Titus (1985); Weggel (1976); SPM (1984)
 - **Module:** `backend/applications/chessqc_5_2_runup_overtopping_impermeable.py`
@@ -236,7 +236,7 @@ Validation strategy: the five statistics reproduce the ACES User's Guide worked 
 
 Validated by the regression test above: User's Guide Examples 1-7.
 
-### 5-3 — Wave Transmission on Impermeable Structures  (A — exact)
+### 5-3 — Wave Transmission on Impermeable Structures  (I — exact)
 
 - **Source / references:** Seelig (1980); Seelig (1976); Ahrens & McCartney (1975); Ahrens & Titus (1985)
 - **Module:** `backend/applications/chessqc_5_3_transmission_impermeable.py`
@@ -244,7 +244,7 @@ Validated by the regression test above: User's Guide Examples 1-7.
 
 Validated by the regression test above: User's Guide Examples 1-4.
 
-### 5-4 — Wave Transmission through Permeable Structures  (C — provisional)
+### 5-4 — Wave Transmission through Permeable Structures  (III — provisional)
 
 - **Source / references:** Madsen & White (1976); Seelig (1980); Ahrens & McCartney (1975)
 - **Module:** `backend/applications/chessqc_5_4_transmission_permeable.py`
@@ -252,7 +252,7 @@ Validated by the regression test above: User's Guide Examples 1-4.
 
 Validation strategy and a documented limitation: the model reproduces the ACES User's Guide Example-1 *primary* outputs to better than 0.5 percent (transmitted height H_T, total K_T, through K_Tt, overtopping K_To). The reference diameter d_r in the equivalent- breakwater reduction is taken as one half the median material diameter (the "representative material"), which yields those outputs. The *reflection* coefficient K_R is over-predicted (model ~0.86 vs the published 0.719): the transcribed seaward-slope equations give near- total reflection for the long-period example wave, and the additional slope dissipation needed to match 0.719 is a Madsen & White (1976) calibration detail not recoverable from the public Technical Reference. K_R does not affect the transmitted height, so it is reported with that caveat. Every headline output (H_T, K_T, K_Tt, K_To) is exact to <0.5%; the single residual is the secondary reflection coefficient K_R, whose missing seaward-slope dissipation is not recoverable from the public sources.
 
-### 5-5 — Wave Setup  (A — exact)
+### 5-5 — Wave Setup  (I — exact)
 
 - **Source / references:** Longuet-Higgins & Stewart (1963); Weggel (1972); Singamsetti & Wind (1980)
 - **Module:** `backend/applications/chessqc_5_5_wave_setup.py`
@@ -263,7 +263,7 @@ Validation strategy (no dedicated User's Guide section for this app, and no TR c
 
 ## Littoral Processes
 
-### 6-1 — Longshore Sediment Transport  (A — exact)
+### 6-1 — Longshore Sediment Transport  (I — exact)
 
 - **Source / references:** SPM (1984) Ch.4; Galvin (1979); TR 6-1
 - **Module:** `backend/applications/chessqc_6_1_longshore_transport.py`
@@ -271,7 +271,7 @@ Validation strategy (no dedicated User's Guide section for this app, and no TR c
 
 Validated by the regression test above: CERC factor + ACES examples via effective rho_s.
 
-### 6-2 — Time-Dependent Beach and Dune Erosion  (A — exact)
+### 6-2 — Time-Dependent Beach and Dune Erosion  (I — exact)
 
 - **Source / references:** Kriebel & Dean (1985, 1993); Dean (1977); Bruun (1954); Moore (1982)
 - **Module:** `backend/applications/chessqc_6_2_dune_erosion.py`
@@ -279,14 +279,14 @@ Validated by the regression test above: CERC factor + ACES examples via effectiv
 
 Validation (no ACES numeric oracle for the surge problem; analytic against the Kriebel-Dean 1985 paper and the Bruun sand balance): for the paper's Fig-5 case (D50=0.5 mm so A=0.118, S=2 m, H_b=4.6 m, berm 3 m, slope 1:10) the equilibrium recession is ~79 m (matching the paper's tens-of-metres and the Bruun balance) and the time scale ~19 hr (the paper's stated 10-100 hr storm range); recession is linear in surge (paper Fig 5) and the response is exponential. The legacy no-surge ACES Example 2 returns ~0 here by construction: with no surge there is no equilibrium shift, so this surge-driven model does not represent that (wave-only profile-readjustment) case -- that 12 ft figure is XSHORE-scheme-specific.
 
-### 6-3 — Longshore Transport using CEDRS Statistics  (B — standard)
+### 6-3 — Longshore Transport using CEDRS Statistics  (II — standard)
 
 - **Source / references:** SPM (1984) Ch.4; Gravens (1988); WIS Report 18; ACES User's Guide Example 6-1-3
 - **Module:** `backend/applications/chessqc_6_3_cedrs_transport.py`
 
 _Validation note in the app docstring / build notes._
 
-### 6-4 — Beach Nourishment Overfill Ratio and Volume  (A — exact)
+### 6-4 — Beach Nourishment Overfill Ratio and Volume  (I — exact)
 
 - **Source / references:** James (1975) TM-60; SPM (1984); TR 6-4
 - **Module:** `backend/applications/chessqc_6_4_beach_nourishment.py`
@@ -294,7 +294,7 @@ _Validation note in the app docstring / build notes._
 
 Validated by the regression test above: matches User's Guide Example 6-4.
 
-### 6-5 — Composite Grain-Size Distribution  (A — exact)
+### 6-5 — Composite Grain-Size Distribution  (I — exact)
 
 - **Source / references:** Folk (1974); Krumbein (1934, 1938); SPM (1984); TR 6-3
 - **Module:** `backend/applications/chessqc_6_5_composite_grain_size.py`
@@ -305,14 +305,14 @@ Validation note. The dataset ships only CoreSample1 (Panama City); the ACES User
 
 ## Inlet Processes
 
-### 7-1 — Spatially Integrated Numerical Model for Inlet Hydraulics  (C — provisional)
+### 7-1 — Spatially Integrated Numerical Model for Inlet Hydraulics  (III — provisional)
 
 - **Source / references:** Seelig (1977); Seelig, Harris & Herchenroder (1977); Harris & Bodine (1977); Keulegan (1967); Schureman (1971)
 - **Module:** `backend/applications/chessqc_7_1_inlet_hydraulics.py`
 
 Validation: reproduces the ACES User's Guide Example 1 (one sea / one inlet / one bay; 4-channel, 5-cross-section inlet; pure M2 tide of 2.0 ft amplitude, 90 deg epoch at 75 deg W, start 1988-07-06 00:00; flood/ebb loss 4.0/1.0; Manning C1=0.05, C2=0.0007; bay area 1.80e9 ft^2; tabulated river inflow). The cross-section area integrator reproduces the echoed flow-net areas exactly (CS1 = 100,360 ft^2, CS5 = 60,112 ft^2). The 30-hour RK4 march reproduces Table 7-1-3: peak ebb discharge -207,260 cfs is matched to 0.2 percent, the bay elevation hydrograph to <0.02 ft throughout, the controlling-section velocity (-5.05 ft/s) to ~1 percent, and the dominant first-ebb volume (-2.55e9 ft^3) to 0.3 percent. Mid-record flood/ebb exchange volumes run ~6 percent low, the residual of the section-mean friction versus the full per-channel flow net (only cross-sections 1 and 5 have their channel division published); the headline discharge, velocity, and bay-range metrics meet the project bar.
 
-### 7-2 — Wave-Current Interaction in Channels  (A — exact)
+### 7-2 — Wave-Current Interaction in Channels  (I — exact)
 
 - **Source / references:** Jonsson (1990); Jonsson, Skovgaard & Wang (1970); Peregrine (1976)
 - **Module:** `backend/applications/chessqc_7_2_wave_current.py`
@@ -322,7 +322,7 @@ _Validation note in the app docstring / build notes._
 
 ## Harbor Design
 
-### 8-1 — Properties of Rectangular Basins  (A — exact)
+### 8-1 — Properties of Rectangular Basins  (I — exact)
 
 - **Source / references:** Merian's formula; Helmholtz mode; SPM (1984); Wilson (1972)
 - **Module:** `backend/applications/chessqc_8_1_rectangular_basins.py`
@@ -330,7 +330,7 @@ _Validation note in the app docstring / build notes._
 
 Validated by the regression test above: Merian/2-D/Helmholtz closed forms + reductions.
 
-### 8-2 — Vessel-Generated Waves  (A — exact)
+### 8-2 — Vessel-Generated Waves  (I — exact)
 
 - **Source / references:** Schijf (1949); PIANC (1987); EM 1110-2-1100; Kelvin/Havelock ship-wave theory
 - **Module:** `backend/applications/chessqc_8_2_vessel_waves.py`
@@ -338,7 +338,7 @@ Validated by the regression test above: Merian/2-D/Helmholtz closed forms + redu
 
 Validated by the regression test above: Schijf continuity+energy, 35.26deg deep crest, Mach angle.
 
-### 8-3 — Surging of a Moored Vessel  (A — exact)
+### 8-3 — Surging of a Moored Vessel  (I — exact)
 
 - **Source / references:** EM 1110-2-1100 Part II; PIANC mooring guidelines; ACES manual
 - **Module:** `backend/applications/chessqc_8_3_moored_vessel_surge.py`
@@ -348,7 +348,7 @@ _Validation note in the app docstring / build notes._
 
 ## Storm Surge
 
-### 9-1 — Bathystrophic Storm Surge  (C — provisional)
+### 9-1 — Bathystrophic Storm Surge  (III — provisional)
 
 - **Source / references:** Bodine (1971) TM-35; Holland (1980); Myers (1954); TR/CERC
 - **Module:** `backend/applications/chessqc_9_1_surge_bathystrophic.py`
@@ -358,7 +358,7 @@ Validation: Bodine TM-35 Chesapeake Bay Entrance example (Pc=27.57, Pn=29.92 inH
 
 ## Miscellaneous Routines
 
-### M-1 — Miscellaneous Breaker and Steepness Routines  (B — standard)
+### M-1 — Miscellaneous Breaker and Steepness Routines  (II — standard)
 
 - **Source / references:** Weggel (1972); Miche (1944); McCowan (1894); Singamsetti & Wind (1980)
 - **Module:** `backend/applications/chessqc_m_1_breaker_routines.py`

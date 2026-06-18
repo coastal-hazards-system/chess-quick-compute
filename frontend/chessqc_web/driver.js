@@ -8,8 +8,10 @@
 // Application manifest comes from apps.js (CHESSQC_APPS); add applications there.
 
 // Fidelity classification -> compact badge letter (A exact, B standard, C provisional).
-const CLASS_LETTER = { exact: "A", standard: "B", provisional: "C" };
+const CLASS_LETTER = { exact: "I", standard: "II", provisional: "III" };
+const CLASS_KEY = { exact: "a", standard: "b", provisional: "c" };   // stable CSS/colour key
 const classLetter = (c) => CLASS_LETTER[c] || c || "";
+const classKey = (c) => CLASS_KEY[c] || "a";
 
 // SI conversion: value_in_unit * TO_SI[unit] = value_SI  (mirrors chessqc_gui/units.py)
 const TO_SI = {
@@ -158,7 +160,7 @@ function buildForm() {
   const letter = classLetter(m.classification);
   badge.textContent = letter; badge.style.display = "";
   badge.title = m.classification || "";
-  badge.className = "badge cls-" + letter.toLowerCase();
+  badge.className = "badge cls-" + classKey(m.classification);
   document.title = `CHESS-QC — ${m.name}`;
 
   // Scalar-only apps have no profile/grid outputs, so the plot/table area would just be an

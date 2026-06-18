@@ -28,9 +28,9 @@
   <div class="apps-toolbar">
     <input id="search" type="search" placeholder="Filter applications by id, name, or area…" autocomplete="off">
     <div class="legend" title="Fidelity classification">
-      <span class="badge cls-a">A</span> exact
-      <span class="badge cls-b">B</span> standard
-      <span class="badge cls-c">C</span> provisional
+      <span class="badge cls-a">I</span> exact
+      <span class="badge cls-b">II</span> standard
+      <span class="badge cls-c">III</span> provisional
     </div>
   </div>
 
@@ -39,8 +39,10 @@
 
   <script>
     // Fidelity classification -> compact badge letter (A exact, B standard, C provisional).
-    const CLASS_LETTER = { exact: "A", standard: "B", provisional: "C" };
+    const CLASS_LETTER = { exact: "I", standard: "II", provisional: "III" };
+    const CLASS_KEY = { exact: "a", standard: "b", provisional: "c" };   // stable CSS/colour key
     const classLetter = (c) => CLASS_LETTER[c] || c || "";
+    const classKey = (c) => CLASS_KEY[c] || "a";
     const hub = document.getElementById("hub");
     const byArea = {};
     for (const a of CHESSQC_APPS) (byArea[a.area] ||= []).push(a);
@@ -70,7 +72,7 @@
         card.style.borderLeft = `5px solid var(--area-${ai >= 0 ? ai + 1 : 1})`;
         card.dataset.search = `${a.id} ${a.name} ${a.area}`.toLowerCase();
         card.innerHTML = `<span class="aid">${a.id}</span> ${a.name}
-                          <span class="badge cls-${classLetter(a.classification).toLowerCase()}" title="${a.classification}">${classLetter(a.classification)}</span>`;
+                          <span class="badge cls-${classKey(a.classification)}" title="${a.classification}">${classLetter(a.classification)}</span>`;
         grid.appendChild(card);
       }
       sec.appendChild(grid);

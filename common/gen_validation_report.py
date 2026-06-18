@@ -24,7 +24,7 @@ AREA_ORDER = [
 ]
 
 # Fidelity classification: A exact, B standard, C provisional.
-_CLASS_LETTER = {"exact": "A", "standard": "B", "provisional": "C"}
+_CLASS_LETTER = {"exact": "I", "standard": "II", "provisional": "III"}
 
 
 def _classification(meta) -> str:
@@ -113,11 +113,11 @@ def main():
            "limits, and cross-checks) or against the primary literature. Documented residuals/caveats "
            "are stated honestly per app.", "",
            "**Fidelity classes:**", "",
-           "- **(A) exact** — every coefficient and variable-relationship is known from the "
+           "- **(I) exact** — every coefficient and variable-relationship is known from the "
            "source (nothing guessed) and the results are validated.",
-           "- **(B) standard** — a named method that involves a self-made convention/inference "
+           "- **(II) standard** — a named method that involves a self-made convention/inference "
            "or only partial validation.",
-           "- **(C) provisional** — a needed coefficient or relationship had to be guessed or is "
+           "- **(III) provisional** — a needed coefficient or relationship had to be guessed or is "
            "not recoverable from the sources (or there is no numeric oracle).", "",
            "Empirical formulations are exact when their coefficients are known and the results "
            "validate.", ""]

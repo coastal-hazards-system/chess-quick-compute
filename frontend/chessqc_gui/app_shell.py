@@ -23,7 +23,7 @@ from matplotlib.figure import Figure
 
 _BIG = 1.0e9  # finite bound for "unrestricted" spin boxes
 # fidelity classification -> compact badge letter and QSS [badge="..."] style
-_CLASS_LETTER = {"exact": "A", "standard": "B", "provisional": "C"}
+_CLASS_LETTER = {"exact": "I", "standard": "II", "provisional": "III"}
 _CLASS_BADGE = {"exact": "success", "standard": "warning", "provisional": "danger"}
 
 
@@ -388,9 +388,12 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             val_si = getattr(r, o.key, None)
             if val_si is None:
                 continue
-            disp = units.from_si(float(val_si), self._out_unit(o))
             u = self._out_unit(o)
-            self._value_labels[o.key].setText(f"{self._fmt(disp)} {u}".rstrip())
+            try:                                   # numeric -> convert to display units + format
+                txt = f"{self._fmt(units.from_si(float(val_si), u))} {u}".rstrip()
+            except (TypeError, ValueError):        # string/sentinel output (e.g. a regime label) -> show as-is
+                txt = f"{val_si} {u}".rstrip() if u else str(val_si)
+            self._value_labels[o.key].setText(txt)
         if self._has_grid:
             self._render_heatmap(r)
             self._render_grid_table(r)

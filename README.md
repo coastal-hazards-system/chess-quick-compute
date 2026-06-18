@@ -79,11 +79,11 @@ python backend/applications/chessqc_2_1_linear_wave_theory.py
 
 ## Fidelity classification
 
-Every application carries one of three labels (shorthand **A**, **B**, **C** in the docs):
+Every application carries one of three labels (shorthand **I**, **II**, **III** in the docs):
 
-- **A (exact):** every coefficient and relationship is known from the source and the results are validated, with nothing inferred. Empirical formulas qualify when their coefficients are known and verified.
-- **B (standard):** a named published method that involves a self-made convention or only partial validation.
-- **C (provisional):** a coefficient or relationship had to be inferred, is not recoverable from the public sources, or has no numeric reference example.
+- **I (exact):** every coefficient and relationship is known from the source and the results are validated, with nothing inferred. Empirical formulas qualify when their coefficients are known and verified.
+- **II (standard):** a named published method that involves a self-made convention or only partial validation.
+- **III (provisional):** a coefficient or relationship had to be inferred, is not recoverable from the public sources, or has no numeric reference example.
 
 Current distribution: **28 exact, 3 standard, 5 provisional.** Each application's full
 rationale is in its header and in [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md).
