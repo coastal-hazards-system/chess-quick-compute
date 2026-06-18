@@ -6,6 +6,7 @@ results right (value rows + Plot/Table tabs); SI/US unit toggle + example/reset.
 """
 from __future__ import annotations
 
+import json
 import math
 import os
 
@@ -256,6 +257,13 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             return QtWidgets.QCheckBox()
         if f.kind == "table":
             return self._make_table(f)
+        if f.kind in ("list", "matrix"):             # structured numeric input edited as raw JSON
+            ed = QtWidgets.QPlainTextEdit()
+            ed.setPlaceholderText("JSON (SI units); empty = use the app's built-in geometry")
+            if f.default is not None:
+                ed.setPlainText(json.dumps(f.default))
+            ed.setFixedHeight(96 if f.kind == "matrix" else 56)
+            return ed
         # float / int / angle -> double spin box (values in current display unit)
         sb = QtWidgets.QDoubleSpinBox()
         unit = self._unit(f)
@@ -367,6 +375,9 @@ class CalculatorWindow(QtWidgets.QMainWindow):
                 out[f.key] = w.isChecked()
             elif f.kind == "table":
                 out[f.key] = self._gather_table(w)
+            elif f.kind in ("list", "matrix"):       # raw JSON (SI); empty -> None (built-in geometry)
+                txt = w.toPlainText().strip()
+                out[f.key] = json.loads(txt) if txt else None
             else:
                 out[f.key] = units.to_si(w.value(), self._unit(f))
         return out
@@ -429,12 +440,13 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         profs = [o for o in self.outputs if o.kind == "profile"]
         xo = next((o for o in profs if o.key == "profile_X"), profs[0])
         short = lambda o: o.label.split(":", 1)[-1].strip()   # drop the "Profile: " prefix
-        x = (short(xo), self._out_unit(xo), units.from_si(getattr(r, xo.key), self._out_unit(xo)))
+        x = (short(xo), self._out_unit(xo),
+             units.from_si(np.asarray(getattr(r, xo.key), dtype=float), self._out_unit(xo)))
         ys = [o for o in profs if o is not xo]
         groups = []
         for i, o in enumerate(ys):
             u = self._out_unit(o)
-            arr = units.from_si(getattr(r, o.key), u)
+            arr = units.from_si(np.asarray(getattr(r, o.key), dtype=float), u)
             # the first y-series gets its own panel (prominence + scale); the rest group
             # by unit so same-quantity series (e.g. u & w, or two depths) share an axis
             for g in (groups[1:] if i else []):
@@ -583,6 +595,8 @@ class CalculatorWindow(QtWidgets.QMainWindow):
                 w.setChecked(bool(f.default))
             elif f.kind == "table":
                 self._fill_table(w._table, w._cols, list(f.default or []), self.system)
+            elif f.kind in ("list", "matrix"):
+                w.setPlainText("" if f.default is None else json.dumps(f.default))
             else:
                 w.blockSignals(True)
                 w.setValue(units.from_si(float(f.default), self._unit(f)))
