@@ -915,6 +915,8 @@ Originating ACES grouping: 5-2 "Wave Runup and Overtopping on Impermeable Struct
 | Use alpha = 0.06 - 0.01431 sin(theta) | alpha_from_slope | (none) | yes / no | no |  |
 | Onshore wind velocity | U | kt / m/s | 0 to 388.769 | 35 | 0 = no wind correction |
 | Refraction coefficient | KR | (none) | 0 to 1 | 1 | H'0 = KR * H0 |
+| Overtopping method | overtopping_method | (none) | choices: Weggel, EurOtop | Weggel | Weggel 1976 (ACES) or EurOtop 2018 mean discharge (modern standard) |
+| Roughness factor (EurOtop) | gamma_f | (none) | 0.3 to 1 | 0.55 | EurOtop only: ~0.55 rough rock, 1.0 smooth |
 
 **Outputs**
 

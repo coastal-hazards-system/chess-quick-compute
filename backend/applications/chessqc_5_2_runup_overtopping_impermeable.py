@@ -9,6 +9,10 @@ waves, with an optional onshore-wind correction.
 Classification: exact (Ahrens & McCartney 1975 / Ahrens & Titus 1985 runup + Weggel 1976
 overtopping; the empirical coefficients a, b, alpha, Q*0 are supplied as known user inputs,
 nothing guessed; reproduces the User's Guide Examples 1-7).
+A selectable EurOtop (2018) mean-overtopping method is also provided (the modern dimensionless
+standard, eqs 5.10/5.11, with a roughness factor gamma_f). Weggel stays the default so the
+Examples are reproduced; the EurOtop path is validated for physical limits/monotonicity (no
+ACES oracle exists for it).
 Theory and references (TR chapter 5-2, eqs 1-15 in docs/EQUATIONS.md):
   - rough-slope runup:  R = H_i*a*xi/(1 + b*xi)            Ahrens & McCartney (1975)   (1)
   - smooth-slope runup: R = C*H_i, C by surf regime         Ahrens & Titus (1985)      (3-8)
@@ -119,6 +123,11 @@ INPUTS = (
           lo=0.0, hi=200.0, note="0 = no wind correction"),
     Field("KR", "Refraction coefficient", "float", "", "", default=1.0, lo=0.0, hi=1.0,
           note="H'0 = KR * H0"),
+    Field("overtopping_method", "Overtopping method", "choice", default="Weggel",
+          choices=("Weggel", "EurOtop"),
+          note="Weggel 1976 (ACES) or EurOtop 2018 mean discharge (modern standard)"),
+    Field("gamma_f", "Roughness factor (EurOtop)", "float", "", "", default=0.55, lo=0.3, hi=1.0,
+          note="EurOtop only: ~0.55 rough rock, 1.0 smooth"),
 )
 
 OUTPUTS = (
@@ -170,7 +179,7 @@ def _validate(inp: dict) -> None:
     for f in INPUTS:
         if f.kind not in ("float", "int", "angle"):
             continue
-        v = float(inp[f.key])
+        v = float(inp.get(f.key, f.default))    # optional EurOtop inputs fall back to defaults
         if not (f.lo <= v <= f.hi):
             raise ValueError(f"{f.label} ({f.key}) = {v} outside [{f.lo}, {f.hi}] ({f.note})")
 
@@ -198,6 +207,20 @@ def _overtop_rate(Cw, g, Qstar0, H0p, R, F, alpha):
         return 0.0
     base = math.sqrt(g * Qstar0 * H0p ** 3)
     return Cw * base * ((R + F) / (R - F)) ** (-0.1085 / alpha)
+
+
+def _overtop_eurotop(Hm0, T, theta, Rc, gamma_f, g):
+    """EurOtop (2018) mean overtopping discharge (eqs 5.10/5.11), gamma_b=gamma_beta=gamma_v=1.
+    Hm0 = incident significant height at the toe; Tm-1,0 = Tp/1.1 (T treated as the peak period).
+    Rc = crest freeboard (clamped at >= 0; a submerged crest uses the zero-freeboard maximum)."""
+    Rc = max(Rc, 0.0)
+    tan_a = math.tan(theta)
+    Tm10 = T / 1.1
+    xi = tan_a / math.sqrt(2.0 * math.pi * Hm0 / (g * Tm10 * Tm10))
+    base = math.sqrt(g * Hm0 ** 3)
+    q_break = (0.023 / math.sqrt(tan_a)) * xi * math.exp(-(2.7 * Rc / (xi * Hm0 * gamma_f)) ** 1.3)
+    q_max = 0.09 * math.exp(-(1.5 * Rc / (Hm0 * gamma_f)) ** 1.3)
+    return min(q_break, q_max) * base
 
 
 def compute(inp: dict, *, g: float = G_SI) -> Result:
@@ -235,9 +258,12 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
         Wf = (U / _MPH) ** 2 / 1800.0
         Cw = 1.0 + Wf * (F / R + 0.1) * math.sin(theta)
 
+    ot_method = str(inp.get("overtopping_method", "Weggel"))
     Q = 0.0
     if want_ot:
-        if wave_type == "Irregular":
+        if ot_method == "EurOtop":
+            Q = _overtop_eurotop(Hi, T, theta, F, float(inp.get("gamma_f", 0.55)), g)
+        elif wave_type == "Irregular":
             # Rayleigh runup distribution; average overtopping over 199 quantiles (eqs 12-14)
             tot = 0.0
             for i in range(1, 200):
@@ -248,7 +274,8 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
         else:
             Q = _overtop_rate(Cw, g, Qstar0, H0p, R, F, alpha)
 
-    notes = [f"xi = {xi:.3f} ({_regime(xi)})", f"freeboard F = {F / _FT:.2f} ft"]
+    notes = [f"xi = {xi:.3f} ({_regime(xi)})", f"freeboard F = {F / _FT:.2f} ft",
+             f"overtopping: {ot_method if want_ot else 'off'}"]
     if want_ot and R <= F and wave_type != "Irregular":
         notes.append("runup below crest: no overtopping")
     return Result(H0=H0, ds_H0=ds / H0, steepness=H0 / (g * T * T), L0=L0, xi=xi,
@@ -306,7 +333,15 @@ def _self_tests() -> None:
     assert _approx(ft(r7.R), 9.421, 0.01), ft(r7.R)
     assert _approx(cfs(r7.Q), 0.287, 0.01), cfs(r7.Q)
 
-    print("  self-tests: PASS (ACES Examples 1-7: rough/smooth runup, mono/irregular overtopping)")
+    # EurOtop (2018) overtopping: selectable; positive, finite, and decreasing with freeboard
+    eo = compute(dict(base, want_overtopping=True, R_known=0.0, overtopping_method="EurOtop"), g=g)
+    assert eo.Q > 0 and math.isfinite(eo.Q), cfs(eo.Q)
+    eo_hi = compute(dict(base, want_overtopping=True, R_known=0.0,
+                         overtopping_method="EurOtop", hs=30.0 * _FT), g=g)
+    assert eo_hi.Q < eo.Q, (cfs(eo.Q), cfs(eo_hi.Q))     # higher crest -> less overtopping
+    assert _approx(ft(eo.R), 9.421, 0.01), ft(eo.R)      # runup method unaffected
+
+    print("  self-tests: PASS (ACES Examples 1-7; EurOtop overtopping consistent)")
 
 
 def _print_default_example() -> None:
