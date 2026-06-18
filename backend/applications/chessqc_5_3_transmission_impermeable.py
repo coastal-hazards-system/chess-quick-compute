@@ -8,6 +8,10 @@ K_T = H_T / H_i.
 
 Classification: exact (Seelig 1980 / Ahrens transmission with known published coefficients,
 nothing guessed; reproduces the User's Guide Examples 1-4 to 0.01 ft).
+A selectable d'Angremond, van der Meer & de Jong (1996) transmission method is also provided
+for sloped/low-crested structures (the CEM VI-5-2 standard, K_t bounded 0.075-0.8); Seelig
+stays the default so the Examples are reproduced. The d'Angremond path is validated for its
+bounds and monotonicity (no ACES oracle exists for it).
 Theory and references (TR chapter 5-3, eqs 1-7 + Tables 5-3-1/2 in docs/EQUATIONS.md):
   - sloped structures (Seelig 1980, transmission by overtopping):
         H_T = K_TO * H_i,   K_TO = C * (1 - F/R),   C = 0.51 - 0.11 (B/h_s)        (1-3)
@@ -90,6 +94,9 @@ INPUTS = (
     Field("B", "Structure crest width", "float", "m", "ft", default=7.50 * _FT, lo=0.0, hi=1e4),
     Field("structure_type", "Structure type", "choice", default="Sloped",
           choices=("Sloped", "Vertical or composite")),
+    Field("transmission_method", "Transmission method (sloped)", "choice", default="Seelig",
+          choices=("Seelig", "d'Angremond"),
+          note="Seelig 1980 (ACES) or d'Angremond 1996 (CEM standard); sloped structures only"),
     # --- sloped-structure inputs ---
     Field("cot_theta", "Cotangent of structure slope", "float", "", "", default=3.0,
           lo=1e-3, hi=1e3, note="sloped structures"),
@@ -172,10 +179,20 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
         slope_type = str(inp["slope_type"]); cot_theta = float(inp["cot_theta"])
         a = float(inp["a"]); b = float(inp["b"]); R_known = float(inp["R_known"])
         R = R_known if R_known > 0.0 else _runup(slope_type, Hi, T, ds, cot_theta, a, b, g)
-        C = 0.51 - 0.11 * (B / hs)
-        K_TO = C * (1.0 - F / R)
-        K_TO = min(max(K_TO, 0.0), 1.0)
-        notes.append(f"sloped (Seelig 1980); C = {C:.3f}, R = {R / _FT:.2f} ft")
+        if str(inp.get("transmission_method", "Seelig")) == "d'Angremond":
+            # d'Angremond, van der Meer & de Jong (1996); CEM VI-5-2. K_t in [0.075, 0.8].
+            theta = math.atan(1.0 / cot_theta)
+            L0 = g * T * T / (2.0 * math.pi)
+            xi = math.tan(theta) / math.sqrt(Hi / L0)
+            BHi = (B / Hi) if B > 0.0 else 1e-6
+            K_TO = -0.4 * (F / Hi) + 0.64 * BHi ** (-0.31) * (1.0 - math.exp(-0.5 * xi))
+            K_TO = min(max(K_TO, 0.075), 0.8)
+            notes.append(f"sloped (d'Angremond 1996); xi={xi:.2f}, B/Hi={B / Hi:.2f}, R={R / _FT:.2f} ft")
+        else:
+            C = 0.51 - 0.11 * (B / hs)
+            K_TO = C * (1.0 - F / R)
+            K_TO = min(max(K_TO, 0.0), 1.0)
+            notes.append(f"sloped (Seelig 1980); C = {C:.3f}, R = {R / _FT:.2f} ft")
     else:
         berm = float(inp["berm_height"])
         Bds = B / ds
@@ -236,7 +253,19 @@ def _self_tests() -> None:
                       a=0.956, b=0.398, R_known=0.0, berm_height=0.0), g=g)
     assert _approx(ft(r4.R), 22.436, 0.02) and _approx(ft(r4.H_T), 2.652, 0.01), (ft(r4.R), ft(r4.H_T))
 
-    print("  self-tests: PASS (ACES Examples 1-4: sloped known/rough/smooth + vertical-composite)")
+    # d'Angremond (1996): selectable for sloped structures; bounds + monotonicity
+    da = compute(dict(Hi=7.50 * _FT, T=10.0, ds=10.0 * _FT, hs=15.0 * _FT, B=7.50 * _FT,
+                      structure_type="Sloped", slope_type="Rough (riprap)", cot_theta=3.0,
+                      a=0.956, b=0.398, R_known=0.0, berm_height=0.0,
+                      transmission_method="d'Angremond"), g=g)
+    assert 0.075 <= da.K_TO <= 0.8 and da.H_T > 0, da.K_TO
+    da_wide = compute(dict(Hi=7.50 * _FT, T=10.0, ds=10.0 * _FT, hs=15.0 * _FT, B=25.0 * _FT,
+                           structure_type="Sloped", slope_type="Rough (riprap)", cot_theta=3.0,
+                           a=0.956, b=0.398, R_known=0.0, berm_height=0.0,
+                           transmission_method="d'Angremond"), g=g)
+    assert da_wide.K_TO < da.K_TO, (da.K_TO, da_wide.K_TO)   # wider crest -> more attenuation
+
+    print("  self-tests: PASS (ACES Examples 1-4; d'Angremond transmission consistent)")
 
 
 def _print_default_example() -> None:

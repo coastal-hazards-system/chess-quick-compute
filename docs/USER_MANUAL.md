@@ -952,6 +952,7 @@ Originating ACES grouping: 5-3 "Wave Transmission on Impermeable Structures" (fu
 | Structure height above toe | hs | ft / m | 0.00328084 to 32808.4 | 15 |  |
 | Structure crest width | B | ft / m | 0 to 32808.4 | 7.5 |  |
 | Structure type | structure_type | (none) | choices: Sloped, Vertical or composite | Sloped |  |
+| Transmission method (sloped) | transmission_method | (none) | choices: Seelig, d'Angremond | Seelig | Seelig 1980 (ACES) or d'Angremond 1996 (CEM standard); sloped structures only |
 | Cotangent of structure slope | cot_theta | (none) | 0.001 to 1000 | 3 | sloped structures |
 | Slope type | slope_type | (none) | choices: Rough (riprap), Smooth | Rough (riprap) | sloped structures |
 | Rough-slope coefficient a | a | (none) | 0 to 10 | 0.956 |  |
