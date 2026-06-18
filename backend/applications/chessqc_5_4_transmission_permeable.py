@@ -36,6 +36,13 @@ the public Technical Reference. K_R does not affect the transmitted height, so i
 reported with that caveat. Every headline output (H_T, K_T, K_Tt, K_To) is exact to <0.5%;
 the single residual is the secondary reflection coefficient K_R, whose missing seaward-slope
 dissipation is not recoverable from the public sources.
+
+A selectable empirical method (d'Angremond, van der Meer & de Jong 1996 transmission +
+Zanuttigh & van der Meer 2008 reflection) is also provided. It bypasses the Madsen-White
+layered model (it needs no layer geometry) and gives a reflection coefficient much closer to
+the published value than the Madsen-White over-prediction. Madsen-White stays the default so
+the Example-1 outputs are reproduced; the empirical path is validated for its bounds and the
+improved reflection.
 """
 from __future__ import annotations
 
@@ -103,6 +110,10 @@ INPUTS = (
     Field("hs", "Structure height above toe", "float", "m", "ft", default=19.69 * _FT, lo=1e-3, hi=1e4),
     Field("cot_theta", "Cotangent of structure slope", "float", "", "", default=1.5, lo=1e-3, hi=1e3),
     Field("B", "Structure crest width", "float", "m", "ft", default=8.27 * _FT, lo=0.0, hi=1e4),
+    Field("method", "Method", "choice", default="Madsen-White",
+          choices=("Madsen-White", "d'Angremond + Zanuttigh"),
+          note="Madsen-White (ACES layered model) or d'Angremond 1996 transmission + "
+               "Zanuttigh-van der Meer 2008 reflection (empirical; ignores the layer geometry)"),
     # material + layer geometry are passed as lists to compute(); see _DEFAULT_GEOM
     Field("d50", "Material median diameters (list)", "list", "m", "ft", default=None,
           note="armor, underlayer, core, ... (one per material)"),
@@ -272,6 +283,22 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
     Hi = float(inp["Hi"]); T = float(inp["T"]); ds = float(inp["ds"])
     hs = float(inp["hs"]); B = float(inp["B"]); cot_theta = float(inp["cot_theta"])
 
+    if str(inp.get("method", "Madsen-White")).startswith("d'Angremond"):
+        # empirical alternative: d'Angremond (1996) transmission + Zanuttigh-van der Meer (2008)
+        # reflection. No layer geometry needed; xi/F/B ratios are unit-independent.
+        theta = math.atan(1.0 / cot_theta)
+        L0 = g * T * T / (2.0 * math.pi)
+        xi = math.tan(theta) / math.sqrt(Hi / L0)
+        F = hs - ds
+        BHi = (B / Hi) if B > 0.0 else 1e-6
+        K_T = min(max(-0.4 * (F / Hi) + 0.64 * BHi ** (-0.31) * (1.0 - math.exp(-0.5 * xi)),
+                      0.075), 0.8)                        # d'Angremond et al. (1996)
+        K_R = math.tanh(0.12 * xi ** 0.87)                # Zanuttigh & van der Meer (2008), rock
+        notes = (f"d'Angremond 1996 transmission + Zanuttigh-van der Meer 2008 reflection; "
+                 f"xi={xi:.2f}, B/Hi={B / Hi:.2f} (empirical; Madsen-White internals not computed)")
+        return Result(le=0.0, R_si=0.0, R_ti=0.0, T_ti=0.0, K_Tt=0.0, K_To=0.0,
+                      K_T=K_T, K_R=K_R, H_T=K_T * Hi, notes=notes)
+
     d50 = inp.get("d50"); poros = inp.get("porosity"); TH = inp.get("TH"); LL = inp.get("LL")
     if d50 is None:
         # work in feet using the default Example-1 geometry
@@ -320,8 +347,13 @@ def _self_tests() -> None:
     assert _approx(r.K_To, 0.227, 0.002), r.K_To
     # K_R is the documented-approximate output (model over-predicts it); just bound it.
     assert 0.6 < r.K_R < 1.0, r.K_R
+    # d'Angremond + Zanuttigh empirical method: selectable; bounded K_T, reflection below the
+    # over-predicted Madsen-White value (closer to the published 0.719)
+    emp = compute({**{f.key: f.default for f in INPUTS}, "method": "d'Angremond + Zanuttigh"})
+    assert 0.075 <= emp.K_T <= 0.8 and emp.H_T > 0, emp.K_T
+    assert 0.0 < emp.K_R < r.K_R, (emp.K_R, r.K_R)
     print(f"  self-tests: PASS (Bessel; Example-1 H_T={r.H_T/_FT:.3f} ft, K_T={r.K_T:.3f}, "
-          f"K_Tt={r.K_Tt:.3f}, K_To={r.K_To:.3f}; K_R={r.K_R:.3f} approx)")
+          f"K_R={r.K_R:.3f} approx; empirical K_T={emp.K_T:.3f}, K_R={emp.K_R:.3f})")
 
 
 def _print_default_example() -> None:

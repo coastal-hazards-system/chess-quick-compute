@@ -989,6 +989,7 @@ Originating ACES grouping: 5-4 "Wave Transmission through Permeable Structures" 
 | Structure height above toe | hs | ft / m | 0.00328084 to 32808.4 | 19.69 |  |
 | Cotangent of structure slope | cot_theta | (none) | 0.001 to 1000 | 1.5 |  |
 | Structure crest width | B | ft / m | 0 to 32808.4 | 8.27 |  |
+| Method | method | (none) | choices: Madsen-White, d'Angremond + Zanuttigh | Madsen-White | Madsen-White (ACES layered model) or d'Angremond 1996 transmission + Zanuttigh-van der Meer 2008 reflection (empirical; ignores the layer geometry) |
 | Material median diameters (list) | d50 | ft / m | any | None | armor, underlayer, core, ... (one per material) |
 | Material porosities (list) | porosity | (none) | any | None |  |
 | Layer thicknesses (list, bottom->top) | TH | ft / m | any | None |  |
