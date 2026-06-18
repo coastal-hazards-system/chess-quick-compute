@@ -119,7 +119,7 @@ INPUTS = (
     Field("Qstar0", "Overtopping coefficient Q*0", "float", "", "", default=0.025,
           lo=0.0, hi=10.0),
     Field("alpha_from_slope", "Use alpha = 0.06 - 0.01431 sin(theta)", "bool", default=False),
-    Field("U", "Onshore wind velocity", "float", "m/s", "kt", default=35.0 * _KN,
+    Field("U", "Onshore wind velocity", "float", "km/h", "kt", default=35.0 * _KN,
           lo=0.0, hi=200.0, note="0 = no wind correction"),
     Field("KR", "Refraction coefficient", "float", "", "", default=1.0, lo=0.0, hi=1.0,
           note="H'0 = KR * H0"),

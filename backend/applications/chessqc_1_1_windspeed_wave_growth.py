@@ -120,7 +120,7 @@ _MI = 1609.344
 INPUTS = (
     Field("z_obs", "Elevation of observed wind", "float", "m", "ft", default=25.0 * _FT,
           lo=1.0 * _FT, hi=1e4, note=">= 1 ft"),
-    Field("U_obs", "Observed wind speed", "float", "m/s", "mph", default=45.0 * _MPH,
+    Field("U_obs", "Observed wind speed", "float", "km/h", "mph", default=45.0 * _MPH,
           lo=0.1 * _MPH, hi=200.0, note="> 0"),
     Field("deltaT", "Air-sea temperature difference", "float", "C", "C", default=0.0,
           lo=-50.0, hi=50.0, note="T_air - T_sea; 0 = neutral. <0 unstable, >0 stable"),
@@ -159,8 +159,8 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("U_e", "Equivalent neutral wind speed", "m/s", "mph", "scalar"),
-    Out("U_a", "Adjusted wind speed", "m/s", "mph", "scalar"),
+    Out("U_e", "Equivalent neutral wind speed", "km/h", "mph", "scalar"),
+    Out("U_a", "Adjusted wind speed", "km/h", "mph", "scalar"),
     Out("F_eff", "Effective wind fetch", "km", "mi", "scalar"),
     Out("wave_dir", "Mean wave direction", "deg", "deg", "scalar"),
     Out("H_mo", "Wave height", "m", "ft", "scalar"),

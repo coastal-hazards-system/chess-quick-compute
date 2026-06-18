@@ -49,7 +49,7 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         # launcher-set units (DEFAULT_UNITS) take precedence; else the app's own default
         self.system = settings.get_units(getattr(self.meta, "default_system", "SI"))
         self.decimals = settings.get_decimals()
-        self._speed_si = settings.get_speed_si()   # SI metric unit for m/s quantities (m/s|km/h)
+        self._tc_speed = settings.get_tcwind_speed()   # SI unit for wind/TC speeds (km/h|m/s)
         self._vibe_opts = vibe_label_opts(settings.get_vibe())
         self._widgets: dict[str, QtWidgets.QWidget] = {}
         self._value_labels: dict[str, QtWidgets.QLabel] = {}
@@ -87,8 +87,9 @@ class CalculatorWindow(QtWidgets.QMainWindow):
 
     # ---- field unit helpers ----
     def _si_unit(self, u: str) -> str:
-        """Substitute the launcher-chosen SI speed unit (m/s|km/h) for m/s quantities."""
-        return self._speed_si if u == "m/s" else u
+        """Wind/TC speeds (SI unit km/h) follow the launcher choice (km/h|m/s);
+        water/wave m/s and all other units are returned unchanged."""
+        return self._tc_speed if u == "km/h" else u
 
     def _unit(self, f) -> str:
         return self._si_unit(f.unit_si) if self.system == "SI" else f.unit_us
@@ -412,7 +413,7 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             self._render_plot(r)
             self._render_table(r)
         note = getattr(r, "notes", "")
-        self._set_status(f"valid · {note} · {self.meta.cite}", ok=True)
+        self._set_status(f"units: {self.system} · valid · {note} · {self.meta.cite}", ok=True)
 
     def apply_theme(self):
         """Re-render the matplotlib plot for the current Light/Dark mode. Qt widgets
@@ -568,8 +569,8 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             if f.kind not in ("float", "int", "angle"):
                 continue
             w = self._widgets[f.key]
-            old_u = f.unit_si if old == "SI" else f.unit_us
-            new_u = f.unit_si if new == "SI" else f.unit_us
+            old_u = self._si_unit(f.unit_si) if old == "SI" else f.unit_us
+            new_u = self._si_unit(f.unit_si) if new == "SI" else f.unit_us
             si_val = units.to_si(w.value(), old_u)
             w.blockSignals(True)
             dec = self._input_decimals(f, new_u)

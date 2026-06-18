@@ -93,7 +93,7 @@ INPUTS = (
           note="prismatic channel top width b > 0"),
     Field("d", "Channel depth", "float", "m", "ft", default=6.0, lo=0.5, hi=200.0,
           note="still-water channel depth d > 0"),
-    Field("VS", "Vessel speed", "float", "m/s", "kt", default=3.0, lo=0.01, hi=30.0,
+    Field("VS", "Vessel speed", "float", "km/h", "kt", default=3.0, lo=0.01, hi=30.0,
           note="vessel speed through the water V_s > 0"),
     Field("Am", "Wetted cross-sectional area", "float", "m^2", "ft^2", default=25.0,
           lo=0.0, hi=1e4, note="submerged midship section area A_m >= 0"),

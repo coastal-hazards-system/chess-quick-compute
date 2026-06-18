@@ -105,7 +105,7 @@ APP_META = AppMeta(
 )
 
 INPUTS = (
-    Field("Ug", "Geostrophic wind speed", "float", "m/s", "kt", default=30.0, lo=1.0, hi=120.0,
+    Field("Ug", "Geostrophic wind speed", "float", "km/h", "kt", default=30.0, lo=1.0, hi=120.0,
           note="free-atmosphere geostrophic wind |V_g| > 0"),
     Field("deltaT", "Air-sea temperature difference", "float", "deg C", "deg C", default=0.0,
           lo=-20.0, hi=20.0, note="dT = T_air - T_sea; <0 unstable (warm sea), >0 stable"),
@@ -121,8 +121,8 @@ INPUTS = (
 
 OUTPUTS = (
     Out("u_star", "Friction velocity U*", "m/s", "kt", "scalar"),
-    Out("Uz", "Wind speed at height z", "m/s", "kt", "scalar"),
-    Out("U10", "Wind speed at 10 m", "m/s", "kt", "scalar"),
+    Out("Uz", "Wind speed at height z", "km/h", "kt", "scalar"),
+    Out("U10", "Wind speed at 10 m", "km/h", "kt", "scalar"),
     Out("CDz", "Drag coefficient at z", "", "", "scalar"),
     Out("CD", "Drag coefficient at 10 m", "", "", "scalar"),
     Out("z0", "Surface roughness length", "m", "ft", "scalar"),

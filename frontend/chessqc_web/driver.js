@@ -68,9 +68,10 @@ const fmtIn = (x) => {
   return String(+x.toPrecision(6));
 };
 
-// SI metric speed display is launcher-configurable (m/s or km/h); default km/h.
-const speedSI = () => ((window.CHESSQC_PREFS || {}).speed_si === "m/s" ? "m/s" : "km/h");
-const siUnit = (u) => (u === "m/s" ? speedSI() : u);
+// Wind / TC-translation speeds use km/h by default; the launcher can switch them to m/s.
+// Only fields whose SI unit is km/h (the wind/TC speeds) are affected; water/wave m/s stays m/s.
+const tcSpeed = () => ((window.CHESSQC_PREFS || {}).tcwind_speed === "m/s" ? "m/s" : "km/h");
+const siUnit = (u) => (u === "km/h" ? tcSpeed() : u);
 const fieldUnit = (fld) => (system === "SI" ? siUnit(fld.unit_si) : fld.unit_us);
 const outUnit = (o) => (system === "SI" ? siUnit(o.unit_si) : o.unit_us);
 
@@ -186,7 +187,7 @@ function buildForm() {
       // structured numeric input edited as raw JSON (no unit conversion); the default
       // is pre-loaded, and an empty box sends null so the app uses its built-in geometry.
       const block = document.createElement("div"); block.style.gridColumn = "1 / -1";
-      const u = fld.unit_si || "";
+      const u = siUnit(fld.unit_si) || "";
       const lab = document.createElement("label");
       lab.textContent = `${fld.label}, JSON${u ? ` (${u})` : ""}:`; lab.title = fld.note || "";
       lab.style.color = "var(--label)"; lab.style.display = "block"; lab.style.margin = "4px 0";
@@ -320,7 +321,7 @@ function render(res) {
     row.append(n, v); vbox.appendChild(row);
   }
   drawPlot(res); fillTable(res);
-  setStatus(`valid · ${res._notes || ""} · ${contract.meta.cite}`, true);
+  setStatus(`units: ${system} · valid · ${res._notes || ""} · ${contract.meta.cite}`, true);
 }
 
 // --- profile discovery (shared by the canvas plot and the data table) ---
@@ -575,7 +576,7 @@ function onUnits(newSys) {
     if (["choice", "bool", "table", "list", "matrix"].includes(fld.kind)) continue;
     const ctl = document.querySelector(`[data-key="${fld.key}"]`);
     const oldU = fieldUnit(fld);
-    const newU = newSys === "SI" ? fld.unit_si : fld.unit_us;
+    const newU = newSys === "SI" ? siUnit(fld.unit_si) : fld.unit_us;
     const si = toSI(parseFloat(ctl.value), oldU);
     if (fld.lo != null) ctl.min = sig(fromSI(fld.lo, newU)); else ctl.removeAttribute("min");
     if (fld.hi != null) ctl.max = sig(fromSI(fld.hi, newU)); else ctl.removeAttribute("max");
@@ -588,12 +589,12 @@ function onUnits(newSys) {
     for (const tr of wrap.querySelectorAll("tbody tr"))
       [...tr.querySelectorAll("input")].forEach((inp, i) => {
         if (inp.value.trim() === "") return;
-        const oldU = system === "SI" ? cols[i].si : cols[i].us;
-        const newU = newSys === "SI" ? cols[i].si : cols[i].us;
+        const oldU = system === "SI" ? siUnit(cols[i].si) : cols[i].us;
+        const newU = newSys === "SI" ? siUnit(cols[i].si) : cols[i].us;
         inp.value = fmtIn(fromSI(toSI(parseFloat(inp.value), oldU), newU));
       });
     [...wrap.querySelectorAll("thead th")].forEach((th, i) => {
-      const u = newSys === "SI" ? cols[i].si : cols[i].us;
+      const u = newSys === "SI" ? siUnit(cols[i].si) : cols[i].us;
       th.textContent = u ? `${cols[i].label} (${u})` : cols[i].label;
     });
   }

@@ -119,17 +119,17 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("U_max", "Maximum wind speed (gradient)", "m/s", "kt", "scalar"),
+    Out("U_max", "Maximum wind speed (gradient)", "km/h", "kt", "scalar"),
     Out("r_at_max", "Radius of maximum wind", "km", "nmi", "scalar"),
-    Out("U_max_cyclo", "Maximum wind (cyclostrophic)", "m/s", "kt", "scalar"),
+    Out("U_max_cyclo", "Maximum wind (cyclostrophic)", "km/h", "kt", "scalar"),
     Out("R_max_out", "R_max (computed/echoed)", "km", "nmi", "scalar"),
     Out("A_out", "A (computed/echoed)", "m^B", "m^B", "scalar"),
     Out("B_out", "B (computed/echoed)", "", "", "scalar"),
     Out("dP", "Pressure deficit", "hPa", "hPa", "scalar"),
     Out("profile_r", "Profile: radial distance", "km", "nmi", "profile"),
     Out("profile_p", "Profile: pressure", "hPa", "hPa", "profile"),
-    Out("profile_Vgr", "Profile: gradient wind", "m/s", "kt", "profile"),
-    Out("profile_Vc", "Profile: cyclostrophic wind", "m/s", "kt", "profile"),
+    Out("profile_Vgr", "Profile: gradient wind", "km/h", "kt", "profile"),
+    Out("profile_Vc", "Profile: cyclostrophic wind", "km/h", "kt", "profile"),
 )
 
 
