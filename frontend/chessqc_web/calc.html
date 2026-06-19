@@ -47,9 +47,21 @@
         <button id="copy">Copy</button>
         <button id="csv">Export CSV</button>
         <button id="png">Save Plot</button>
+        <button id="popout">Pop out ⤢</button>
       </div>
     </fieldset>
   </main>
+
+  <div id="plotModal" class="plot-modal" style="display:none">
+    <div class="plot-modal-bar">
+      <span class="muted">scroll to zoom · drag to pan · double-click to reset</span>
+      <span class="spacer"></span>
+      <button id="bigReset">Reset zoom</button>
+      <button id="bigPng">Save Plot</button>
+      <button id="plotClose">Close ✕</button>
+    </div>
+    <canvas id="plotBig"></canvas>
+  </div>
 
   <div id="status">loading…</div>
   <div id="overlay">Loading…<br><small style="color:var(--muted)">first run may take a moment</small></div>

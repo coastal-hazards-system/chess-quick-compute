@@ -25,6 +25,7 @@ _DATA_DIR = os.path.join(
 import matplotlib
 matplotlib.use("QtAgg")
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as NavigationToolbar
 from matplotlib.figure import Figure
 
 _BIG = 1.0e9  # finite bound for "unrestricted" spin boxes
@@ -63,8 +64,22 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(f"CHESS-QC · {self.meta.aces_id} {self.meta.name}")
         self._build_ui()
         self.resize(960, 700)
-        self._on_compute()  # populate with defaults
+        if not self._prepopulate_station():
+            self._on_compute()  # populate with defaults
         self._focus_first_input()
+
+    def _prepopulate_station(self) -> bool:
+        """If an app has a CSV field with bundled stations, open it on the first
+        station (e.g. The Battery) rather than the built-in sample. Selecting the
+        item triggers the load + compute. Returns True if it did so."""
+        for f in self.inputs:
+            if f.kind != "csv":
+                continue
+            w = self._widgets.get(f.key)
+            if w is not None and w._combo.count() > 2:   # sample + >=1 station + upload
+                w._combo.setCurrentIndex(1)              # first bundled station
+                return True
+        return False
 
     def _focus_first_input(self):
         """Focus the first input widget on open (parity with the web front-end)."""
@@ -103,11 +118,17 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         return self._si_unit(o.unit_si) if self.system == "SI" else o.unit_us
 
     def _fmt(self, x: float) -> str:
-        """Fixed-decimal display (kills the '-0.00' artifact)."""
-        s = f"{float(x):.{self.decimals}f}"
-        if float(s) == 0:
-            s = f"{0.0:.{self.decimals}f}"
-        return s
+        """Fixed-decimal display, with a significant-figure fallback so a small
+        nonzero value (e.g. 0.003) is never shown as 0 (kills the '-0.00' artifact
+        and works for any field without per-field decimal settings)."""
+        x = float(x)
+        d = self.decimals
+        if x == 0 or not math.isfinite(x):
+            return f"{0.0:.{d}f}" if x == 0 else str(x)
+        s = f"{x:.{d}f}"
+        if float(s) != 0:
+            return s
+        return f"{x:.{max(d, 2)}g}"
 
     def _field_label(self, text: str) -> QtWidgets.QLabel:
         """Field-name label styled per the active vibe (Forge: uppercase mono, spaced)."""
@@ -225,10 +246,18 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         self._has_grid = any(o.kind == "grid" for o in self.outputs)
         if self._has_profiles or self._has_grid:
             tabs = QtWidgets.QTabWidget()
-            self.figure = Figure(figsize=(4.6, 3.6), constrained_layout=True)
+            self.figure = Figure(figsize=(4.6, 3.6), dpi=110, constrained_layout=True)
             self.canvas = FigureCanvas(self.figure)
             self.canvas.setMinimumHeight(240)
-            tabs.addTab(self.canvas, "Plot")
+            # plot tab = navigation toolbar (pan / zoom / home / save) over the canvas
+            plot_tab = QtWidgets.QWidget()
+            pv = QtWidgets.QVBoxLayout(plot_tab)
+            pv.setContentsMargins(0, 0, 0, 0)
+            pv.setSpacing(0)
+            self._nav = NavigationToolbar(self.canvas, plot_tab)
+            pv.addWidget(self._nav)
+            pv.addWidget(self.canvas, 1)
+            tabs.addTab(plot_tab, "Plot")
             self.table = QtWidgets.QTableWidget()
             tabs.addTab(self.table, "Table")
             tabs.setMinimumHeight(270)
@@ -246,9 +275,12 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             b_csv.clicked.connect(self._export_csv)
             b_png = QtWidgets.QPushButton("Save Plot")
             b_png.clicked.connect(self._save_png)
+            b_pop = QtWidgets.QPushButton("Pop out")
+            b_pop.clicked.connect(self._pop_out_plot)
             btns.addWidget(b_copy)
             btns.addWidget(b_csv)
             btns.addWidget(b_png)
+            btns.addWidget(b_pop)
         v.addLayout(btns)
         return box
 
@@ -547,16 +579,18 @@ class CalculatorWindow(QtWidgets.QMainWindow):
                 groups.append({"unit": u, "series": [(short(o), arr)]})
         return x, groups
 
-    def _render_heatmap(self, r):
+    def _render_heatmap(self, r, fig=None, canvas=None):
         """Render the first grid output as a heatmap (parity with the web drawHeatmap):
         grid_x / grid_y give the axes; the 2-D field has shape (len(grid_y), len(grid_x))."""
+        fig = fig if fig is not None else self.figure
+        canvas = canvas if canvas is not None else self.canvas
         pal = get_plot_palette(settings.get_theme())
-        self.figure.clear()
-        self.figure.set_facecolor(pal["bg"])
+        fig.clear()
+        fig.set_facecolor(pal["bg"])
         profs = [o for o in self.outputs if o.kind == "profile"]
         grids = [o for o in self.outputs if o.kind == "grid"]
         if not profs or not grids:
-            self.canvas.draw_idle(); return
+            canvas.draw_idle(); return
         xo = next((o for o in profs if o.key == "grid_x"), profs[0])
         yo = next((o for o in profs if o.key == "grid_y"), profs[1] if len(profs) > 1 else profs[0])
         zo = grids[0]
@@ -565,16 +599,16 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         xs = np.asarray(units.from_si(getattr(r, xo.key), xu), dtype=float)
         ys = np.asarray(units.from_si(getattr(r, yo.key), yu), dtype=float)
         Z = np.asarray(units.from_si(getattr(r, zo.key), zu), dtype=float)
-        ax = self.figure.add_subplot(1, 1, 1)
+        ax = fig.add_subplot(1, 1, 1)
         mesh = ax.pcolormesh(xs, ys, Z, shading="nearest", cmap="viridis")
-        cbar = self.figure.colorbar(mesh, ax=ax)
+        cbar = fig.colorbar(mesh, ax=ax)
         cbar.ax.tick_params(labelsize=7, colors=pal["text"])
         cbar.set_label(f"{short(zo)}{(' (' + zu + ')') if zu else ''}", fontsize=8, color=pal["fg"])
         ax.set_xlabel(f"{short(xo)} ({xu})", fontsize=8, color=pal["fg"])
         ax.set_ylabel(f"{short(yo)} ({yu})", fontsize=8, color=pal["fg"])
         self._style_ax(ax, pal)
         ax.grid(False)
-        self.canvas.draw_idle()
+        canvas.draw_idle()
 
     def _render_grid_table(self, r):
         """Fill the data table with the first grid output (rows = grid_y, cols = grid_x)."""
@@ -597,15 +631,17 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             for i in range(len(xs)):
                 self.table.setItem(j, i, QtWidgets.QTableWidgetItem(self._fmt(float(Z[j][i]))))
 
-    def _render_plot(self, r):
+    def _render_plot(self, r, fig=None, canvas=None):
+        fig = fig if fig is not None else self.figure
+        canvas = canvas if canvas is not None else self.canvas
         pal = get_plot_palette(settings.get_theme())
-        self.figure.clear()
-        self.figure.set_facecolor(pal["bg"])
+        fig.clear()
+        fig.set_facecolor(pal["bg"])
         (xlab, xu, X), groups = self._profile_series(r)
         colors = [pal["eta"], pal["u"], pal["w"], pal["fg"], pal["text"]]   # series color cycle
         n, ci, axes = len(groups), 0, []
         for gi, g in enumerate(groups):
-            ax = self.figure.add_subplot(n, 1, gi + 1, sharex=axes[0] if axes else None)
+            ax = fig.add_subplot(n, 1, gi + 1, sharex=axes[0] if axes else None)
             for s in g["series"]:
                 lab, arr = s[0], s[1]
                 color = s[2] if len(s) > 2 and s[2] else colors[ci % len(colors)]
@@ -624,7 +660,31 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         for ax in axes[:-1]:
             ax.tick_params(labelbottom=False)
         axes[-1].set_xlabel(f"{xlab} ({xu})", fontsize=8, color=pal["fg"])
-        self.canvas.draw_idle()
+        canvas.draw_idle()
+
+    def _pop_out_plot(self):
+        """Open the current plot in a separate, larger, resizable window with its own
+        navigation toolbar (pan / zoom / save)."""
+        if self._last_result is None:
+            return
+        win = QtWidgets.QMainWindow(self)
+        win.setWindowTitle(f"CHESS-QC {self.meta.aces_id} {self.meta.name} — plot")
+        win.resize(940, 680)
+        fig = Figure(figsize=(8.5, 6.0), dpi=110, constrained_layout=True)
+        canvas = FigureCanvas(fig)
+        central = QtWidgets.QWidget()
+        lay = QtWidgets.QVBoxLayout(central)
+        lay.setContentsMargins(0, 0, 0, 0)
+        lay.addWidget(NavigationToolbar(canvas, win))
+        lay.addWidget(canvas, 1)
+        win.setCentralWidget(central)
+        if self._has_grid:
+            self._render_heatmap(self._last_result, fig, canvas)
+        else:
+            self._render_plot(self._last_result, fig, canvas)
+        self._popouts = getattr(self, "_popouts", [])
+        self._popouts.append(win)            # keep a reference so it is not GC'd
+        win.show()
 
     def _render_table(self, r):
         (xlab, xu, X), groups = self._profile_series(r)

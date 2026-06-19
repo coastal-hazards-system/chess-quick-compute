@@ -196,9 +196,11 @@ def _decimal_year(s: str) -> float:
 
 
 def _parse_csv(text: str) -> tuple[np.ndarray, np.ndarray]:
-    """Parse CSV text -> (decimal_year, value) arrays, sorted by time.
-    Column 1 is the date, column 2 the value; the header and blank/non-numeric
-    value rows are skipped."""
+    """Parse CSV text -> (decimal_year, value) arrays, sorted by time. Column 1 is
+    the date, column 2 the value. Rows with a valid date but a blank/non-numeric
+    value are kept with value = NaN, so gaps in the record stay as gaps (the trend
+    fit ignores them and the plot breaks the line across them). The header row and
+    rows with an unparseable date are dropped."""
     years: list[float] = []
     vals: list[float] = []
     for line in text.splitlines():
@@ -209,25 +211,27 @@ def _parse_csv(text: str) -> tuple[np.ndarray, np.ndarray]:
         if len(parts) < 2:
             continue
         ds = parts[0].strip()
-        vs = parts[1].strip()
-        if not ds or not vs:
+        if not ds:
             continue
         try:
-            v = float(vs)
             t = _decimal_year(ds)
         except (ValueError, IndexError):
-            continue  # header or malformed row
-        if not math.isfinite(v):
-            continue
+            continue  # header or unparseable date
+        try:
+            v = float(parts[1].strip())
+            if not math.isfinite(v):
+                v = math.nan
+        except ValueError:
+            v = math.nan          # blank / non-numeric -> gap
         years.append(t)
         vals.append(v)
-    if len(years) < 2:
-        raise ValueError(
-            "need at least 2 valid (date, water level) rows to fit a trend; "
-            f"parsed {len(years)}"
-        )
     t = np.asarray(years, dtype=np.float64)
     y = np.asarray(vals, dtype=np.float64)
+    if int(np.isfinite(y).sum()) < 2:
+        raise ValueError(
+            "need at least 2 valid (date, water level) rows to fit a trend; "
+            f"parsed {len(years)} rows, {int(np.isfinite(y).sum())} with values"
+        )
     order = np.argsort(t, kind="stable")
     return t[order], y[order]
 
@@ -262,46 +266,53 @@ def compute(inp: dict) -> Result:
     trend, and detrended series for plotting."""
     _validate(inp)
     t, y = _parse_csv(str(inp.get("csv", _SAMPLE_CSV)))
+    fin = np.isfinite(y)                    # gaps (blank cells) are NaN -> excluded from the fit
+    tf, yf = t[fin], y[fin]
+    tbar = float(np.mean(tf))
 
     method = str(inp.get("method", "NTDE midpoint (pivot)")).lower()
-    if "midpoint" in method or "ntde" in method:
+    use_pivot = "midpoint" in method or "ntde" in method
+    if use_pivot:
         pivot = (float(inp["ntde_start"]) + float(inp["ntde_end"]) + 1.0) / 2.0
     else:
-        pivot = float(np.mean(t))
+        pivot = tbar
 
     # Slope by ordinary least squares about the data centroid (intercept absorbed),
     # so the fitted rate is independent of the chosen reference. The pivot affects
-    # only the offset of the detrended series, not the slope.
+    # only the offset of the detrended series, not the slope. Computed on finite
+    # samples only (gaps excluded).
     if "specified" in str(inp.get("fit_mode", "")).lower():
         slope = float(inp["slope_value"])
     else:
-        tc = t - float(np.mean(t))
+        tc = tf - tbar
         denom = float(np.dot(tc, tc))
         if denom == 0.0:
             raise ValueError("record times are constant - cannot fit a trend")
-        slope = float(np.dot(tc, y) / denom)
+        slope = float(np.dot(tc, yf) / denom)
 
     trend_comp = slope * (t - pivot)       # the linear component removed (zero at pivot)
-    detrended = y - trend_comp
-    datum = float(np.mean(detrended))      # horizontal reference level of the detrended series
+    detrended = y - trend_comp             # NaN propagates at gaps
+    datum = float(np.mean(yf - slope * (tf - pivot)))   # mean of the finite detrended series
     # absolute trend line that overlays the observed data (slope through the centroid)
     trend_line = datum + trend_comp
 
-    resid = detrended - datum
+    resid = (yf - slope * (tf - pivot)) - datum
     rms = float(np.sqrt(np.mean(resid * resid)))
-    record_years = float(t[-1] - t[0])
+    record_years = float(tf[-1] - tf[0])
     total_trend = slope * record_years
-    n = len(t)
+    n = int(fin.sum())
 
     pt, po, ptr, pdt = _decimate(t, y, trend_line, detrended)
     pdatum = np.full(len(pt), datum)
+    gaps = len(t) - n
     notes = [
-        f"{'NTDE midpoint pivot' if pivot != float(np.mean(t)) else 'centered'} "
+        f"{'NTDE midpoint pivot' if use_pivot else 'record-mean centered'} "
         f"at {pivot:.2f}; slope {slope:.5f} m/yr ({slope * 1000:.2f} mm/yr); "
         f"n={n} samples over {record_years:.1f} yr"
+        + (f" ({gaps} gaps skipped)" if gaps else "")
     ]
-    if n != len(pt):
-        notes.append(f"plot strided to {len(pt)} of {n} points (fit uses all)")
+    if len(t) != len(pt):
+        notes.append(f"plot strided to {len(pt)} of {len(t)} points (fit uses all)")
 
     return Result(
         slope_per_year=slope, pivot_year=pivot, total_trend=total_trend,
@@ -349,7 +360,18 @@ def _self_tests() -> None:
     assert rm.n_samples == _PLOT_MAX + 500
     assert len(rm.profile_year) <= _PLOT_MAX + 1
     _ = many
-    print(f"  self-tests: PASS (slope recovery, pivot offset, override, decimation)")
+
+    # Gaps (blank values) are excluded from the fit but kept as NaN in the plotted
+    # series so the line breaks across them.
+    gap_csv = ("date,v\n2000-01-01,0.10\n2001-01-01,\n2002-01-01,0.106\n"
+               "2003-01-01,0.109\n2004-01-01,0.112")
+    rg = compute({**base, "csv": gap_csv, "method": "Record mean (no pivot)"})
+    assert rg.n_samples == 4, rg.n_samples                 # 5 rows, 1 blank -> 4 in the fit
+    assert len(rg.profile_original) == 5                   # all timestamps kept for the plot
+    assert np.isnan(rg.profile_original).sum() == 1        # the gap stays NaN
+    assert np.isnan(rg.profile_detrended).sum() == 1
+    assert np.isfinite(rg.profile_trend).all()            # trend line spans the gap
+    print(f"  self-tests: PASS (slope recovery, pivot offset, override, decimation, gaps)")
 
 
 def _print_default_example() -> None:

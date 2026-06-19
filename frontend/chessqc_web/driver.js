@@ -55,9 +55,13 @@ let py, bridge, appmod, contract, system = "SI", lastRes = null;
 const decimals = () => (window.CHESSQCUI ? window.CHESSQCUI.getDecimals() : 2);
 const fmtNum = (x) => {
   if (!Number.isFinite(x)) return String(x);
-  let s = x.toFixed(decimals());
-  if (parseFloat(s) === 0) s = (0).toFixed(decimals());
-  return s;
+  const d = decimals();
+  if (x === 0) return (0).toFixed(d);
+  const s = x.toFixed(d);
+  if (parseFloat(s) !== 0) return s;            // normal fixed-decimal display
+  // nonzero but would round to 0 at d places -> show significant digits instead,
+  // so small values (e.g. 0.003) are never displayed as 0 (no per-field config)
+  return (+x.toPrecision(Math.max(d, 2))).toString();
 };
 
 // INPUT-field formatter: preserve precision (up to 6 significant figures, no trailing
@@ -155,6 +159,7 @@ _m = importlib.util.module_from_spec(_s); sys.modules["chessqc_app"] = _m; _s.lo
 }
 
 function buildForm() {
+  const pc = $("plot"); if (pc) pc._viewX = null;   // reset any prior zoom on app switch
   const m = contract.meta;
   $("appTitle").textContent = `CHESS-QC · ${m.aces_id} ${m.name}`;
   $("appArea").textContent = m.area;
@@ -172,6 +177,7 @@ function buildForm() {
   if (tabs) tabs.style.display = hasPlottable ? "" : "none";
   if ($("png")) $("png").style.display = hasPlottable ? "" : "none";
   if ($("csv")) $("csv").style.display = hasPlottable ? "" : "none";
+  if ($("popout")) $("popout").style.display = hasPlottable ? "" : "none";
 
   const box = $("inputs"); box.innerHTML = "";
   for (const fld of contract.inputs) {
@@ -249,6 +255,12 @@ function buildForm() {
       });
       ctrls.append(sel, orlab, file, status);
       block.append(lab, ctrls); box.appendChild(block);
+      // prepopulate with the first bundled station (e.g. The Battery) rather than
+      // the built-in sample; the change handler fetches it and recomputes.
+      if ((fld.choices || []).length) {
+        sel.selectedIndex = 1;
+        sel.dispatchEvent(new Event("change"));
+      }
       continue;
     }
     const row = document.createElement("div"); row.className = "row";
@@ -431,11 +443,50 @@ const cssVar = (name, fallback) => {
   return v || fallback;
 };
 
-function drawPlot(res) {
-  const cv = $("plot"), ctx = cv.getContext("2d");
-  // match internal resolution to display size -> crisp text, no stretch
-  const W = cv.width = (cv.clientWidth || 520);
-  const H = cv.height = Math.max(cv.clientHeight || 280, 280);
+function drawPlot(res) { drawPlotInto(res, $("plot")); }
+
+// X-axis zoom (wheel) + pan (drag) + reset (double-click); Y auto-scales to the
+// visible window. Attached once per canvas; no-op on heatmaps (no _plotBox).
+function attachPlotZoom(cv) {
+  if (cv._zoomAttached) return;
+  cv._zoomAttached = true;
+  const redraw = () => { if (cv._res) drawPlotInto(cv._res, cv); };
+  cv.addEventListener("wheel", (e) => {
+    if (!cv._plotBox) return;
+    e.preventDefault();
+    const { L, R, xmin, xmax } = cv._plotBox, [fx0, fx1] = cv._xfull;
+    const rect = cv.getBoundingClientRect();
+    const frac = Math.min(1, Math.max(0, ((e.clientX - rect.left) - L) / (R - L)));
+    const xc = xmin + frac * (xmax - xmin), f = e.deltaY < 0 ? 0.8 : 1.25;
+    let a = xc - (xc - xmin) * f, b = xc + (xmax - xc) * f;
+    a = Math.max(fx0, a); b = Math.min(fx1, b);
+    if (b - a < (fx1 - fx0) * 1e-4) return;
+    cv._viewX = (a <= fx0 && b >= fx1) ? null : [a, b];
+    redraw();
+  }, { passive: false });
+  let drag = false, lastX = 0;
+  cv.addEventListener("mousedown", (e) => { if (cv._plotBox) { drag = true; lastX = e.clientX; cv.style.cursor = "grabbing"; } });
+  window.addEventListener("mousemove", (e) => {
+    if (!drag || !cv._plotBox) return;
+    const { L, R, xmin, xmax } = cv._plotBox, [fx0, fx1] = cv._xfull, span = xmax - xmin;
+    const dd = -(e.clientX - lastX) / (R - L) * span; lastX = e.clientX;
+    let a = xmin + dd, b = xmax + dd;
+    if (a < fx0) { a = fx0; b = fx0 + span; }
+    if (b > fx1) { b = fx1; a = fx1 - span; }
+    cv._viewX = [a, b]; redraw();
+  });
+  window.addEventListener("mouseup", () => { if (drag) { drag = false; cv.style.cursor = ""; } });
+  cv.addEventListener("dblclick", () => { cv._viewX = null; redraw(); });
+}
+
+function drawPlotInto(res, cv) {
+  const ctx = cv.getContext("2d");
+  // high-DPI: back the canvas at devicePixelRatio for crisp lines/text
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth || 520, H = Math.max(cv.clientHeight || 280, 280);
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cv._res = res;
   const C = {
     bg: cssVar("--plot-bg", "#ffffff"), fg: cssVar("--plot-fg", "#33475b"),
     grid: cssVar("--plot-grid", "#eceef1"), axis: cssVar("--plot-axis", "#8a93a0"),
@@ -444,50 +495,63 @@ function drawPlot(res) {
   ctx.clearRect(0, 0, W, H);
   ctx.fillStyle = C.bg; ctx.fillRect(0, 0, W, H);
   const gridOuts = contract.outputs.filter((o) => o.kind === "grid" && o.key in res);
-  if (gridOuts.length) { drawHeatmap(ctx, W, H, C, res, gridOuts[0]); return; }
+  if (gridOuts.length) { cv._plotBox = null; drawHeatmap(ctx, W, H, C, res, gridOuts[0]); return; }
   const haveProfiles = contract.outputs.some((o) => o.kind === "profile" && o.key in res);
-  if (!haveProfiles) return;
+  if (!haveProfiles) { cv._plotBox = null; return; }
   const { x, groups } = profileSeries(res);
-  const X = x.data, xmin = Math.min(...X), xmax = Math.max(...X);
+  const X = x.data, Xf = X.filter(Number.isFinite);
+  const fullMin = Math.min(...Xf), fullMax = Math.max(...Xf);
+  cv._xfull = [fullMin, fullMax];
+  const [xmin, xmax] = cv._viewX && cv._viewX[1] > cv._viewX[0] ? cv._viewX : [fullMin, fullMax];
 
   const panel = (y0, y1, series, label) => {
     const L = 48, R = W - 12, T = y0 + 18, B = y1 - 26;       // plot box
     let lo = Infinity, hi = -Infinity;
-    for (const s of series) for (const v of s.data) { lo = Math.min(lo, v); hi = Math.max(hi, v); }
+    for (const s of series) X.forEach((xx, i) => {
+      if (xx < xmin || xx > xmax) return;
+      const v = s.data[i];
+      if (!Number.isFinite(v)) return;
+      if (v < lo) lo = v; if (v > hi) hi = v;
+    });
+    if (!isFinite(lo) || !isFinite(hi)) { lo = 0; hi = 1; }
     if (lo === hi) { lo -= 1; hi += 1; }
     const padv = (hi - lo) * 0.08 || 1; lo -= padv; hi += padv;
-    const sx = (x) => L + (x - xmin) / (xmax - xmin) * (R - L);
+    const sx = (xx) => L + (xx - xmin) / (xmax - xmin) * (R - L);
     const sy = (v) => B - (v - lo) / (hi - lo) * (B - T);
 
     ctx.font = "10px sans-serif"; ctx.lineWidth = 1;
-    // y gridlines + labels
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
     for (let i = 0; i <= 4; i++) {
       const val = lo + (hi - lo) * i / 4, y = sy(val);
       ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(R, y); ctx.stroke();
       ctx.fillStyle = C.text; ctx.fillText(fmtTick(val), L - 5, y);
     }
-    // x gridlines + labels
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     for (let i = 0; i <= 5; i++) {
-      const val = xmin + (xmax - xmin) * i / 5, x = sx(val);
-      ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(x, T); ctx.lineTo(x, B); ctx.stroke();
-      ctx.fillStyle = C.text; ctx.fillText(fmtTick(val), x, B + 4);
+      const val = xmin + (xmax - xmin) * i / 5, xp = sx(val);
+      ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(xp, T); ctx.lineTo(xp, B); ctx.stroke();
+      ctx.fillStyle = C.text; ctx.fillText(fmtTick(val), xp, B + 4);
     }
-    // axis frame (left + bottom) + zero line
     ctx.strokeStyle = C.axis; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, B); ctx.lineTo(R, B); ctx.stroke();
     if (lo < 0 && hi > 0) {
       ctx.strokeStyle = C.grid; const yz = sy(0);
       ctx.beginPath(); ctx.moveTo(L, yz); ctx.lineTo(R, yz); ctx.stroke();
     }
-    // data
+    // data: clipped to the box, with the line broken across NaN gaps
+    ctx.save(); ctx.beginPath(); ctx.rect(L, T, R - L, B - T); ctx.clip();
     for (const s of series) {
       ctx.strokeStyle = s.color; ctx.lineWidth = 1.8; ctx.beginPath();
-      X.forEach((x, i) => { const px = sx(x), py = sy(s.data[i]); i ? ctx.lineTo(px, py) : ctx.moveTo(px, py); });
+      let pen = false;
+      X.forEach((xx, i) => {
+        const v = s.data[i];
+        if (!Number.isFinite(v)) { pen = false; return; }
+        const px = sx(xx), py = sy(v);
+        if (pen) ctx.lineTo(px, py); else { ctx.moveTo(px, py); pen = true; }
+      });
       ctx.stroke();
     }
-    // y-axis title + legend (right-aligned, measured so long names don't overlap)
+    ctx.restore();
     ctx.fillStyle = C.fg; ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.font = "11px sans-serif";
     ctx.fillText(label, L + 2, y0 + 2);
     if (series.length > 1) {
@@ -499,15 +563,19 @@ function drawPlot(res) {
         ctx.fillStyle = C.fg; ctx.textBaseline = "top"; ctx.fillText(s.name, lx + 16, y0 + 2); lx += w;
       }
     }
+    return { L, R };
   };
 
   const n = groups.length;
+  let box = null;
   groups.forEach((g, i) => {
     const label = g.series.length === 1 ? `${g.series[0].name} (${g.unit})` : `(${g.unit})`;
-    panel((H * i) / n, (H * (i + 1)) / n, g.series, label);
+    box = panel((H * i) / n, (H * (i + 1)) / n, g.series, label);
   });
   ctx.fillStyle = C.text; ctx.textAlign = "right"; ctx.textBaseline = "bottom"; ctx.font = "10px sans-serif";
   ctx.fillText(`${x.label} (${x.unit})`, W - 12, H - 2);
+  cv._plotBox = box ? { L: box.L, R: box.R, xmin, xmax } : null;
+  attachPlotZoom(cv);
 }
 
 // --- 2-D field heatmap (kind === "grid"; e.g. 3-4 wedge grid) ---
@@ -719,6 +787,26 @@ document.addEventListener("DOMContentLoaded", () => {
   $("png").addEventListener("click", () => {
     const a = document.createElement("a"); a.href = $("plot").toDataURL("image/png");
     a.download = `chessqc_${contract.meta.aces_id}_plot.png`; a.click();
+  });
+  // pop-out: render the current plot into a large, zoomable full-window canvas
+  const big = $("plotBig");
+  $("popout").addEventListener("click", () => {
+    if (!lastRes) return;
+    $("plotModal").style.display = "flex";
+    big._viewX = ($("plot") && $("plot")._viewX) || null;   // inherit current zoom
+    requestAnimationFrame(() => drawPlotInto(lastRes, big));  // size known after layout
+  });
+  $("plotClose").addEventListener("click", () => { $("plotModal").style.display = "none"; });
+  $("bigReset").addEventListener("click", () => { big._viewX = null; drawPlotInto(lastRes, big); });
+  $("bigPng").addEventListener("click", () => {
+    const a = document.createElement("a"); a.href = big.toDataURL("image/png");
+    a.download = `chessqc_${contract.meta.aces_id}_plot.png`; a.click();
+  });
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && $("plotModal").style.display !== "none") $("plotModal").style.display = "none";
+  });
+  window.addEventListener("resize", () => {
+    if ($("plotModal").style.display !== "none" && lastRes) drawPlotInto(lastRes, big);
   });
   boot();
 });
