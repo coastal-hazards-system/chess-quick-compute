@@ -64,22 +64,8 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         self.setWindowTitle(f"CHESS-QC · {self.meta.aces_id} {self.meta.name}")
         self._build_ui()
         self.resize(960, 700)
-        if not self._prepopulate_station():
-            self._on_compute()  # populate with defaults
+        self._on_compute()  # populate inputs/outputs from defaults (no CSV fetch)
         self._focus_first_input()
-
-    def _prepopulate_station(self) -> bool:
-        """If an app has a CSV field with bundled stations, open it on the first
-        station (e.g. The Battery) rather than the built-in sample. Selecting the
-        item triggers the load + compute. Returns True if it did so."""
-        for f in self.inputs:
-            if f.kind != "csv":
-                continue
-            w = self._widgets.get(f.key)
-            if w is not None and w._combo.count() > 2:   # sample + >=1 station + upload
-                w._combo.setCurrentIndex(1)              # first bundled station
-                return True
-        return False
 
     def _focus_first_input(self):
         """Focus the first input widget on open (parity with the web front-end)."""

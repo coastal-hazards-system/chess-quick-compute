@@ -255,12 +255,8 @@ function buildForm() {
       });
       ctrls.append(sel, orlab, file, status);
       block.append(lab, ctrls); box.appendChild(block);
-      // prepopulate with the first bundled station (e.g. The Battery) rather than
-      // the built-in sample; the change handler fetches it and recomputes.
-      if ((fld.choices || []).length) {
-        sel.selectedIndex = 1;
-        sel.dispatchEvent(new Event("change"));
-      }
+      // Default to the built-in sample (no network); a station CSV is fetched only
+      // when the user selects one. Outputs are prepopulated from the sample.
       continue;
     }
     const row = document.createElement("div"); row.className = "row";
