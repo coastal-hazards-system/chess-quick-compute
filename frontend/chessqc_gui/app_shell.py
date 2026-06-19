@@ -17,10 +17,10 @@ from common import units
 from . import settings
 from .theme import get_plot_palette, vibe_label_opts
 
-# bundled station CSVs live at the repo root: data/water_levels/<id>.csv
-_DATA_DIR = os.path.join(
+# bundled station CSVs live at the repo root: data/<data_dir>/<id>.csv
+_DATA_ROOT = os.path.join(
     os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
-    "data", "water_levels")
+    "data")
 
 import matplotlib
 matplotlib.use("QtAgg")
@@ -389,8 +389,9 @@ class CalculatorWindow(QtWidgets.QMainWindow):
                 return
             w._status.setText(f"uploaded {os.path.basename(path)}")
         else:                                         # bundled station id
+            sub = getattr(f, "data_dir", "water_levels") or "water_levels"
             try:
-                with open(os.path.join(_DATA_DIR, f"{data}.csv"),
+                with open(os.path.join(_DATA_ROOT, sub, f"{data}.csv"),
                           encoding="utf-8", errors="replace") as fh:
                     w._csv_text = fh.read()
             except OSError as e:

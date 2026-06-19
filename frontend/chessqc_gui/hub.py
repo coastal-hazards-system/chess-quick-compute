@@ -22,7 +22,6 @@ AREA_ORDER = [
 # with the web manifest's comingSoon entries).
 COMING_SOON = {
     "Coastal Hazards": [
-        ("10-2", "Non-Tidal Residuals"),
         ("10-4", "Probabilistic Simulation Technique"),
         ("10-5", "Joint Probability Method"),
     ],

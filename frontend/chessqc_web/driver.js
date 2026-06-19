@@ -243,7 +243,8 @@ function buildForm() {
         }
         status.textContent = "loading…";
         try {
-          const resp = await fetch(`../../data/water_levels/${sel.value}.csv`);
+          const dir = fld.data_dir || "water_levels";
+          const resp = await fetch(`../../data/${dir}/${sel.value}.csv`);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           block._csvText = await resp.text();
           status.textContent = `loaded ${sel.options[sel.selectedIndex].textContent}`;

@@ -254,7 +254,13 @@ const CHESSQC_APPS = [
     classification: "standard",
     src: "../../backend/applications/chessqc_10_1_water_level_detrending.py",
   },
-  { id: "10-2", name: "Non-Tidal Residuals", area: "Coastal Hazards", comingSoon: true },
+  {
+    id: "10-2",
+    name: "Non-Tidal Residual",
+    area: "Coastal Hazards",
+    classification: "standard",
+    src: "../../backend/applications/chessqc_10_2_non_tidal_residual.py",
+  },
   {
     id: "10-3",
     name: "Peaks Over Threshold",
