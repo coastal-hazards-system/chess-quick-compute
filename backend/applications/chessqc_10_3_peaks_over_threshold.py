@@ -59,6 +59,7 @@ class AppMeta:
     default_system: str = "SI"
     status: str = "Current"
     superseded_by: str = ""
+    next_apps: tuple = ()      # workflow "Next" targets: ((id, label), ...) carrying the series
 
 
 @dataclass(frozen=True)
@@ -95,6 +96,7 @@ APP_META = AppMeta(
     classification="standard",
     cite="Coles (2001); USACE coastal-hazards practice; PyStorm POT",
     default_system="SI",
+    next_apps=(("10-4", "Probabilistic Simulation Technique"),),
 )
 
 STATIONS = (
@@ -148,6 +150,8 @@ OUTPUTS = (
     # peaks as scatter markers (own x), drawn on the series panel
     Out("peaks_t", "Peak times", "yr", "yr", "scatter_x"),
     Out("peaks_v", "Peaks", "m", "ft", "scatter", group="ts", x_key="peaks_t"),
+    # the declustered peaks as a year,value series for the hand-off into 10-4 PST
+    Out("handoff_csv", "handoff", "", "", "data"),
 )
 
 
@@ -164,6 +168,7 @@ class Result:
     profile_threshold: np.ndarray
     peaks_t: np.ndarray
     peaks_v: np.ndarray
+    handoff_csv: str = ""
     notes: str = ""
 
 
@@ -340,12 +345,17 @@ def compute(inp: dict) -> Result:
              f"{eff_dur:.1f} yr ({eff_rate:.2f}/yr); "
              f"{'converged' if converged else 'did not converge'}")
 
+    handoff = ""
+    if inp.get("handoff"):           # the peaks (year,value) for 10-4 PST
+        handoff = "year,peak\n" + "\n".join(
+            f"{tt:.6f},{vv:.6f}" for tt, vv in zip(peaks_t.tolist(), peaks_v.tolist()))
+
     return Result(
         threshold=threshold, n_peaks=float(peak_idx.size), events_per_year=eff_rate,
         final_percentile=fpct, eff_duration=eff_dur,
         converged=("yes" if converged else "no"),
         profile_year=pyear, profile_series=pser, profile_threshold=pthr,
-        peaks_t=peaks_t, peaks_v=peaks_v, notes=notes,
+        peaks_t=peaks_t, peaks_v=peaks_v, handoff_csv=handoff, notes=notes,
     )
 
 

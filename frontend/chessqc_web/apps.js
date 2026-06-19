@@ -268,8 +268,14 @@ const CHESSQC_APPS = [
     classification: "standard",
     src: "../../backend/applications/chessqc_10_3_peaks_over_threshold.py",
   },
+  {
+    id: "10-4",
+    name: "Probabilistic Simulation Technique",
+    area: "Coastal Hazards",
+    classification: "provisional",
+    src: "../../backend/applications/chessqc_10_4_probabilistic_simulation.py",
+  },
   // remaining area-10 apps under construction; shown as non-clickable "coming soon" cards.
-  { id: "10-4", name: "Probabilistic Simulation Technique", area: "Coastal Hazards", comingSoon: true },
   { id: "10-5", name: "Joint Probability Method", area: "Coastal Hazards", comingSoon: true },
   {
     id: "M-1",
