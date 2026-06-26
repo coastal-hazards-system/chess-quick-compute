@@ -320,6 +320,33 @@ function renderTeX(tex, el, display) {
   el.textContent = tex;   // KaTeX not yet loaded / failed: show the raw source
 }
 
+// Greek-letter names that the ABOUT symbol shorthand spells out (lower-case keys).
+const _GREEK = new Set(["alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta",
+  "iota", "kappa", "lambda", "mu", "nu", "xi", "pi", "rho", "sigma", "tau", "upsilon", "phi",
+  "chi", "psi", "omega"]);
+
+// Turn an ABOUT symbol shorthand (e.g. "U_obs", "u_*", "phi", "Delta T", "bar t") into
+// LaTeX so it typesets with real subscripts/Greek. Both front-ends share this convention.
+function _symTok(t) {
+  let base = t, sub = "";
+  const u = t.indexOf("_");
+  if (u >= 0) { base = t.slice(0, u); sub = t.slice(u + 1); }
+  if (_GREEK.has(base.toLowerCase())) base = "\\" + base;
+  if (sub === "") return base;
+  return base + "_" + (sub.length > 1 ? "{" + sub + "}" : sub);
+}
+function symToTex(s) {
+  s = String(s).trim();
+  if (s.includes(",")) return s.split(",").map((p) => symToTex(p)).join(",\\; ");
+  const toks = s.split(/\s+/).filter(Boolean);
+  const out = [];
+  for (let i = 0; i < toks.length; i++) {
+    if (toks[i] === "bar" && i + 1 < toks.length) out.push("\\bar{" + _symTok(toks[++i]) + "}");
+    else out.push(_symTok(toks[i]));
+  }
+  return out.join(" ");
+}
+
 function renderMethodPanel() {
   const box = $("methodBox"), body = $("methodBody");
   if (!box || !body) return;
@@ -352,7 +379,7 @@ function renderMethodPanel() {
   if (about.symbols && about.symbols.length) {
     const dl = document.createElement("dl"); dl.className = "symbols";
     for (const [sym, desc] of about.symbols) {
-      const dt = document.createElement("dt"); dt.textContent = sym;
+      const dt = document.createElement("dt"); renderTeX(symToTex(sym), dt, false);
       const dd = document.createElement("dd"); dd.textContent = desc;
       dl.append(dt, dd);
     }

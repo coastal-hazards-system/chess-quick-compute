@@ -61,6 +61,39 @@ def _latex_pixmap(tex: str, color: str, dpr: float = 2.0, fontsize: int = 13):
     _MATH_CACHE[key] = pm
     return pm
 
+
+_GREEK = {"alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta", "theta", "iota",
+          "kappa", "lambda", "mu", "nu", "xi", "pi", "rho", "sigma", "tau", "upsilon",
+          "phi", "chi", "psi", "omega"}
+
+
+def _sym_tok(t: str) -> str:
+    base, sub = t, ""
+    u = t.find("_")
+    if u >= 0:
+        base, sub = t[:u], t[u + 1:]
+    if base.lower() in _GREEK:
+        base = "\\" + base
+    if sub == "":
+        return base
+    return base + "_" + ("{" + sub + "}" if len(sub) > 1 else sub)
+
+
+def _sym_to_tex(s: str) -> str:
+    """ABOUT symbol shorthand ("U_obs", "u_*", "phi", "Delta T", "bar t") -> LaTeX. Mirrors
+    the web driver's symToTex so the symbol column typesets identically in both front-ends."""
+    s = str(s).strip()
+    if "," in s:
+        return ",\\; ".join(_sym_to_tex(p) for p in s.split(","))
+    toks = s.split()
+    out, i = [], 0
+    while i < len(toks):
+        if toks[i] == "bar" and i + 1 < len(toks):
+            out.append("\\bar{" + _sym_tok(toks[i + 1]) + "}"); i += 2
+        else:
+            out.append(_sym_tok(toks[i])); i += 1
+    return " ".join(out)
+
 _BIG = 1.0e9  # finite bound for "unrestricted" spin boxes
 # fidelity classification -> compact badge letter and QSS [badge="..."] style
 _CLASS_LETTER = {"exact": "I", "standard": "II", "provisional": "III"}
@@ -399,10 +432,14 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             grid = QtWidgets.QGridLayout()
             grid.setHorizontalSpacing(14); grid.setVerticalSpacing(2)
             for i, (sym, desc) in enumerate(about["symbols"]):
-                sy = QtWidgets.QLabel(sym)
-                sy.setTextInteractionFlags(Qt.TextSelectableByMouse)
+                sy = QtWidgets.QLabel()
+                pm = _latex_pixmap(_sym_to_tex(sym), fg, self.devicePixelRatioF() or 2.0, 11)
+                if pm is not None:
+                    sy.setPixmap(pm)
+                else:
+                    sy.setText(sym)
                 ds = QtWidgets.QLabel(desc); ds.setStyleSheet(f"color:{muted};")
-                grid.addWidget(sy, i, 0); grid.addWidget(ds, i, 1)
+                grid.addWidget(sy, i, 0, Qt.AlignVCenter); grid.addWidget(ds, i, 1)
             grid.setColumnStretch(1, 1)
             lay.addLayout(grid)
         if about.get("references"):
