@@ -77,6 +77,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -100,15 +101,24 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("F", "Depth Froude number", "", "", "scalar"),
-    Out("C", "Wave celerity", "m/s", "kt", "scalar"),
-    Out("T", "Wave period", "s", "s", "scalar"),
-    Out("L", "Wavelength", "m", "ft", "scalar"),
-    Out("direction", "Wave crest angle to sailing line", "deg", "deg", "scalar"),
-    Out("drawdown", "Drawdown (water-level depression)", "m", "ft", "scalar"),
-    Out("D", "Relative drawdown dh/d", "", "", "scalar"),
-    Out("S", "Blockage ratio A_m/(b d)", "", "", "scalar"),
-    Out("Vr", "Return current", "m/s", "kt", "scalar"),
+    Out("F", "Depth Froude number", "", "", "scalar",
+        note="Depth (shallow-water) Froude number F = V_s/sqrt(g d); F<1 is a subcritical wake, F>=1 supercritical."),
+    Out("C", "Wave celerity", "m/s", "kt", "scalar",
+        note="Phase speed of the generated wave system; equals V_s subcritically (transverse wave moves with the vessel) and sqrt(g d) supercritically."),
+    Out("T", "Wave period", "s", "s", "scalar",
+        note="Period of the generated wave, T = L/C, from the finite-depth dispersion relation."),
+    Out("L", "Wavelength", "m", "ft", "scalar",
+        note="Wavelength of the generated wave satisfying C^2 = (g/k) tanh(k d) with L = 2 pi/k."),
+    Out("direction", "Wave crest angle to sailing line", "deg", "deg", "scalar",
+        note="Angle of the diverging wave crests to the sailing line: deep-water Kelvin angle 35deg16' when F<1, Mach angle arcsin(1/F) when F>=1."),
+    Out("drawdown", "Drawdown (water-level depression)", "m", "ft", "scalar",
+        note="Schijf drawdown delta h, the depression of the water surface alongside the moving vessel."),
+    Out("D", "Relative drawdown dh/d", "", "", "scalar",
+        note="Drawdown normalized by channel depth, D = delta h / d (dimensionless)."),
+    Out("S", "Blockage ratio A_m/(b d)", "", "", "scalar",
+        note="Channel blockage ratio S = A_m/(b d), the fraction of the channel cross-section occupied by the vessel's submerged midship area."),
+    Out("Vr", "Return current", "m/s", "kt", "scalar",
+        note="Schijf return current V_r flowing backward past the vessel (positive opposes the sailing direction)."),
 )
 
 

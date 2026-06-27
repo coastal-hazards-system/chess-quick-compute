@@ -81,6 +81,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"           # scalar | point | profile
+    note: str = ""           # hover definition shown on the output label
 
 
 # --- application metadata --------------------------------------------------------
@@ -117,22 +118,38 @@ INPUTS = (
 
 # Complete output list (ACES manual "Output" for Cnoidal Wave Theory).
 OUTPUTS = (
-    Out("L",     "Wave length",                  "m",     "ft",    "scalar"),
-    Out("C",     "Celerity",                     "m/s",   "ft/s",  "scalar"),
-    Out("E",     "Energy density",               "N/m",   "lb/ft", "scalar"),
-    Out("P",     "Energy flux (power)",          "N/s",   "lb/s",  "scalar"),
-    Out("Ur",    "Ursell parameter (HL^2/d^3)",  "",      "",      "scalar"),
-    Out("kappa", "Elliptic modulus",             "",      "",      "scalar"),
-    Out("eta",   "Surface elevation",            "m",     "ft",    "point"),
-    Out("p",     "Pressure",                     "Pa",    "psf",   "point"),
-    Out("u",     "Horizontal velocity",          "m/s",   "ft/s",  "point"),
-    Out("w",     "Vertical velocity",            "m/s",   "ft/s",  "point"),
-    Out("dudt",  "Horizontal acceleration",      "m/s^2", "ft/s^2","point"),
-    Out("dwdt",  "Vertical acceleration",        "m/s^2", "ft/s^2","point"),
-    Out("profile_X",   "Profile: X (+/- one wavelength)", "m",   "ft",   "profile"),
-    Out("profile_eta", "Profile: surface elevation",      "m",   "ft",   "profile"),
-    Out("profile_u",   "Profile: horizontal velocity",    "m/s", "ft/s", "profile"),
-    Out("profile_w",   "Profile: vertical velocity",      "m/s", "ft/s", "profile"),
+    Out("L",     "Wave length",                  "m",     "ft",    "scalar",
+        note="Cnoidal wavelength L = cT, the horizontal crest-to-crest distance of one wave."),
+    Out("C",     "Celerity",                     "m/s",   "ft/s",  "scalar",
+        note="Phase speed (celerity) c at which the wave form propagates."),
+    Out("E",     "Energy density",               "N/m",   "lb/ft", "scalar",
+        note="Mean total wave energy per unit surface area (sum of kinetic and potential energy)."),
+    Out("P",     "Energy flux (power)",          "N/s",   "lb/s",  "scalar",
+        note="Mean energy flux (wave power) transmitted per unit crest width."),
+    Out("Ur",    "Ursell parameter (HL^2/d^3)",  "",      "",      "scalar",
+        note="Ursell number U_r = HL^2/d^3 gauging nonlinearity; cnoidal validity is questionable below ~26."),
+    Out("kappa", "Elliptic modulus",             "",      "",      "scalar",
+        note="Jacobian elliptic modulus kappa in [0,1]; kappa -> 1 is the solitary-wave limit."),
+    Out("eta",   "Surface elevation",            "m",     "ft",    "point",
+        note="Water-surface elevation above still-water level (z=0) at the chosen phase X/L; + is above SWL."),
+    Out("p",     "Pressure",                     "Pa",    "psf",   "point",
+        note="Total fluid pressure at the point (z, X/L), including hydrostatic and dynamic contributions."),
+    Out("u",     "Horizontal velocity",          "m/s",   "ft/s",  "point",
+        note="Horizontal water-particle velocity at (z, X/L); + is in the direction of wave travel."),
+    Out("w",     "Vertical velocity",            "m/s",   "ft/s",  "point",
+        note="Vertical water-particle velocity at (z, X/L); + is upward."),
+    Out("dudt",  "Horizontal acceleration",      "m/s^2", "ft/s^2","point",
+        note="Local horizontal water-particle acceleration du/dt at (z, X/L)."),
+    Out("dwdt",  "Vertical acceleration",        "m/s^2", "ft/s^2","point",
+        note="Local vertical water-particle acceleration dw/dt at (z, X/L); + is upward."),
+    Out("profile_X",   "Profile: X (+/- one wavelength)", "m",   "ft",   "profile",
+        note="Horizontal coordinate X spanning +/- one wavelength, the abscissa for the profile plots."),
+    Out("profile_eta", "Profile: surface elevation",      "m",   "ft",   "profile",
+        note="Surface elevation above SWL versus X over +/- one wavelength (the cnoidal wave form)."),
+    Out("profile_u",   "Profile: horizontal velocity",    "m/s", "ft/s", "profile",
+        note="Horizontal water-particle velocity versus X at the chosen depth z, over +/- one wavelength."),
+    Out("profile_w",   "Profile: vertical velocity",      "m/s", "ft/s", "profile",
+        note="Vertical water-particle velocity versus X at the chosen depth z, over +/- one wavelength."),
 )
 
 

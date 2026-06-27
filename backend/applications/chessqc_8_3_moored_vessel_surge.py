@@ -73,6 +73,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -111,14 +112,22 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("m_v", "Virtual (surge) mass", "kg", "kg", "scalar"),
-    Out("k_fwd", "Forward surge spring constant", "N/m", "N/m", "scalar"),
-    Out("k_rev", "Reverse surge spring constant", "N/m", "N/m", "scalar"),
-    Out("k_total", "Total surge spring constant", "N/m", "N/m", "scalar"),
-    Out("T_S", "Natural surge period", "s", "s", "scalar"),
-    Out("max_load", "Maximum line load (% breaking)", "%", "%", "scalar"),
-    Out("n_overloaded", "Lines over safe working load", "", "", "scalar"),
-    Out("impact", "Line-impact flag (1 = yes)", "", "", "scalar"),
+    Out("m_v", "Virtual (surge) mass", "kg", "kg", "scalar",
+        note="Virtual surge mass m_v = m (1 + C_a): the vessel displacement mass plus its hydrodynamic added mass."),
+    Out("k_fwd", "Forward surge spring constant", "N/m", "N/m", "scalar",
+        note="Forward surge stiffness: sum of k_axial cos^2(alpha) over lines whose anchor points forward (cos alpha >= 0)."),
+    Out("k_rev", "Reverse surge spring constant", "N/m", "N/m", "scalar",
+        note="Reverse surge stiffness: sum of k_axial cos^2(alpha) over aft-pointing lines (cos alpha < 0)."),
+    Out("k_total", "Total surge spring constant", "N/m", "N/m", "scalar",
+        note="Total surge restoring stiffness k_total = k_fwd + k_rev, the parallel sum of all line stiffnesses projected onto the surge axis."),
+    Out("T_S", "Natural surge period", "s", "s", "scalar",
+        note="Natural surge oscillation period T_S = 2 pi sqrt(m_v / k_total) of the moored vessel."),
+    Out("max_load", "Maximum line load (% breaking)", "%", "%", "scalar",
+        note="Largest line pretension expressed as a percent of that line's breaking strength (load = T/B x 100)."),
+    Out("n_overloaded", "Lines over safe working load", "", "", "scalar",
+        note="Count of lines whose pretension exceeds the safe-working-load fraction times their breaking strength."),
+    Out("impact", "Line-impact flag (1 = yes)", "", "", "scalar",
+        note="Line-impact / failure-risk flag: 1 if any line exceeds its safe working load, 0 otherwise."),
 )
 
 

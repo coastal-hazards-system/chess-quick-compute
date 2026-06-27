@@ -72,6 +72,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -111,10 +112,14 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("R",    "Wave runup (sloped structures)",   "m", "ft", "scalar"),
-    Out("F",    "Crest freeboard (hs - ds)",        "m", "ft", "scalar"),
-    Out("K_TO", "Transmission coefficient",         "",  "",   "scalar"),
-    Out("H_T",  "Transmitted wave height",          "m", "ft", "scalar"),
+    Out("R",    "Wave runup (sloped structures)",   "m", "ft", "scalar",
+        note="Maximum vertical rise of water on the sloped structure face above still-water level, from the 5-2 runup methods (zero for vertical/composite structures)."),
+    Out("F",    "Crest freeboard (hs - ds)",        "m", "ft", "scalar",
+        note="Height of the structure crest above the still-water level, F = h_s - d_s; negative when the structure is submerged."),
+    Out("K_TO", "Transmission coefficient",         "",  "",   "scalar",
+        note="Wave transmission coefficient K_TO = H_T / H_i, the fraction of incident wave height passing the structure (0 = full blocking, 1 = full transmission)."),
+    Out("H_T",  "Transmitted wave height",          "m", "ft", "scalar",
+        note="Height of the wave transmitted to the lee of the structure, H_T = K_TO * H_i."),
 )
 
 

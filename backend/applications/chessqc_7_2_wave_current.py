@@ -70,6 +70,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -94,12 +95,18 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("omega_star", "Dimensionless frequency (omega sqrt(d/g))", "", "", "scalar"),
-    Out("F", "Effective Froude number U/Cg", "", "", "scalar"),
-    Out("R_H", "Wave height factor H/H0", "", "", "scalar"),
-    Out("R_L", "Wavelength factor L/L0", "", "", "scalar"),
-    Out("L0", "Wavelength (no current)", "m", "ft", "scalar"),
-    Out("L", "Wavelength (with current)", "m", "ft", "scalar"),
+    Out("omega_star", "Dimensionless frequency (omega sqrt(d/g))", "", "", "scalar",
+        note="Nondimensional absolute wave frequency, omega sqrt(d/g), with omega = 2 pi / T; characterizes the relative depth."),
+    Out("F", "Effective Froude number U/Cg", "", "", "scalar",
+        note="Effective Froude number U/Cg comparing the along-wave current to the intrinsic group velocity; approaches -1 as an opposing current blocks the waves."),
+    Out("R_H", "Wave height factor H/H0", "", "", "scalar",
+        note="Wave-height modification factor H/H0 from action conservation; < 1 for a following current (lowering), > 1 for an opposing current (steepening)."),
+    Out("R_L", "Wavelength factor L/L0", "", "", "scalar",
+        note="Wavelength modification factor L/L0; > 1 for a following current (lengthening), < 1 for an opposing current (shortening)."),
+    Out("L0", "Wavelength (no current)", "m", "ft", "scalar",
+        note="Wavelength in still water (no current) from the intrinsic dispersion relation at depth d."),
+    Out("L", "Wavelength (with current)", "m", "ft", "scalar",
+        note="Wavelength in the presence of the current, from the Doppler-shifted dispersion relation omega = sigma + k U."),
 )
 
 

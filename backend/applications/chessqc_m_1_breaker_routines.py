@@ -82,6 +82,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -105,15 +106,24 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("L",          "Wave length at depth d",            "m", "ft", "scalar"),
-    Out("steepness_max", "Maximum steepness H/L (Miche)",  "",  "",   "scalar"),
-    Out("Hmax_steep", "Maximum height at steepness limit", "m", "ft", "scalar"),
-    Out("Hb_flat",    "Breaking height, flat slope (McCowan)", "m", "ft", "scalar"),
-    Out("Hb_sloped",  "Breaking height, finite slope (S&W)", "m", "ft", "scalar"),
-    Out("db_sloped",  "Breaker depth (Weggel)",            "m", "ft", "scalar"),
-    Out("a_index",    "Weggel breaker index a(m)",         "",  "",   "scalar"),
-    Out("b_index",    "Weggel breaker index b(m)",         "",  "",   "scalar"),
-    Out("Hb_structure", "Breaker height at structure depth", "m", "ft", "scalar"),
+    Out("L",          "Wave length at depth d",            "m", "ft", "scalar",
+        note="Linear-theory wavelength at local depth d for period T, from the Hunt (1979) dispersion approximation."),
+    Out("steepness_max", "Maximum steepness H/L (Miche)",  "",  "",   "scalar",
+        note="Maximum stable wave steepness H/L = 0.142 tanh(kd) at depth d (Miche 1944), tending to 0.142 in deep water."),
+    Out("Hmax_steep", "Maximum height at steepness limit", "m", "ft", "scalar",
+        note="Largest wave height the Miche steepness limit allows at depth d, the maximum steepness times the wavelength L."),
+    Out("Hb_flat",    "Breaking height, flat slope (McCowan)", "m", "ft", "scalar",
+        note="Breaking wave height on a flat or unknown slope, H_b = 0.78 d (McCowan 1894)."),
+    Out("Hb_sloped",  "Breaking height, finite slope (S&W)", "m", "ft", "scalar",
+        note="Breaking wave height on a finite nearshore slope m, H_b = H0' [0.575 m^0.031 (H0'/L0)^-0.254] (Singamsetti & Wind 1980)."),
+    Out("db_sloped",  "Breaker depth (Weggel)",            "m", "ft", "scalar",
+        note="Water depth at which the sloped breaking wave breaks, d_b = H_b/(b - a H_b/(g T^2)) (Weggel 1972)."),
+    Out("a_index",    "Weggel breaker index a(m)",         "",  "",   "scalar",
+        note="Weggel (1972) breaker-index coefficient a = 43.8(1 - e^-19.5m), a slope-dependent factor tending to 0 as m to 0."),
+    Out("b_index",    "Weggel breaker index b(m)",         "",  "",   "scalar",
+        note="Weggel (1972) breaker-index coefficient b = 1.56/(1 + e^-19.5m), tending to 0.78 (the McCowan ratio) as m to 0."),
+    Out("Hb_structure", "Breaker height at structure depth", "m", "ft", "scalar",
+        note="Breaking wave height at a structure of depth d_s, H_b = b d_s/(1 + a d_s/(g T^2)), the depth-consistent inversion of the Weggel relation."),
 )
 
 

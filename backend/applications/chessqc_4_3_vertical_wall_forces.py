@@ -65,6 +65,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -94,16 +95,26 @@ INPUTS = (
 # Complete output list (ACES User's Guide 4-3). Heights are the Miche-Rundgren clapotis
 # elevations (shared by both methods); force/moment are per method & case.
 OUTPUTS = (
-    Out("hgt_crest",  "Crest height above bottom",          "m", "ft", "scalar"),
-    Out("hgt_trough", "Trough height above bottom",         "m", "ft", "scalar"),
-    Out("mr_F_crest", "Miche-Rundgren crest force",         "N/m", "lb/ft", "scalar"),
-    Out("mr_M_crest", "Miche-Rundgren crest moment",        "N-m/m", "lb-ft/ft", "scalar"),
-    Out("mr_F_trough","Miche-Rundgren trough force",        "N/m", "lb/ft", "scalar"),
-    Out("mr_M_trough","Miche-Rundgren trough moment",       "N-m/m", "lb-ft/ft", "scalar"),
-    Out("sf_F_crest", "Sainflou crest force",               "N/m", "lb/ft", "scalar"),
-    Out("sf_M_crest", "Sainflou crest moment",              "N-m/m", "lb-ft/ft", "scalar"),
-    Out("sf_F_trough","Sainflou trough force",              "N/m", "lb/ft", "scalar"),
-    Out("sf_M_trough","Sainflou trough moment",             "N-m/m", "lb-ft/ft", "scalar"),
+    Out("hgt_crest",  "Crest height above bottom",          "m", "ft", "scalar",
+        note="Height of the clapotis crest above the seabed at the wall (depth d plus the Miche-Rundgren crest elevation above SWL)."),
+    Out("hgt_trough", "Trough height above bottom",         "m", "ft", "scalar",
+        note="Height of the clapotis trough above the seabed at the wall (depth d plus the Miche-Rundgren trough elevation, which is below SWL)."),
+    Out("mr_F_crest", "Miche-Rundgren crest force",         "N/m", "lb/ft", "scalar",
+        note="Total horizontal wave force per unit wall length for the crest-at-wall case by Miche-Rundgren second-order theory."),
+    Out("mr_M_crest", "Miche-Rundgren crest moment",        "N-m/m", "lb-ft/ft", "scalar",
+        note="Overturning moment per unit wall length about the wall base for the crest-at-wall case by Miche-Rundgren theory."),
+    Out("mr_F_trough","Miche-Rundgren trough force",        "N/m", "lb/ft", "scalar",
+        note="Total horizontal wave force per unit wall length for the trough-at-wall case by Miche-Rundgren second-order theory."),
+    Out("mr_M_trough","Miche-Rundgren trough moment",       "N-m/m", "lb-ft/ft", "scalar",
+        note="Overturning moment per unit wall length about the wall base for the trough-at-wall case by Miche-Rundgren theory."),
+    Out("sf_F_crest", "Sainflou crest force",               "N/m", "lb/ft", "scalar",
+        note="Total horizontal wave force per unit wall length for the crest-at-wall case by Sainflou (1928) theory."),
+    Out("sf_M_crest", "Sainflou crest moment",              "N-m/m", "lb-ft/ft", "scalar",
+        note="Overturning moment per unit wall length about the wall base for the crest-at-wall case by Sainflou theory."),
+    Out("sf_F_trough","Sainflou trough force",              "N/m", "lb/ft", "scalar",
+        note="Total horizontal wave force per unit wall length for the trough-at-wall case by Sainflou (1928) theory."),
+    Out("sf_M_trough","Sainflou trough moment",             "N-m/m", "lb-ft/ft", "scalar",
+        note="Overturning moment per unit wall length about the wall base for the trough-at-wall case by Sainflou theory."),
 )
 
 

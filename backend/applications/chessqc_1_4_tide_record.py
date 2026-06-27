@@ -74,6 +74,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 # --- application metadata --------------------------------------------------------
@@ -163,13 +164,20 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("h_max", "Maximum elevation", "m", "ft", "scalar"),
-    Out("h_min", "Minimum elevation", "m", "ft", "scalar"),
-    Out("range", "Tidal range (max - min)", "m", "ft", "scalar"),
-    Out("h_start", "Elevation at start", "m", "ft", "point"),
-    Out("n_constituents", "Number of active constituents", "", "", "scalar"),
-    Out("profile_t", "Profile: time", "hr", "hr", "profile"),
-    Out("profile_h", "Profile: tide elevation", "m", "ft", "profile"),
+    Out("h_max", "Maximum elevation", "m", "ft", "scalar",
+        note="highest predicted water level above the prediction datum over the record (high water)."),
+    Out("h_min", "Minimum elevation", "m", "ft", "scalar",
+        note="lowest predicted water level above the prediction datum over the record (low water)."),
+    Out("range", "Tidal range (max - min)", "m", "ft", "scalar",
+        note="peak-to-trough range of the predicted water level, h_max minus h_min."),
+    Out("h_start", "Elevation at start", "m", "ft", "point",
+        note="predicted water level above datum at the first sample (start date/time)."),
+    Out("n_constituents", "Number of active constituents", "", "", "scalar",
+        note="count of harmonic constituents with nonzero amplitude included in the synthesis."),
+    Out("profile_t", "Profile: time", "hr", "hr", "profile",
+        note="elapsed time from the start epoch at each sample, in hours."),
+    Out("profile_h", "Profile: tide elevation", "m", "ft", "profile",
+        note="predicted water level above datum versus time, the harmonic sum h(t) = H0 + sum f_n A_n cos(...)."),
 )
 
 

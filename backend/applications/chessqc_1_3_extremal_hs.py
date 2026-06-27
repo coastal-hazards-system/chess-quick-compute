@@ -52,6 +52,7 @@ class Field:
 @dataclass(frozen=True)
 class Out:
     key: str; label: str; unit_si: str = ""; unit_us: str = ""; kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -97,15 +98,24 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("corr",  "Best-fit correlation", "", "", "scalar"),
-    Out("Hs2",   "H_s, return period 2 yr",   "m", "ft", "scalar"),
-    Out("Hs5",   "H_s, return period 5 yr",   "m", "ft", "scalar"),
-    Out("Hs10",  "H_s, return period 10 yr",  "m", "ft", "scalar"),
-    Out("Hs25",  "H_s, return period 25 yr",  "m", "ft", "scalar"),
-    Out("Hs50",  "H_s, return period 50 yr",  "m", "ft", "scalar"),
-    Out("Hs100", "H_s, return period 100 yr", "m", "ft", "scalar"),
-    Out("Hs100_lo", "Design (100 yr) lower bound", "m", "ft", "scalar"),
-    Out("Hs100_hi", "Design (100 yr) upper bound", "m", "ft", "scalar"),
+    Out("corr",  "Best-fit correlation", "", "", "scalar",
+        note="correlation coefficient r of the least-squares fit of the best candidate distribution (closer to 1 = better fit)"),
+    Out("Hs2",   "H_s, return period 2 yr",   "m", "ft", "scalar",
+        note="significant wave height expected to be equalled or exceeded once on average every 2 years, from the best-fit distribution"),
+    Out("Hs5",   "H_s, return period 5 yr",   "m", "ft", "scalar",
+        note="significant wave height expected to be equalled or exceeded once on average every 5 years, from the best-fit distribution"),
+    Out("Hs10",  "H_s, return period 10 yr",  "m", "ft", "scalar",
+        note="significant wave height expected to be equalled or exceeded once on average every 10 years, from the best-fit distribution"),
+    Out("Hs25",  "H_s, return period 25 yr",  "m", "ft", "scalar",
+        note="significant wave height expected to be equalled or exceeded once on average every 25 years, from the best-fit distribution"),
+    Out("Hs50",  "H_s, return period 50 yr",  "m", "ft", "scalar",
+        note="significant wave height expected to be equalled or exceeded once on average every 50 years, from the best-fit distribution"),
+    Out("Hs100", "H_s, return period 100 yr", "m", "ft", "scalar",
+        note="design significant wave height at the 100-year return period, from the best-fit distribution"),
+    Out("Hs100_lo", "Design (100 yr) lower bound", "m", "ft", "scalar",
+        note="lower limit of the confidence band on the 100-year design height (H_sr minus z*sigma at the chosen confidence level)"),
+    Out("Hs100_hi", "Design (100 yr) upper bound", "m", "ft", "scalar",
+        note="upper limit of the confidence band on the 100-year design height (H_sr plus z*sigma at the chosen confidence level)"),
 )
 
 

@@ -81,6 +81,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -106,16 +107,26 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("C",      "Wave celerity",                         "m/s", "ft/s", "scalar"),
-    Out("eta",    "Surface elevation at x (above SWL)",     "m",   "ft",   "scalar"),
-    Out("u",      "Horizontal particle velocity at (x,z)",  "m/s", "ft/s", "scalar"),
-    Out("w",      "Vertical particle velocity at (x,z)",    "m/s", "ft/s", "scalar"),
-    Out("dp_crest", "Dynamic pressure at bed under crest",  "Pa",  "psf",  "scalar"),
-    Out("E",      "Total energy per unit crest width",      "N",   "lb/ft","scalar"),
-    Out("M",      "McCowan-Munk coefficient M",             "",    "",     "scalar"),
-    Out("N",      "McCowan-Munk coefficient N",             "",    "",     "scalar"),
-    Out("Hb_flat", "Breaking height (flat bed, McCowan)",   "m",   "ft",   "scalar"),
-    Out("relative_height", "Relative height H/d",           "",    "",     "scalar"),
+    Out("C",      "Wave celerity",                         "m/s", "ft/s", "scalar",
+        note="Speed of translation of the solitary wave, C = sqrt(g(d+H))."),
+    Out("eta",    "Surface elevation at x (above SWL)",     "m",   "ft",   "scalar",
+        note="Free-surface height above the still-water level at horizontal distance x from the crest (always positive, peaking at H)."),
+    Out("u",      "Horizontal particle velocity at (x,z)",  "m/s", "ft/s", "scalar",
+        note="Horizontal water-particle velocity at the evaluation point (x,z), positive in the direction of wave travel."),
+    Out("w",      "Vertical particle velocity at (x,z)",    "m/s", "ft/s", "scalar",
+        note="Vertical water-particle velocity at (x,z); zero at the bed and largest near the surface, positive upward."),
+    Out("dp_crest", "Dynamic pressure at bed under crest",  "Pa",  "psf",  "scalar",
+        note="Wave-induced dynamic pressure on the bed directly beneath the crest, Dp = rho*g*H."),
+    Out("E",      "Total energy per unit crest width",      "N",   "lb/ft","scalar",
+        note="Total wave energy (kinetic plus potential) per unit crest width, E = (8/(3*sqrt3))*rho*g*H^(3/2)*d^(3/2)."),
+    Out("M",      "McCowan-Munk coefficient M",             "",    "",     "scalar",
+        note="Dimensionless McCowan-Munk solitary-wave coefficient M, a function of H/d."),
+    Out("N",      "McCowan-Munk coefficient N",             "",    "",     "scalar",
+        note="Dimensionless McCowan-Munk solitary-wave coefficient N = (2/3)sin^2[M(1+H/d)], a function of H/d."),
+    Out("Hb_flat", "Breaking height (flat bed, McCowan)",   "m",   "ft",   "scalar",
+        note="Limiting breaking wave height on a flat bed, H_b = 0.78*d (McCowan 1894 criterion)."),
+    Out("relative_height", "Relative height H/d",           "",    "",     "scalar",
+        note="Ratio of wave height to still-water depth, H/d, the governing nonlinearity parameter."),
 )
 
 

@@ -70,6 +70,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"           # scalar | point | profile
+    note: str = ""           # hover definition shown on the output label
 
 
 # --- application metadata --------------------------------------------------------
@@ -103,25 +104,44 @@ INPUTS = (
 
 # Complete output list (ACES manual "Output" for Linear Wave Theory).
 OUTPUTS = (
-    Out("L",     "Wave length",                  "m",     "ft",    "scalar"),
-    Out("C",     "Celerity",                     "m/s",   "ft/s",  "scalar"),
-    Out("Cg",    "Group velocity",               "m/s",   "ft/s",  "scalar"),
-    Out("E",     "Energy density",               "N/m",   "lb/ft", "scalar"),
-    Out("P",     "Energy flux (power)",          "N/s",   "lb/s",  "scalar"),
-    Out("Ur",    "Ursell parameter",             "",      "",      "scalar"),
-    Out("kd",    "Relative depth k*d",           "",      "",      "scalar"),
-    Out("eta",   "Surface elevation",            "m",     "ft",    "point"),
-    Out("p",     "Pressure",                     "Pa",    "psf",   "point"),
-    Out("xi",    "Horizontal displacement",      "m",     "ft",    "point"),
-    Out("zeta",  "Vertical displacement",        "m",     "ft",    "point"),
-    Out("u",     "Horizontal velocity",          "m/s",   "ft/s",  "point"),
-    Out("w",     "Vertical velocity",            "m/s",   "ft/s",  "point"),
-    Out("dudt",  "Horizontal acceleration",      "m/s^2", "ft/s^2","point"),
-    Out("dwdt",  "Vertical acceleration",        "m/s^2", "ft/s^2","point"),
-    Out("profile_X",   "Profile: X (+/- one wavelength)", "m",   "ft",   "profile"),
-    Out("profile_eta", "Profile: surface elevation",      "m",   "ft",   "profile"),
-    Out("profile_u",   "Profile: horizontal velocity",    "m/s", "ft/s", "profile"),
-    Out("profile_w",   "Profile: vertical velocity",      "m/s", "ft/s", "profile"),
+    Out("L",     "Wave length",                  "m",     "ft",    "scalar",
+        note="Horizontal distance between successive crests, L = c*T from the linear dispersion relation."),
+    Out("C",     "Celerity",                     "m/s",   "ft/s",  "scalar",
+        note="Wave phase speed c at which the waveform propagates, from Hunt's explicit dispersion solution."),
+    Out("Cg",    "Group velocity",               "m/s",   "ft/s",  "scalar",
+        note="Speed at which wave energy travels, C_g = (c/2)(1 + 2kd/sinh(2kd))."),
+    Out("E",     "Energy density",               "N/m",   "lb/ft", "scalar",
+        note="Average total wave energy per unit surface area, E = rho*g*H^2/8."),
+    Out("P",     "Energy flux (power)",          "N/s",   "lb/s",  "scalar",
+        note="Average rate of wave-energy transport per unit crest width, P = E*C_g."),
+    Out("Ur",    "Ursell parameter",             "",      "",      "scalar",
+        note="Nonlinearity measure U_r = H*L^2/d^3; linear theory becomes questionable above about 26."),
+    Out("kd",    "Relative depth k*d",           "",      "",      "scalar",
+        note="Dimensionless relative depth k*d distinguishing shallow, intermediate, and deep water."),
+    Out("eta",   "Surface elevation",            "m",     "ft",    "point",
+        note="Water-surface displacement above SWL at the chosen phase, eta = (H/2)cos(theta), +up."),
+    Out("p",     "Pressure",                     "Pa",    "psf",   "point",
+        note="Total fluid pressure at depth z and phase: hydrostatic plus the dynamic wave contribution."),
+    Out("xi",    "Horizontal displacement",      "m",     "ft",    "point",
+        note="Horizontal excursion of a water particle from its mean position at depth z and phase."),
+    Out("zeta",  "Vertical displacement",        "m",     "ft",    "point",
+        note="Vertical excursion of a water particle from its mean position at depth z and phase, +up."),
+    Out("u",     "Horizontal velocity",          "m/s",   "ft/s",  "point",
+        note="Horizontal water-particle velocity at depth z and phase, positive in the direction of propagation."),
+    Out("w",     "Vertical velocity",            "m/s",   "ft/s",  "point",
+        note="Vertical water-particle velocity at depth z and phase, positive upward."),
+    Out("dudt",  "Horizontal acceleration",      "m/s^2", "ft/s^2","point",
+        note="Local horizontal acceleration of a water particle at depth z and phase."),
+    Out("dwdt",  "Vertical acceleration",        "m/s^2", "ft/s^2","point",
+        note="Local vertical acceleration of a water particle at depth z and phase, positive upward."),
+    Out("profile_X",   "Profile: X (+/- one wavelength)", "m",   "ft",   "profile",
+        note="Horizontal coordinate X spanning +/- one wavelength, the x-axis for the profile plots."),
+    Out("profile_eta", "Profile: surface elevation",      "m",   "ft",   "profile",
+        note="Surface elevation eta versus X over +/- one wavelength, (H/2)cos(kX)."),
+    Out("profile_u",   "Profile: horizontal velocity",    "m/s", "ft/s", "profile",
+        note="Horizontal particle velocity u versus X at the chosen depth over +/- one wavelength."),
+    Out("profile_w",   "Profile: vertical velocity",      "m/s", "ft/s", "profile",
+        note="Vertical particle velocity w versus X at the chosen depth over +/- one wavelength."),
 )
 
 

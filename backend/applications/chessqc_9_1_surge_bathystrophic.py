@@ -71,6 +71,7 @@ class Field:
 @dataclass(frozen=True)
 class Out:
     key: str; label: str; unit_si: str = ""; unit_us: str = ""; kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -134,17 +135,28 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("peak_surge", "Peak surge at shore", "m", "ft", "scalar"),
-    Out("S_wind", "  wind setup (Sx)", "m", "ft", "scalar"),
-    Out("S_bathy", "  bathystrophic setup (Sy)", "m", "ft", "scalar"),
-    Out("S_press", "  pressure setup", "m", "ft", "scalar"),
-    Out("Vmax_out", "Max wind speed (30 ft)", "km/h", "mph", "scalar"),
-    Out("B_used", "Holland B used", "", "", "scalar"),
-    Out("t_peak", "Time of peak", "s", "hr", "scalar"),
-    Out("profile_X", "Profile: distance from shore", "m", "nm", "profile"),
-    Out("profile_eta", "Profile: setup at peak", "m", "ft", "profile"),
-    Out("profile_u", "Profile: still-water depth", "m", "ft", "profile"),
-    Out("profile_w", "Profile: total depth at peak", "m", "ft", "profile"),
+    Out("peak_surge", "Peak surge at shore", "m", "ft", "scalar",
+        note="Peak total still-water rise at the shore, summing the wind, bathystrophic, pressure, initial-rise and tide components (eq 34)."),
+    Out("S_wind", "  wind setup (Sx)", "m", "ft", "scalar",
+        note="Onshore wind-stress setup component Sx at the shore at the time of peak surge (eq 25)."),
+    Out("S_bathy", "  bathystrophic setup (Sy)", "m", "ft", "scalar",
+        note="Bathystrophic (Coriolis) setup component Sy at the shore, from the alongshore wind-driven transport (eq 26)."),
+    Out("S_press", "  pressure setup", "m", "ft", "scalar",
+        note="Inverse-barometer pressure setup at the shore, from the local pressure deficit relative to the peripheral pressure."),
+    Out("Vmax_out", "Max wind speed (30 ft)", "km/h", "mph", "scalar",
+        note="Maximum surface (30 ft) wind speed at the radius of maximum winds, including half the storm forward speed."),
+    Out("B_used", "Holland B used", "", "", "scalar",
+        note="Holland shape (peakedness) factor actually used in the wind field; 1.0 for Myers/Bodine or when set by an explicit Vmax."),
+    Out("t_peak", "Time of peak", "s", "hr", "scalar",
+        note="Elapsed time from the start of the storm sweep at which the peak shore surge occurs."),
+    Out("profile_X", "Profile: distance from shore", "m", "nm", "profile",
+        note="Cross-shelf distance from the shore for each traverse station, ordered shore to shelf edge."),
+    Out("profile_eta", "Profile: setup at peak", "m", "ft", "profile",
+        note="Total still-water setup along the traverse at the time of peak surge (wind plus bathystrophic plus pressure plus initial rise and tide)."),
+    Out("profile_u", "Profile: still-water depth", "m", "ft", "profile",
+        note="Undisturbed still-water depth below SWL at each traverse station."),
+    Out("profile_w", "Profile: total depth at peak", "m", "ft", "profile",
+        note="Total water depth at peak surge, the still-water depth plus the setup at each traverse station."),
 )
 
 

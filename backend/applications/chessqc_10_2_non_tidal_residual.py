@@ -74,6 +74,7 @@ class Out:
     kind: str = "scalar"
     group: str = ""
     x_key: str = ""
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -126,17 +127,26 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("mean_ntr", "Mean NTR", "m", "ft", "scalar"),
-    Out("rms_ntr", "RMS NTR", "m", "ft", "scalar"),
-    Out("max_ntr", "Maximum NTR", "m", "ft", "scalar"),
-    Out("n_samples", "Samples", "", "", "scalar"),
-    Out("profile_year", "Profile: year", "yr", "yr", "profile"),
-    Out("profile_wl", "Profile: water level", "m", "ft", "profile", group="obs"),
-    Out("profile_tide", "Profile: tide", "m", "ft", "profile", group="obs"),
-    Out("profile_ntr", "Profile: NTR", "m", "ft", "profile", group="ntr"),
+    Out("mean_ntr", "Mean NTR", "m", "ft", "scalar",
+        note="Time-mean of the non-tidal residual (WL - tide) over the overlapping finite samples, in m."),
+    Out("rms_ntr", "RMS NTR", "m", "ft", "scalar",
+        note="Root-mean-square of the non-tidal residual, a measure of typical surge magnitude, in m."),
+    Out("max_ntr", "Maximum NTR", "m", "ft", "scalar",
+        note="Peak (largest) non-tidal residual over the overlapping record, in m."),
+    Out("n_samples", "Samples", "", "", "scalar",
+        note="Count of overlapping finite (non-gap) NTR samples used in the statistics."),
+    Out("profile_year", "Profile: year", "yr", "yr", "profile",
+        note="Decimal-year time axis of the plotted series, shared by the water-level, tide, and NTR curves."),
+    Out("profile_wl", "Profile: water level", "m", "ft", "profile", group="obs",
+        note="Observed (ideally detrended) water-level series at each timestamp, in m."),
+    Out("profile_tide", "Profile: tide", "m", "ft", "profile", group="obs",
+        note="Predicted astronomical tide linearly interpolated onto the water-level timestamps, in m."),
+    Out("profile_ntr", "Profile: NTR", "m", "ft", "profile", group="ntr",
+        note="Non-tidal residual series, NTR(t) = WL(t) - tide(t), the isolated storm/meteorological surge, in m."),
     # full-resolution NTR series for the workflow hand-off into 10-3 (emitted only
     # when the `handoff` input is set). Not shown or plotted.
-    Out("handoff_csv", "handoff", "", "", "data"),
+    Out("handoff_csv", "handoff", "", "", "data",
+        note="Full-resolution year,NTR CSV passed in-memory to 10-3 (Peaks Over Threshold); not displayed."),
 )
 
 

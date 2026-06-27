@@ -77,6 +77,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -108,10 +109,14 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("Q", "Longshore transport rate", "m^3/yr", "yd^3/yr", "scalar"),
-    Out("Q_m3s", "Transport rate (volume/sec)", "m^3/s", "m^3/s", "scalar"),
-    Out("P_ls", "Longshore energy flux factor", "N/s", "lb/s", "scalar"),
-    Out("cerc_factor", "Q / P_ls", "", "", "scalar"),
+    Out("Q", "Longshore transport rate", "m^3/yr", "yd^3/yr", "scalar",
+        note="Potential volumetric longshore sand transport rate Q from the CERC formula, in m^3/yr (positive in the down-drift direction set by the wave angle)."),
+    Out("Q_m3s", "Transport rate (volume/sec)", "m^3/s", "m^3/s", "scalar",
+        note="Same potential longshore transport rate expressed as volume per second, Q in m^3/s."),
+    Out("P_ls", "Longshore energy flux factor", "N/s", "lb/s", "scalar",
+        note="Longshore component of the wave energy flux factor P_ls driving transport, computed from wave height and angle."),
+    Out("cerc_factor", "Q / P_ls", "", "", "scalar",
+        note="Ratio of transport rate to energy-flux factor, Q/P_ls in m^3/yr per W/m (~1290 for quartz sand and seawater)."),
 )
 
 

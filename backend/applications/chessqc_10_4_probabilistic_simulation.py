@@ -93,6 +93,7 @@ class Out:
     kind: str = "scalar"
     group: str = ""
     x_key: str = ""
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -143,23 +144,38 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("n_pot", "POT peaks", "", "", "scalar"),
-    Out("gpd_threshold", "GPD location mu", "m", "ft", "scalar"),
-    Out("gpd_shape", "GPD shape xi", "", "", "scalar"),
-    Out("gpd_scale", "GPD scale sigma", "m", "ft", "scalar"),
-    Out("lambda_u", "Base rate lambda_u", "1/yr", "1/yr", "scalar"),
-    Out("lambda_mu", "Rate above mu", "1/yr", "1/yr", "scalar"),
-    Out("mag_10yr", "10-yr magnitude", "m", "ft", "scalar"),
-    Out("mag_100yr", "100-yr magnitude", "m", "ft", "scalar"),
-    Out("mag_500yr", "500-yr magnitude", "m", "ft", "scalar"),
+    Out("n_pot", "POT peaks", "", "", "scalar",
+        note="Number of peaks-over-threshold magnitudes in the input sample."),
+    Out("gpd_threshold", "GPD location mu", "m", "ft", "scalar",
+        note="Selected GPD location (threshold) above which the upper tail is fitted, chosen by quantile delta optimization."),
+    Out("gpd_shape", "GPD shape xi", "", "", "scalar",
+        note="Method-of-moments GPD shape parameter of the upper-tail fit (negative = bounded tail, positive = heavy tail), clipped to the stability band."),
+    Out("gpd_scale", "GPD scale sigma", "m", "ft", "scalar",
+        note="Method-of-moments GPD scale parameter of the upper-tail fit, setting the spread of exceedances above mu."),
+    Out("lambda_u", "Base rate lambda_u", "1/yr", "1/yr", "scalar",
+        note="Population (base) annual exceedance rate of the POT peaks, n_pot divided by the record length."),
+    Out("lambda_mu", "Rate above mu", "1/yr", "1/yr", "scalar",
+        note="Annual rate of exceedances above the GPD location mu, used to splice the GPD tail onto the empirical bulk."),
+    Out("mag_10yr", "10-yr magnitude", "m", "ft", "scalar",
+        note="Response magnitude at the 10-year mean return interval (annual exceedance rate 0.1/yr) read from the hazard curve."),
+    Out("mag_100yr", "100-yr magnitude", "m", "ft", "scalar",
+        note="Response magnitude at the 100-year mean return interval (annual exceedance rate 0.01/yr) read from the hazard curve."),
+    Out("mag_500yr", "500-yr magnitude", "m", "ft", "scalar",
+        note="Response magnitude at the 500-year mean return interval (annual exceedance rate 0.002/yr) read from the hazard curve."),
     # hazard curve: magnitude vs log10(mean return interval, yr)
-    Out("profile_logmri", "Profile: log10 return interval", "log10 yr", "log10 yr", "profile"),
-    Out("profile_be", "Profile: best estimate", "m", "ft", "profile", group="hc"),
-    Out("profile_cb10", "Profile: 10% confidence", "m", "ft", "profile", group="hc"),
-    Out("profile_cb90", "Profile: 90% confidence", "m", "ft", "profile", group="hc"),
+    Out("profile_logmri", "Profile: log10 return interval", "log10 yr", "log10 yr", "profile",
+        note="Hazard-curve x-axis: base-10 logarithm of the mean return interval in years (= log10 of 1/AER)."),
+    Out("profile_be", "Profile: best estimate", "m", "ft", "profile", group="hc",
+        note="Best-estimate hazard curve: response magnitude versus return interval (bootstrap-mean GPD tail spliced onto the empirical bulk)."),
+    Out("profile_cb10", "Profile: 10% confidence", "m", "ft", "profile", group="hc",
+        note="Lower confidence bound of the hazard curve, the 10th percentile of the bootstrap GPD-tail realizations."),
+    Out("profile_cb90", "Profile: 90% confidence", "m", "ft", "profile", group="hc",
+        note="Upper confidence bound of the hazard curve, the 90th percentile of the bootstrap GPD-tail realizations."),
     # empirical peaks (Weibull plotting positions) as markers
-    Out("emp_logmri", "Empirical log10 MRI", "log10 yr", "log10 yr", "scatter_x"),
-    Out("emp_mag", "Empirical peaks", "m", "ft", "scatter", group="hc", x_key="emp_logmri"),
+    Out("emp_logmri", "Empirical log10 MRI", "log10 yr", "log10 yr", "scatter_x",
+        note="x-coordinate of the empirical peak markers: log10 of the return interval from the Weibull plotting position (= log10 of 1/AER_i)."),
+    Out("emp_mag", "Empirical peaks", "m", "ft", "scatter", group="hc", x_key="emp_logmri",
+        note="Observed POT peak magnitudes plotted at their Weibull empirical return intervals."),
 )
 
 

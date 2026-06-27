@@ -90,6 +90,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -144,17 +145,28 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("throat_area",  "Throat (minimum) cross-section area", "m^2", "ft^2", "scalar"),
-    Out("I_g",          "Geometry integral",                   "m",   "ft",   "scalar"),
-    Out("bay_range",    "Bay tidal range",                     "m",   "ft",   "scalar"),
-    Out("max_ebb_Q",    "Peak ebb discharge",                  "m^3/s", "ft^3/s", "scalar"),
-    Out("max_flood_Q",  "Peak flood discharge",                "m^3/s", "ft^3/s", "scalar"),
-    Out("max_vel",      "Peak controlling-section velocity",   "m/s", "ft/s", "scalar"),
-    Out("t",            "Time",                                "h",   "h",    "profile"),
-    Out("sea_el",       "Sea elevation",                       "m",   "ft",   "profile"),
-    Out("bay_el",       "Bay elevation",                       "m",   "ft",   "profile"),
-    Out("inlet_Q",      "Inlet discharge",                     "m^3/s", "ft^3/s", "profile"),
-    Out("control_vel",  "Controlling-section velocity",        "m/s", "ft/s", "profile"),
+    Out("throat_area",  "Throat (minimum) cross-section area", "m^2", "ft^2", "scalar",
+        note="Smallest (controlling) inlet cross-section flow area A_min below the still-water datum, integrated from the surveyed bathymetry."),
+    Out("I_g",          "Geometry integral",                   "m",   "ft",   "scalar",
+        note="Geometry integral I_g = 1 / sum_i (L_i/A_i), the inverse of the along-inlet sum of section length over flow area (eq 13)."),
+    Out("bay_range",    "Bay tidal range",                     "m",   "ft",   "scalar",
+        note="Peak-to-trough range of the bay water-level hydrograph over the simulation, max(h_b) minus min(h_b)."),
+    Out("max_ebb_Q",    "Peak ebb discharge",                  "m^3/s", "ft^3/s", "scalar",
+        note="Most-negative inlet discharge over the record; ebb (seaward) flow is negative, so this is the largest-magnitude outflow."),
+    Out("max_flood_Q",  "Peak flood discharge",                "m^3/s", "ft^3/s", "scalar",
+        note="Most-positive inlet discharge over the record; flood (landward) flow is positive, the largest inflow into the bay."),
+    Out("max_vel",      "Peak controlling-section velocity",   "m/s", "ft/s", "scalar",
+        note="Maximum absolute throat velocity over the record, computed as |Q|/A_min at the controlling cross-section."),
+    Out("t",            "Time",                                "h",   "h",    "profile",
+        note="Elapsed time from the simulation start, the horizontal axis of the hydrographs."),
+    Out("sea_el",       "Sea elevation",                       "m",   "ft",   "profile",
+        note="Sea-boundary water level h_s above datum versus time, from the M2 harmonic tidal synthesis."),
+    Out("bay_el",       "Bay elevation",                       "m",   "ft",   "profile",
+        note="Bay water level h_b above datum versus time, from the RK4 solution of the bay-continuity ODE."),
+    Out("inlet_Q",      "Inlet discharge",                     "m^3/s", "ft^3/s", "profile",
+        note="Inlet discharge Q versus time, positive on flood (into bay) and negative on ebb (out to sea)."),
+    Out("control_vel",  "Controlling-section velocity",        "m/s", "ft/s", "profile",
+        note="Throat velocity Q/A_min versus time at the controlling cross-section; sign follows the flood/ebb discharge."),
 )
 
 

@@ -80,6 +80,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -112,17 +113,28 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("N_s",   "Governing stability number",      "",   "",    "scalar"),
-    Out("W50",   "Median armor weight",             "N",  "lb",  "scalar"),
-    Out("D50",   "Median armor dimension",          "m",  "ft",  "scalar"),
-    Out("r_armor", "Armor-layer thickness",         "m",  "ft",  "scalar"),
-    Out("r_filter", "Filter-layer thickness",       "m",  "ft",  "scalar"),
-    Out("W15",   "Armor W15",                        "N",  "lb",  "scalar"),
-    Out("W85",   "Armor W85",                        "N",  "lb",  "scalar"),
-    Out("Wmax",  "Armor Wmax",                       "N",  "lb",  "scalar"),
-    Out("Wmin",  "Armor Wmin",                       "N",  "lb",  "scalar"),
-    Out("R_expected", "Expected maximum runup",      "m",  "ft",  "scalar"),
-    Out("R_conservative", "Conservative runup",      "m",  "ft",  "scalar"),
+    Out("N_s",   "Governing stability number",      "",   "",    "scalar",
+        note="Dimensionless armor stability number N_s used in Hudson sizing, the larger of the CERC (Ahrens 1981) and van der Meer (1988) values."),
+    Out("W50",   "Median armor weight",             "N",  "lb",  "scalar",
+        note="Median (50% passing) weight of an individual armor stone from the Hudson form, W_50 = w_r H_s^3 / (N_s^3 (S_r-1)^3)."),
+    Out("D50",   "Median armor dimension",          "m",  "ft",  "scalar",
+        note="Nominal equivalent-cube side length of the median armor stone, D_50 = (W_50/w_r)^(1/3)."),
+    Out("r_armor", "Armor-layer thickness",         "m",  "ft",  "scalar",
+        note="Thickness of the two-stone armor layer normal to the slope, r = 2 (W_50/w_r)^(1/3)."),
+    Out("r_filter", "Filter-layer thickness",       "m",  "ft",  "scalar",
+        note="Thickness of the underlying filter (bedding) layer, the larger of one quarter the armor thickness and 1 ft."),
+    Out("W15",   "Armor W15",                        "N",  "lb",  "scalar",
+        note="Armor gradation weight at 15% passing, the lighter-stone limit, W_15 = 0.40 W_50."),
+    Out("W85",   "Armor W85",                        "N",  "lb",  "scalar",
+        note="Armor gradation weight at 85% passing, the heavier-stone limit, W_85 = 1.96 W_50."),
+    Out("Wmax",  "Armor Wmax",                       "N",  "lb",  "scalar",
+        note="Maximum permissible armor-stone weight in the gradation, W_max = 4 W_50."),
+    Out("Wmin",  "Armor Wmin",                       "N",  "lb",  "scalar",
+        note="Minimum permissible armor-stone weight in the gradation, W_min = W_50/8."),
+    Out("R_expected", "Expected maximum runup",      "m",  "ft",  "scalar",
+        note="Expected (mean) vertical wave runup above still-water level on the revetment slope."),
+    Out("R_conservative", "Conservative runup",      "m",  "ft",  "scalar",
+        note="Conservative (upper-bound / design) vertical wave runup above still-water level for crest-elevation design."),
 )
 
 

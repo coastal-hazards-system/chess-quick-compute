@@ -61,6 +61,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -95,10 +96,14 @@ INPUTS = (
 
 # Complete output list (ACES User's Guide 4-2) + N_s (key design parameter).
 OUTPUTS = (
-    Out("B",   "Width of toe protection apron",          "m", "ft", "scalar"),
-    Out("W",   "Weight of individual armor unit",        "N", "lb", "scalar"),
-    Out("d_1", "Water depth at top of toe layer",        "m", "ft", "scalar"),
-    Out("N_s", "Stability number (Tanimoto-Yagyu-Goda)", "",  "",   "scalar"),
+    Out("B",   "Width of toe protection apron",          "m", "ft", "scalar",
+        note="Design width of the toe-protection apron, the larger of the Rankine geotechnical width K_p*d_e and the two hydraulic minima 2*H_i and 0.4*d_s."),
+    Out("W",   "Weight of individual armor unit",        "N", "lb", "scalar",
+        note="Weight of an individual toe-stone armor unit from the Hudson-form sizing equation W = w_r*H_i^3 / (N_s^3*(S_r-1)^3)."),
+    Out("d_1", "Water depth at top of toe layer",        "m", "ft", "scalar",
+        note="Water depth at the top of the toe layer, d_1 = d_s - h_b (still-water depth above the toe stone)."),
+    Out("N_s", "Stability number (Tanimoto-Yagyu-Goda)", "",  "",   "scalar",
+        note="Tanimoto-Yagyu-Goda (1982) toe-stability number, floored at 1.8; larger N_s yields lighter required toe stone."),
 )
 
 

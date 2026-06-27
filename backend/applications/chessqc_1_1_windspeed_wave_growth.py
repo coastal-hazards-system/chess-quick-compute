@@ -95,6 +95,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -161,12 +162,18 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("U_e", "Equivalent neutral wind speed", "km/h", "mph", "scalar"),
-    Out("U_a", "Adjusted wind speed", "km/h", "mph", "scalar"),
-    Out("F_eff", "Effective wind fetch", "km", "mi", "scalar"),
-    Out("wave_dir", "Mean wave direction", "deg", "deg", "scalar"),
-    Out("H_mo", "Wave height", "m", "ft", "scalar"),
-    Out("T_p", "Peak wave period", "s", "s", "scalar"),
+    Out("U_e", "Equivalent neutral wind speed", "km/h", "mph", "scalar",
+        note="The observed wind reduced to a 10-m equivalent-neutral wind via the constant-stress log profile and adjusted to the final-wind duration."),
+    Out("U_a", "Adjusted wind speed", "km/h", "mph", "scalar",
+        note="The equivalent-neutral wind linearized to the constant-drag (C_D = 0.001) wind that drives the wave-growth formulas."),
+    Out("F_eff", "Effective wind fetch", "km", "mi", "scalar",
+        note="The fetch length used for wave growth; the single input fetch for open water, or the off-wind direction-weighted radial fetch for restricted geometry."),
+    Out("wave_dir", "Mean wave direction", "deg", "deg", "scalar",
+        note="The direction of wave development (deg clockwise from north), offset from the wind direction by the off-wind angle phi for restricted fetch."),
+    Out("H_mo", "Wave height", "m", "ft", "scalar",
+        note="The spectrally based significant wave height H_mo from fetch- or duration-limited growth, capped at the fully developed limit."),
+    Out("T_p", "Peak wave period", "s", "s", "scalar",
+        note="The peak spectral wave period T_p from fetch- or duration-limited growth, capped at the fully developed limit."),
 )
 
 

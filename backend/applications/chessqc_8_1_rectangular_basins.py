@@ -73,6 +73,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 # --- application metadata --------------------------------------------------------
@@ -126,16 +127,26 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("c_shallow", "Shallow-water celerity sqrt(g d)", "m/s", "ft/s", "scalar"),
-    Out("T_mode", "Resonant period of selected mode", "s", "s", "scalar"),
-    Out("L_mode", "Modal wavelength (1-D)", "m", "ft", "scalar"),
-    Out("f_mode", "Resonant frequency of selected mode", "1/s", "1/s", "scalar"),
-    Out("T_helm", "Helmholtz (pumping) period", "s", "s", "scalar"),
-    Out("Vmax", "Max horizontal velocity at node (surface)", "m/s", "ft/s", "scalar"),
-    Out("excursion", "Horizontal particle semi-excursion at node", "m", "ft", "scalar"),
-    Out("Vbar", "Mean horizontal speed at node", "m/s", "ft/s", "scalar"),
-    Out("mode_index", "Mode table: mode number", "", "", "profile"),
-    Out("mode_T", "Mode table: resonant period", "s", "s", "profile"),
+    Out("c_shallow", "Shallow-water celerity sqrt(g d)", "m/s", "ft/s", "scalar",
+        note="shallow-water wave speed c = sqrt(g d) used to set every seiche period"),
+    Out("T_mode", "Resonant period of selected mode", "s", "s", "scalar",
+        note="natural oscillation period of the chosen seiche mode (n, or n,m for 2-D)"),
+    Out("L_mode", "Modal wavelength (1-D)", "m", "ft", "scalar",
+        note="wavelength of the selected 1-D longitudinal mode (zero for genuine 2-D modes)"),
+    Out("f_mode", "Resonant frequency of selected mode", "1/s", "1/s", "scalar",
+        note="resonant frequency 1/T_mode of the selected mode"),
+    Out("T_helm", "Helmholtz (pumping) period", "s", "s", "scalar",
+        note="Helmholtz pumping period for a basin connected to the sea by a channel; zero unless Helmholtz type"),
+    Out("Vmax", "Max horizontal velocity at node (surface)", "m/s", "ft/s", "scalar",
+        note="peak horizontal water-particle velocity at the standing-wave node, at the surface"),
+    Out("excursion", "Horizontal particle semi-excursion at node", "m", "ft", "scalar",
+        note="amplitude of horizontal particle motion at the node, Vmax/omega"),
+    Out("Vbar", "Mean horizontal speed at node", "m/s", "ft/s", "scalar",
+        note="time-mean horizontal speed over a cycle at the node, (2/pi) Vmax"),
+    Out("mode_index", "Mode table: mode number", "", "", "profile",
+        note="mode number for each row of the seiche spectrum table"),
+    Out("mode_T", "Mode table: resonant period", "s", "s", "profile",
+        note="resonant period of the first several modes (a small seiche spectrum)"),
 )
 
 

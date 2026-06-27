@@ -93,6 +93,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -120,16 +121,26 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("u_star", "Friction velocity U*", "m/s", "kt", "scalar"),
-    Out("Uz", "Wind speed at height z", "km/h", "kt", "scalar"),
-    Out("U10", "Wind speed at 10 m", "km/h", "kt", "scalar"),
-    Out("CDz", "Drag coefficient at z", "", "", "scalar"),
-    Out("CD", "Drag coefficient at 10 m", "", "", "scalar"),
-    Out("z0", "Surface roughness length", "m", "ft", "scalar"),
-    Out("L", "Monin-Obukhov length", "m", "ft", "scalar"),
-    Out("psi", "Stability function Psi(z/L)", "", "", "scalar"),
-    Out("tau", "Surface momentum flux", "Pa", "Pa", "scalar"),
-    Out("alpha", "Cross-isobar angle", "deg", "deg", "scalar"),
+    Out("u_star", "Friction velocity U*", "m/s", "kt", "scalar",
+        note="Friction velocity U_* = sqrt(tau/rho_a), the surface shear velocity scaling the turbulent momentum flux."),
+    Out("Uz", "Wind speed at height z", "km/h", "kt", "scalar",
+        note="Mean wind speed at the chosen height z from the stability-corrected logarithmic surface-layer profile."),
+    Out("U10", "Wind speed at 10 m", "km/h", "kt", "scalar",
+        note="Mean wind speed at the standard 10 m reference height from the same surface-layer profile."),
+    Out("CDz", "Drag coefficient at z", "", "", "scalar",
+        note="Drag coefficient referenced to height z, C_Dz = (U_*/U_z)^2."),
+    Out("CD", "Drag coefficient at 10 m", "", "", "scalar",
+        note="Drag coefficient referenced to 10 m, C_D = (U_*/U10)^2; typically in the 1.0-2.5e-3 band."),
+    Out("z0", "Surface roughness length", "m", "ft", "scalar",
+        note="Aerodynamic sea-surface roughness length z_0, the height where the extrapolated log wind profile reaches zero."),
+    Out("L", "Monin-Obukhov length", "m", "ft", "scalar",
+        note="Monin-Obukhov stability length L'; infinite for neutral, negative for unstable, positive for stable stratification."),
+    Out("psi", "Stability function Psi(z/L)", "", "", "scalar",
+        note="Businger-Dyer momentum stability correction Psi(z/L'); 0 neutral, >0 unstable, <0 stable."),
+    Out("tau", "Surface momentum flux", "Pa", "Pa", "scalar",
+        note="Surface momentum flux (wind stress) tau = rho_a U_*^2 transferred from air to the sea surface."),
+    Out("alpha", "Cross-isobar angle", "deg", "deg", "scalar",
+        note="Cross-isobar angle between the geostrophic wind aloft and the surface wind/stress, sin(alpha) = -B U_*/(k |V_g|)."),
 )
 
 

@@ -78,6 +78,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"           # scalar | point | profile
+    note: str = ""                 # hover definition shown on the output label
 
 
 # --- application metadata --------------------------------------------------------
@@ -103,13 +104,20 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("L0",     "Deepwater wave length",                  "m", "ft", "scalar"),
-    Out("xi",     "Iribarren (surf-similarity) number",     "",  "",   "scalar"),
-    Out("R_max",  "Maximum runup",                          "m", "ft", "scalar"),
-    Out("R_2",    "Runup exceeded by 2% of runups",         "m", "ft", "scalar"),
-    Out("R_1_10", "Average of highest 1/10 of runups",      "m", "ft", "scalar"),
-    Out("R_1_3",  "Average of highest 1/3 of runups",       "m", "ft", "scalar"),
-    Out("R_mean", "Average runup",                          "m", "ft", "scalar"),
+    Out("L0",     "Deepwater wave length",                  "m", "ft", "scalar",
+        note="Deepwater wavelength L_0 = g T_p^2 / (2 pi) from the peak wave period."),
+    Out("xi",     "Iribarren (surf-similarity) number",     "",  "",   "scalar",
+        note="Iribarren (surf-similarity) number xi = tan(theta) / sqrt(H_s0 / L_0); larger xi means steeper slope or longer/lower waves and higher runup."),
+    Out("R_max",  "Maximum runup",                          "m", "ft", "scalar",
+        note="Maximum wave runup, the highest vertical excursion above still-water level, R = H_s0 a xi^b with Mase (1989) coefficients (2.32, 0.77)."),
+    Out("R_2",    "Runup exceeded by 2% of runups",         "m", "ft", "scalar",
+        note="Runup height exceeded by only 2 percent of runups, above still-water level, with Mase (1989) coefficients (1.86, 0.71)."),
+    Out("R_1_10", "Average of highest 1/10 of runups",      "m", "ft", "scalar",
+        note="Average vertical runup of the highest one-tenth of runups above still-water level, with Mase (1989) coefficients (1.70, 0.71)."),
+    Out("R_1_3",  "Average of highest 1/3 of runups",       "m", "ft", "scalar",
+        note="Significant runup, the average of the highest one-third of runups above still-water level, with Mase (1989) coefficients (1.38, 0.70)."),
+    Out("R_mean", "Average runup",                          "m", "ft", "scalar",
+        note="Mean vertical runup averaged over all runups above still-water level, with Mase (1989) coefficients (0.88, 0.69)."),
 )
 
 # Mase (1989) power-law coefficients (R_p = H_s0 * a * xi^b), ordered high to low.
@@ -162,8 +170,12 @@ ABOUT = {'summary': 'Estimates how high irregular waves run up a smooth, uniform
                                      'number with statistic-specific Mase (1989) '
                                      'coefficients (a_p, b_p).'}]}],
  'symbols': [['R_p',
-              'Wave runup for statistic p (max, 2%, 1/10, 1/3, or mean), vertical height '
-              'above still-water level'],
+              'Wave runup for statistic p, vertical height above still-water level'],
+             ['R_max', 'Maximum wave runup'],
+             ['R_2%', 'Runup exceeded by 2% of runups'],
+             ['R_1/10', 'Average of the highest 1/10 of runups'],
+             ['R_1/3', 'Average of the highest 1/3 of runups (significant runup)'],
+             ['R_mean', 'Mean wave runup'],
              ['H_s0', 'Deepwater significant wave height'],
              ['T_p', 'Peak energy wave period'],
              ['L_0', 'Deepwater wavelength'],

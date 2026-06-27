@@ -82,6 +82,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -114,14 +115,27 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("A",     "Equilibrium profile factor A", "m^(1/3)", "m^(1/3)", "scalar"),
-    Out("hb",    "Breaking depth",               "m", "ft", "scalar"),
-    Out("Wb",    "Surf-zone width",              "m", "ft", "scalar"),
-    Out("R_inf", "Equilibrium (max) recession",  "m", "ft", "scalar"),
-    Out("T_s",   "Response time scale",          "hr", "hr", "scalar"),
-    Out("R_storm", "Recession over the storm",   "m", "ft", "scalar"),
-    Out("V_inf", "Equilibrium eroded volume",    "m^3", "yd^3", "scalar"),
-    Out("V_storm", "Eroded volume over the storm", "m^3", "yd^3", "scalar"),
+    Out("A",     "Equilibrium profile factor A", "m^(1/3)", "m^(1/3)", "scalar",
+        note="Dean equilibrium-profile shape factor A from grain size D50 (Moore 1982), "
+             "setting the depth profile h = A x^(2/3)."),
+    Out("hb",    "Breaking depth",               "m", "ft", "scalar",
+        note="Water depth at wave breaking, h_b = H_b/kappa with kappa=0.78 the spilling-breaker index."),
+    Out("Wb",    "Surf-zone width",              "m", "ft", "scalar",
+        note="Active surf-zone (profile) width from the Dean equilibrium profile, W_b = (h_b/A)^(3/2)."),
+    Out("R_inf", "Equilibrium (max) recession",  "m", "ft", "scalar",
+        note="Maximum shoreline recession the profile would reach at equilibrium under the surge, "
+             "from a Bruun-type sand balance R_inf = S W_b/(B+h_b)."),
+    Out("T_s",   "Response time scale",          "hr", "hr", "scalar",
+        note="Erosion response time scale (Kriebel & Dean 1993) over which the profile approaches "
+             "equilibrium exponentially as 1 - exp(-t/T_s)."),
+    Out("R_storm", "Recession over the storm",   "m", "ft", "scalar",
+        note="Shoreline recession actually realized over the storm duration, R_inf [1 - exp(-t/T_s)]."),
+    Out("V_inf", "Equilibrium eroded volume",    "m^3", "yd^3", "scalar",
+        note="Equilibrium eroded sand volume per unit beach length above the surge level, "
+             "V_inf = R_inf (B + S/2)."),
+    Out("V_storm", "Eroded volume over the storm", "m^3", "yd^3", "scalar",
+        note="Eroded sand volume per unit beach length realized over the storm duration, "
+             "V_inf [1 - exp(-t/T_s)]."),
 )
 
 

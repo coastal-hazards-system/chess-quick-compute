@@ -71,6 +71,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 # armor-unit types (informational; help the user choose K_D, k_delta, P from SPM tables)
@@ -132,11 +133,16 @@ INPUTS = (
 
 # Complete output list (ACES User's Guide 4-1).
 OUTPUTS = (
-    Out("W",   "Weight of individual armor unit", "kN", "tons", "scalar"),
-    Out("B",   "Crest width of breakwater",       "m",  "ft",   "scalar"),
-    Out("r",   "Average cover layer thickness",   "m",  "ft",   "scalar"),
-    Out("N_r", "Armor units per 1000 ft^2",       "",   "",     "scalar"),
-    Out("Ns",  "Stability number Hs/(d_n50)",     "",   "",     "scalar"),
+    Out("W",   "Weight of individual armor unit", "kN", "tons", "scalar",
+        note="Required weight of a single primary armor unit (Hudson, or via D_n50 for Van der Meer)."),
+    Out("B",   "Crest width of breakwater",       "m",  "ft",   "scalar",
+        note="Minimum crest width, using a 3-unit-wide cap (B = 3 k_delta (W/gamma_r)^(1/3))."),
+    Out("r",   "Average cover layer thickness",   "m",  "ft",   "scalar",
+        note="Average two-layer cover thickness over the armor (r = n k_delta (W/gamma_r)^(1/3))."),
+    Out("N_r", "Armor units per 1000 ft^2",       "",   "",     "scalar",
+        note="Placement density: number of armor units per 1000 ft^2 of structure surface."),
+    Out("Ns",  "Stability number Hs/(d_n50)",     "",   "",     "scalar",
+        note="Dimensionless stability number H_s/(Delta d_n50); compare against the method's allowable."),
 )
 
 # --- "Method / Equations" panel content (rendered on the tool page in both front-ends).

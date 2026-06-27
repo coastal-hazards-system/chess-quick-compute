@@ -78,6 +78,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -101,10 +102,14 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("L",      "Wave length",                          "m", "ft", "scalar"),
-    Out("mod_factor", "Modification factor |phi|",        "",  "",   "scalar"),
-    Out("phase",  "Wave phase",                           "rad", "rad", "scalar"),
-    Out("H",      "Modified wave height",                 "m", "ft", "scalar"),
+    Out("L",      "Wave length",                          "m", "ft", "scalar",
+        note="Linear wavelength L = 2 pi / k from the dispersion relation for the given period and depth."),
+    Out("mod_factor", "Modification factor |phi|",        "",  "",   "scalar",
+        note="Combined diffraction/reflection coefficient |phi| at the field point; ratio of local to incident wave height."),
+    Out("phase",  "Wave phase",                           "rad", "rad", "scalar",
+        note="Phase arg(phi) of the modified wave at the field point in radians (PCDFRAC reference convention, accurate to ~0.1 rad)."),
+    Out("H",      "Modified wave height",                 "m", "ft", "scalar",
+        note="Modified wave height H = |phi| times the incident height Hi at the field point."),
 )
 
 

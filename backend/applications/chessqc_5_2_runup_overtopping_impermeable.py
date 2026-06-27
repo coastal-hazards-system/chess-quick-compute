@@ -83,6 +83,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -135,15 +136,24 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("H0",   "Deepwater wave height",            "m", "ft", "scalar"),
-    Out("ds_H0", "Relative height ds/H0",           "",  "",   "scalar"),
-    Out("steepness", "Wave steepness H0/gT^2",      "",  "",   "scalar"),
-    Out("L0",   "Deepwater wave length",            "m", "ft", "scalar"),
-    Out("xi",   "Surf-similarity (Iribarren) number", "", "",  "scalar"),
-    Out("R",    "Wave runup",                       "m", "ft", "scalar"),
-    Out("F",    "Crest freeboard (hs - ds)",        "m", "ft", "scalar"),
-    Out("Cw",   "Wind correction factor",           "",  "",   "scalar"),
-    Out("Q",    "Overtopping rate per unit length", "m^3/s/m", "ft^3/s/ft", "scalar"),
+    Out("H0",   "Deepwater wave height",            "m", "ft", "scalar",
+        note="Equivalent unrefracted deepwater wave height obtained by deshoaling the incident toe height (H0 = Hi / Ks)."),
+    Out("ds_H0", "Relative height ds/H0",           "",  "",   "scalar",
+        note="Ratio of water depth at the structure toe to the deepwater wave height, a relative-depth indicator."),
+    Out("steepness", "Wave steepness H0/gT^2",      "",  "",   "scalar",
+        note="Dimensionless deepwater wave steepness H0/(g T^2) characterizing the wave."),
+    Out("L0",   "Deepwater wave length",            "m", "ft", "scalar",
+        note="Deepwater linear wavelength L0 = g T^2 / (2 pi)."),
+    Out("xi",   "Surf-similarity (Iribarren) number", "", "",  "scalar",
+        note="Surf-similarity (Iribarren) number xi = tan(theta)/sqrt(Hi/L0) classifying the breaking regime (plunging, transition, or nonbreaking)."),
+    Out("R",    "Wave runup",                       "m", "ft", "scalar",
+        note="Maximum vertical runup height of the wave above still-water level on the slope (significant runup R_s for irregular waves)."),
+    Out("F",    "Crest freeboard (hs - ds)",        "m", "ft", "scalar",
+        note="Crest freeboard F = hs - ds, the structure crest height above still-water level; positive means crest above water."),
+    Out("Cw",   "Wind correction factor",           "",  "",   "scalar",
+        note="Onshore-wind correction factor multiplying the overtopping rate, Cw = 1 + Wf*(F/R + 0.1)*sin(theta); 1 means no wind effect."),
+    Out("Q",    "Overtopping rate per unit length", "m^3/s/m", "ft^3/s/ft", "scalar",
+        note="Mean wave overtopping discharge per unit length of structure crest; 0 when runup does not reach the crest."),
 )
 
 

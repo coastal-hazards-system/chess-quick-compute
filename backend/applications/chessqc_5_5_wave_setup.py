@@ -77,6 +77,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"           # scalar | point | profile
+    note: str = ""                 # hover definition shown on the output label
 
 
 # --- application metadata --------------------------------------------------------
@@ -103,23 +104,39 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("H0p",       "Unrefracted deepwater height H'0", "m",  "ft", "scalar"),
-    Out("L0",        "Deepwater wave length",            "m",  "ft", "scalar"),
-    Out("a_index",   "Weggel breaker coefficient a(m)",  "",   "",   "scalar"),
-    Out("b_index",   "Weggel breaker coefficient b(m)",  "",   "",   "scalar"),
-    Out("Hb",        "Breaker height",                   "m",  "ft", "scalar"),
-    Out("db",        "Breaker depth",                    "m",  "ft", "scalar"),
-    Out("gamma_b",   "Breaker index Hb/db",              "",   "",   "scalar"),
-    Out("setdown_b", "Set-down at breaking",             "m",  "ft", "scalar"),
-    Out("setup_slope", "Set-up gradient d(eta)/dx",      "",   "",   "scalar"),
-    Out("surf_width", "Surf-zone width (breaker to SWL shoreline)", "m", "ft", "scalar"),
-    Out("setup_swl", "Set-up at still-water shoreline",  "m",  "ft", "scalar"),
-    Out("setup_max", "Maximum set-up (at waterline)",    "m",  "ft", "scalar"),
-    Out("dx_shore",  "Shoreline displacement",           "m",  "ft", "scalar"),
+    Out("H0p",       "Unrefracted deepwater height H'0", "m",  "ft", "scalar",
+        note="Unrefracted equivalent deepwater wave height H'0 = K_R * H0, used as the reference height for breaking."),
+    Out("L0",        "Deepwater wave length",            "m",  "ft", "scalar",
+        note="Deepwater wavelength L0 = g T^2/(2 pi) from linear dispersion."),
+    Out("a_index",   "Weggel breaker coefficient a(m)",  "",   "",   "scalar",
+        note="Slope-dependent Weggel (1972) breaker-index coefficient a(m) = 43.8(1 - e^-19.5m) in the gravity-explicit SI breaker-depth relation."),
+    Out("b_index",   "Weggel breaker coefficient b(m)",  "",   "",   "scalar",
+        note="Slope-dependent Weggel (1972) breaker-index coefficient b(m) = 1.56/(1 + e^-19.5m) in the breaker-depth relation."),
+    Out("Hb",        "Breaker height",                   "m",  "ft", "scalar",
+        note="Wave height at breaking on the finite beach slope (Singamsetti & Wind 1980)."),
+    Out("db",        "Breaker depth",                    "m",  "ft", "scalar",
+        note="Still-water depth at the breaker line (Weggel 1972)."),
+    Out("gamma_b",   "Breaker index Hb/db",              "",   "",   "scalar",
+        note="Breaker index gamma_b = Hb/db, the ratio of breaker height to breaker depth (usually 0.6 to 1.4)."),
+    Out("setdown_b", "Set-down at breaking",             "m",  "ft", "scalar",
+        note="Lowering of mean water level at the breaker line (negative); eta_b = -Hb^2 k_b/(8 sinh(2 k_b d_b))."),
+    Out("setup_slope", "Set-up gradient d(eta)/dx",      "",   "",   "scalar",
+        note="Cross-surf-zone slope of the mean water level d(eta)/dx = m beta/(1+beta) with beta = 3 gamma_b^2/8 (dimensionless rise per unit shoreward distance)."),
+    Out("surf_width", "Surf-zone width (breaker to SWL shoreline)", "m", "ft", "scalar",
+        note="Horizontal distance from the breaker line to the still-water shoreline, db/m."),
+    Out("setup_swl", "Set-up at still-water shoreline",  "m",  "ft", "scalar",
+        note="Mean water level rise at the still-water shoreline (set-down marched shoreward over the surf width)."),
+    Out("setup_max", "Maximum set-up (at waterline)",    "m",  "ft", "scalar",
+        note="Maximum mean water level rise, reached at the displaced waterline where mean depth d + eta = 0."),
+    Out("dx_shore",  "Shoreline displacement",           "m",  "ft", "scalar",
+        note="Horizontal distance the mean waterline moves up the beach beyond the still-water shoreline due to set-up."),
     # cross-surf-zone profile (for plots): distance shoreward of the breaker line
-    Out("profile_x",   "Profile: distance shoreward of breaker", "m", "ft", "profile"),
-    Out("profile_bed", "Profile: bed elevation",         "m",  "ft", "profile"),
-    Out("profile_mwl", "Profile: mean water level (set-up)", "m", "ft", "profile"),
+    Out("profile_x",   "Profile: distance shoreward of breaker", "m", "ft", "profile",
+        note="Cross-shore coordinate measured shoreward from the breaker line, for the surf-zone profile plot."),
+    Out("profile_bed", "Profile: bed elevation",         "m",  "ft", "profile",
+        note="Bed elevation along the profile, -db + m x (negative below still-water level)."),
+    Out("profile_mwl", "Profile: mean water level (set-up)", "m", "ft", "profile",
+        note="Mean water level along the profile (set-down at the breaker line rising to maximum set-up at the waterline)."),
 )
 
 

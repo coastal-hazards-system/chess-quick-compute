@@ -116,6 +116,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -145,13 +146,20 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("Q_net", "Net longshore transport", "m^3/yr", "yd^3/yr", "scalar"),
-    Out("Q_gross", "Gross longshore transport", "m^3/yr", "yd^3/yr", "scalar"),
-    Out("Q_right", "Transport to the right (+)", "m^3/yr", "yd^3/yr", "scalar"),
-    Out("Q_left", "Transport to the left (-)", "m^3/yr", "yd^3/yr", "scalar"),
-    Out("band_angle", "Per-band angle from shore normal", "deg", "deg", "profile"),
-    Out("band_pct", "Per-band contributing percentage", "%", "%", "profile"),
-    Out("band_Q", "Per-band transport rate", "m^3/yr", "yd^3/yr", "profile"),
+    Out("Q_net", "Net longshore transport", "m^3/yr", "yd^3/yr", "scalar",
+        note="signed sum of all directional-band transport rates; positive is rightward (looking seaward), negative leftward"),
+    Out("Q_gross", "Gross longshore transport", "m^3/yr", "yd^3/yr", "scalar",
+        note="sum of the magnitudes of all band transport rates, i.e. total volume moved regardless of direction"),
+    Out("Q_right", "Transport to the right (+)", "m^3/yr", "yd^3/yr", "scalar",
+        note="sum of the positive (rightward) band contributions, from waves approaching from the left of the shore normal"),
+    Out("Q_left", "Transport to the left (-)", "m^3/yr", "yd^3/yr", "scalar",
+        note="sum of the negative (leftward) band contributions, from waves approaching from the right of the shore normal"),
+    Out("band_angle", "Per-band angle from shore normal", "deg", "deg", "profile",
+        note="angle delta of each 22.5 deg directional band to the shore normal, wrapped to (-180,180]; positive drives rightward transport"),
+    Out("band_pct", "Per-band contributing percentage", "%", "%", "profile",
+        note="fraction (percent) of each band lying within +/-90 deg of the shore normal, i.e. the part whose waves reach the coast"),
+    Out("band_Q", "Per-band transport rate", "m^3/yr", "yd^3/yr", "profile",
+        note="signed CERC transport rate contributed by each directional band, summed over its height bins and scaled by the contributing fraction"),
 )
 
 

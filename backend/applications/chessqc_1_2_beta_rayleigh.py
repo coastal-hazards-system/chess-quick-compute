@@ -88,6 +88,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 # --- application metadata --------------------------------------------------------
@@ -114,19 +115,32 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("Hrms",   "Root-mean-square height",        "m", "ft", "scalar"),
-    Out("Hmed",   "Median height",                  "m", "ft", "scalar"),
-    Out("H13",    "Mean of highest 1/3 (H1/3)",     "m", "ft", "scalar"),
-    Out("H110",   "Mean of highest 1/10 (H1/10)",   "m", "ft", "scalar"),
-    Out("H1100",  "Mean of highest 1/100 (H1/100)", "m", "ft", "scalar"),
-    Out("Hb",     "Breaking (upper-bound) height",  "m", "ft", "scalar"),
-    Out("Hrmq",   "Root-mean-quad height (length^2)","m^2","ft^2","scalar"),
-    Out("alpha",  "Beta-Rayleigh shape alpha",      "",  "",   "scalar"),
-    Out("beta",   "Beta-Rayleigh shape beta",       "",  "",   "scalar"),
-    Out("rel_depth", "Relative depth d/(g Tp^2)",   "",  "",   "scalar"),
-    Out("regime", "Distribution used",              "",  "",   "scalar"),
-    Out("profile_H",   "Profile: wave height",      "m", "ft", "profile"),
-    Out("profile_pdf", "Profile: probability density", "1/m", "1/ft", "profile"),
+    Out("Hrms",   "Root-mean-square height",        "m", "ft", "scalar",
+        note="Root-mean-square individual wave height of the sea state, from the depth-dependent best fit (H_mo/sqrt(2) in deep water)."),
+    Out("Hmed",   "Median height",                  "m", "ft", "scalar",
+        note="Median individual wave height, the value exceeded by half the waves in the sea state."),
+    Out("H13",    "Mean of highest 1/3 (H1/3)",     "m", "ft", "scalar",
+        note="Mean of the highest one-third of waves, i.e. the significant wave height."),
+    Out("H110",   "Mean of highest 1/10 (H1/10)",   "m", "ft", "scalar",
+        note="Mean of the highest one-tenth of waves in the sea state."),
+    Out("H1100",  "Mean of highest 1/100 (H1/100)", "m", "ft", "scalar",
+        note="Mean of the highest one-hundredth of waves in the sea state."),
+    Out("Hb",     "Breaking (upper-bound) height",  "m", "ft", "scalar",
+        note="Maximum (breaking) wave height that truncates the distribution, taken as 0.9 d (ACES) or 0.78 d (SPM)."),
+    Out("Hrmq",   "Root-mean-quad height (length^2)","m^2","ft^2","scalar",
+        note="Root-mean-quad (fourth-moment) wave height from the depth-dependent fit, carrying units of length squared."),
+    Out("alpha",  "Beta-Rayleigh shape alpha",      "",  "",   "scalar",
+        note="Beta-Rayleigh shape parameter alpha derived from the 2nd/4th moment ratios (dimensionless)."),
+    Out("beta",   "Beta-Rayleigh shape beta",       "",  "",   "scalar",
+        note="Beta-Rayleigh shape parameter beta derived from the same moment ratios (dimensionless)."),
+    Out("rel_depth", "Relative depth d/(g Tp^2)",   "",  "",   "scalar",
+        note="Dimensionless relative depth d/(g Tp^2); the distribution reverts to Rayleigh when this is >= 0.01."),
+    Out("regime", "Distribution used",              "",  "",   "scalar",
+        note="Which distribution was applied: depth-limited Beta-Rayleigh or deepwater Rayleigh."),
+    Out("profile_H",   "Profile: wave height",      "m", "ft", "profile",
+        note="Wave-height abscissa (x-axis) of the probability-density curve."),
+    Out("profile_pdf", "Profile: probability density", "1/m", "1/ft", "profile",
+        note="Probability density of individual wave height versus H (the fitted Beta-Rayleigh or Rayleigh curve)."),
 )
 
 

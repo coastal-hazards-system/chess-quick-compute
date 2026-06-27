@@ -74,6 +74,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -100,18 +101,30 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("mom_mean",  "Mean (moments)",            "phi", "phi", "scalar"),
-    Out("mom_sigma", "Sorting (moments)",         "phi", "phi", "scalar"),
-    Out("mom_skew",  "Skewness (moments)",        "",    "",    "scalar"),
-    Out("mom_kurt",  "Kurtosis (moments)",        "",    "",    "scalar"),
-    Out("folk_median", "Median (Folk, phi50)",    "phi", "phi", "scalar"),
-    Out("folk_mean",   "Mean (Folk graphic)",     "phi", "phi", "scalar"),
-    Out("folk_sigma",  "Sorting (Folk graphic)",  "phi", "phi", "scalar"),
-    Out("folk_skew",   "Skewness (Folk graphic)", "",    "",    "scalar"),
-    Out("folk_kurt",   "Kurtosis (Folk graphic)", "",    "",    "scalar"),
-    Out("d50_mm",   "Median diameter",            "mm",  "mm",  "scalar"),
-    Out("profile_phi", "Profile: phi size",       "phi", "phi", "profile"),
-    Out("profile_cum", "Profile: cumulative percent", "%", "%",  "profile"),
+    Out("mom_mean",  "Mean (moments)",            "phi", "phi", "scalar",
+        note="Method-of-moments mean grain size (phi), the weight-frequency-weighted average of the sieve-class phi values; larger phi = finer sediment."),
+    Out("mom_sigma", "Sorting (moments)",         "phi", "phi", "scalar",
+        note="Method-of-moments standard deviation (phi), the weighted spread of grain sizes about the mean; smaller = better sorted."),
+    Out("mom_skew",  "Skewness (moments)",        "",    "",    "scalar",
+        note="Method-of-moments skewness (3rd moment, dimensionless), asymmetry of the size distribution; positive = tail toward fines."),
+    Out("mom_kurt",  "Kurtosis (moments)",        "",    "",    "scalar",
+        note="Method-of-moments kurtosis (4th moment, dimensionless), peakedness of the size distribution relative to a normal curve."),
+    Out("folk_median", "Median (Folk, phi50)",    "phi", "phi", "scalar",
+        note="Median grain size phi_50 (phi), the 50th-percentile phi value on the cumulative-weight curve."),
+    Out("folk_mean",   "Mean (Folk graphic)",     "phi", "phi", "scalar",
+        note="Folk inclusive graphic mean grain size (phi), (phi_16 + phi_50 + phi_84)/3."),
+    Out("folk_sigma",  "Sorting (Folk graphic)",  "phi", "phi", "scalar",
+        note="Folk inclusive graphic standard deviation / sorting (phi); most beach sands fall in 0.5-2.0, smaller = better sorted."),
+    Out("folk_skew",   "Skewness (Folk graphic)", "",    "",    "scalar",
+        note="Folk inclusive graphic skewness (dimensionless, limits -1 to +1); positive = excess fines."),
+    Out("folk_kurt",   "Kurtosis (Folk graphic)", "",    "",    "scalar",
+        note="Folk graphic kurtosis (dimensionless), (phi_95 - phi_5)/(2.44 (phi_75 - phi_25)), peakedness of the distribution."),
+    Out("d50_mm",   "Median diameter",            "mm",  "mm",  "scalar",
+        note="Median grain diameter in mm, d_50 = 2^(-phi_50), the linear-scale equivalent of the median phi size."),
+    Out("profile_phi", "Profile: phi size",       "phi", "phi", "profile",
+        note="Sorted sieve-class phi sizes (x-axis of the cumulative grain-size curve)."),
+    Out("profile_cum", "Profile: cumulative percent", "%", "%",  "profile",
+        note="Cumulative percent by weight passing each sieve class (coarse-to-fine), rising from 0 to 100 percent."),
 )
 
 

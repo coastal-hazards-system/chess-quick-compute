@@ -80,6 +80,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -107,17 +108,28 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("Hs",    "Significant wave height (at depth)",   "m", "ft", "scalar"),
-    Out("Hmean", "Mean wave height",                     "m", "ft", "scalar"),
-    Out("Hrms",  "Root-mean-square wave height",         "m", "ft", "scalar"),
-    Out("H10",   "Average of highest 1/10",              "m", "ft", "scalar"),
-    Out("H2",    "Average of highest 2%",                "m", "ft", "scalar"),
-    Out("Hmax",  "Maximum wave height",                  "m", "ft", "scalar"),
-    Out("Ks",    "Shoaling coefficient",                 "",  "",   "scalar"),
-    Out("Kr",    "Effective refraction coefficient",     "",  "",   "scalar"),
-    Out("surf_beat", "RMS surf beat",                    "m", "ft", "scalar"),
-    Out("setup", "Wave setup at depth",                  "m", "ft", "scalar"),
-    Out("steepness", "Deepwater steepness H0/L0",        "",  "",   "scalar"),
+    Out("Hs",    "Significant wave height (at depth)",   "m", "ft", "scalar",
+        note="Significant (average of highest 1/3) wave height of the transformed sea state at the subject depth."),
+    Out("Hmean", "Mean wave height",                     "m", "ft", "scalar",
+        note="Mean (average) wave height of the transformed irregular sea state at the subject depth."),
+    Out("Hrms",  "Root-mean-square wave height",         "m", "ft", "scalar",
+        note="Root-mean-square wave height at the subject depth, the energy-based height scale of the distribution."),
+    Out("H10",   "Average of highest 1/10",              "m", "ft", "scalar",
+        note="Average height of the highest one-tenth of waves at the subject depth (H1/10)."),
+    Out("H2",    "Average of highest 2%",                "m", "ft", "scalar",
+        note="Average height of the highest two percent of waves at the subject depth (H1/50)."),
+    Out("Hmax",  "Maximum wave height",                  "m", "ft", "scalar",
+        note="Expected maximum wave height at the subject depth, capped by the depth-limited breaking height."),
+    Out("Ks",    "Shoaling coefficient",                 "",  "",   "scalar",
+        note="Shoaling coefficient, the ratio of local to deepwater wave height from change in group velocity."),
+    Out("Kr",    "Effective refraction coefficient",     "",  "",   "scalar",
+        note="Effective refraction coefficient: shoaling-weighted rms of per-component Snell refraction over the directional spectrum."),
+    Out("surf_beat", "RMS surf beat",                    "m", "ft", "scalar",
+        note="RMS amplitude of the low-frequency surf beat (long-wave oscillation) at the subject depth."),
+    Out("setup", "Wave setup at depth",                  "m", "ft", "scalar",
+        note="Mean water-level change at the subject depth from wave radiation stress; negative is set-down."),
+    Out("steepness", "Deepwater steepness H0/L0",        "",  "",   "scalar",
+        note="Deepwater wave steepness, the ratio of deepwater significant height to deepwater wavelength H0/L0."),
 )
 
 

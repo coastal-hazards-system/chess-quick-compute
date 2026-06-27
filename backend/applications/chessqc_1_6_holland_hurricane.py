@@ -82,6 +82,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -119,17 +120,28 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("U_max", "Maximum wind speed (gradient)", "km/h", "kt", "scalar"),
-    Out("r_at_max", "Radius of maximum wind", "km", "nmi", "scalar"),
-    Out("U_max_cyclo", "Maximum wind (cyclostrophic)", "km/h", "kt", "scalar"),
-    Out("R_max_out", "R_max (computed/echoed)", "km", "nmi", "scalar"),
-    Out("A_out", "A (computed/echoed)", "m^B", "m^B", "scalar"),
-    Out("B_out", "B (computed/echoed)", "", "", "scalar"),
-    Out("dP", "Pressure deficit", "hPa", "hPa", "scalar"),
-    Out("profile_r", "Profile: radial distance", "km", "nmi", "profile"),
-    Out("profile_p", "Profile: pressure", "hPa", "hPa", "profile"),
-    Out("profile_Vgr", "Profile: gradient wind", "km/h", "kt", "profile"),
-    Out("profile_Vc", "Profile: cyclostrophic wind", "km/h", "kt", "profile"),
+    Out("U_max", "Maximum wind speed (gradient)", "km/h", "kt", "scalar",
+        note="peak gradient-balance wind speed of the storm, the maximum of V_gr(r) including the Coriolis term."),
+    Out("r_at_max", "Radius of maximum wind", "km", "nmi", "scalar",
+        note="radius at which the gradient wind peaks, shifted slightly inside R_max by the Coriolis term."),
+    Out("U_max_cyclo", "Maximum wind (cyclostrophic)", "km/h", "kt", "scalar",
+        note="closed-form cyclostrophic peak wind sqrt(B dP/(rho_a e)) at r = R_max, an upper bound on the gradient wind."),
+    Out("R_max_out", "R_max (computed/echoed)", "km", "nmi", "scalar",
+        note="radius of maximum wind R_max = A^(1/B), computed or echoed per the solve_for selector."),
+    Out("A_out", "A (computed/echoed)", "m^B", "m^B", "scalar",
+        note="Holland length-scaling parameter A (units m^B), computed or echoed per the solve_for selector."),
+    Out("B_out", "B (computed/echoed)", "", "", "scalar",
+        note="Holland peakedness/shape parameter B (~0.5-2.5) controlling how sharply the wind peaks at R_max."),
+    Out("dP", "Pressure deficit", "hPa", "hPa", "scalar",
+        note="central pressure deficit dP = p_n - p_c (positive) that drives the storm circulation."),
+    Out("profile_r", "Profile: radial distance", "km", "nmi", "profile",
+        note="radial distance r from the storm centre at which the profile quantities are sampled."),
+    Out("profile_p", "Profile: pressure", "hPa", "hPa", "profile",
+        note="Holland radial surface-pressure profile p(r), rising from p_c at the eye toward p_n far away."),
+    Out("profile_Vgr", "Profile: gradient wind", "km/h", "kt", "profile",
+        note="gradient-wind speed V_gr(r) including the Coriolis term, the balanced wind versus radius."),
+    Out("profile_Vc", "Profile: cyclostrophic wind", "km/h", "kt", "profile",
+        note="cyclostrophic wind speed V_c(r), the f -> 0 limit and an upper bound on the gradient wind."),
 )
 
 

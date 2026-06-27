@@ -92,6 +92,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -128,15 +129,32 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("le",   "Equivalent rectangle width",       "m", "ft", "scalar"),
-    Out("R_si", "Seaward-slope reflection",          "",  "",   "scalar"),
-    Out("R_ti", "Internal reflection",               "",  "",   "scalar"),
-    Out("T_ti", "Internal transmission",             "",  "",   "scalar"),
-    Out("K_Tt", "Through-transmission coefficient",  "",  "",   "scalar"),
-    Out("K_To", "Overtopping transmission coeff.",   "",  "",   "scalar"),
-    Out("K_T",  "Total transmission coefficient",    "",  "",   "scalar"),
-    Out("K_R",  "Reflection coefficient (approx.)",  "",  "",   "scalar"),
-    Out("H_T",  "Transmitted wave height",           "m", "ft", "scalar"),
+    Out("le",   "Equivalent rectangle width",       "m", "ft", "scalar",
+        note="Width l_e of the hydraulically equivalent homogeneous rectangle that the layered "
+             "trapezoidal breakwater is reduced to by equating Darcy-Forchheimer discharge."),
+    Out("R_si", "Seaward-slope reflection",          "",  "",   "scalar",
+        note="Reflection coefficient of the rough seaward armor slope (reflected/incident "
+             "amplitude), from the Madsen-White Bessel-function long-wave solution."),
+    Out("R_ti", "Internal reflection",               "",  "",   "scalar",
+        note="Reflection coefficient of the equivalent porous rectangle's internal energy "
+             "dissipation (reflected/incident amplitude inside the structure)."),
+    Out("T_ti", "Internal transmission",             "",  "",   "scalar",
+        note="Transmission coefficient through the equivalent porous rectangle "
+             "(transmitted/incident amplitude inside the structure)."),
+    Out("K_Tt", "Through-transmission coefficient",  "",  "",   "scalar",
+        note="Through-transmission coefficient for the porous medium, K_Tt = T_ti * R_si "
+             "(fraction of incident height passing through the structure body)."),
+    Out("K_To", "Overtopping transmission coeff.",   "",  "",   "scalar",
+        note="Overtopping transmission coefficient (Seelig 1980), the fraction of incident "
+             "height transmitted by water passing over the crest; F = h_s - d_s freeboard."),
+    Out("K_T",  "Total transmission coefficient",    "",  "",   "scalar",
+        note="Total transmission coefficient, K_T = sqrt(K_Tt^2 + K_To^2), the overall ratio "
+             "of transmitted to incident wave height."),
+    Out("K_R",  "Reflection coefficient (approx.)",  "",  "",   "scalar",
+        note="Reflection coefficient (reflected/incident height); Madsen-White value is "
+             "approximate and over-predicted due to under-resolved seaward-slope dissipation."),
+    Out("H_T",  "Transmitted wave height",           "m", "ft", "scalar",
+        note="Wave height transmitted past the breakwater, H_T = K_T * H_i."),
 )
 
 # Example-1 geometry (used when the geometry lists are not supplied), in feet.

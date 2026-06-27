@@ -85,6 +85,7 @@ class Out:
     unit_us: str = ""
     kind: str = "scalar"
     group: str = ""        # profile panel id; profiles sharing a group plot together
+    note: str = ""           # hover definition shown on the output label
 
 
 # --- application metadata --------------------------------------------------------
@@ -143,25 +144,51 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("slope_per_year", "Linear trend (slope)", "m/yr", "ft/yr", "scalar"),
-    Out("pivot_year", "Pivot (reference) year", "yr", "yr", "scalar"),
-    Out("total_trend", "Total trend over record", "m", "ft", "scalar"),
-    Out("record_years", "Record length", "yr", "yr", "scalar"),
-    Out("n_samples", "Samples used in fit", "", "", "scalar"),
-    Out("rms_residual", "RMS residual about trend", "m", "ft", "scalar"),
+    Out("slope_per_year", "Linear trend (slope)", "m/yr", "ft/yr", "scalar",
+        note="Fitted (or specified) linear sea-level rate; positive means the water "
+             "level is rising over time."),
+    Out("pivot_year", "Pivot (reference) year", "yr", "yr", "scalar",
+        note="Decimal year where the fitted trend is zero (the NTDE midpoint or the "
+             "record-mean year), to which the detrended series is referenced."),
+    Out("total_trend", "Total trend over record", "m", "ft", "scalar",
+        note="Net change in level attributable to the trend across the record, equal "
+             "to slope times the record length."),
+    Out("record_years", "Record length", "yr", "yr", "scalar",
+        note="Time span of the record in years, from the first to the last valid "
+             "sample."),
+    Out("n_samples", "Samples used in fit", "", "", "scalar",
+        note="Number of finite (date, water-level) samples used in the least-squares "
+             "fit; blank-value gaps are excluded."),
+    Out("rms_residual", "RMS residual about trend", "m", "ft", "scalar",
+        note="Root-mean-square scatter of the detrended series about its mean; the "
+             "typical residual variability remaining after the trend is removed."),
     # vertical marker on the plots at the NTDE midpoint (NaN -> not drawn, e.g. for
     # the record-mean reference); plotted on the x (year) axis
-    Out("pivot_line", "NTDE midpoint", "yr", "yr", "vline"),
-    Out("profile_year", "Profile: year", "yr", "yr", "profile"),
+    Out("pivot_line", "NTDE midpoint", "yr", "yr", "vline",
+        note="Vertical marker at the NTDE-midpoint pivot year; not drawn for the "
+             "record-mean reference."),
+    Out("profile_year", "Profile: year", "yr", "yr", "profile",
+        note="Decimal calendar year (x-axis) for the plotted series, decimated for "
+             "display when the record is large."),
     # Panel 1 (group "obs"): observed level with the fitted linear trend on top.
-    Out("profile_original", "Profile: observed", "m", "ft", "profile", group="obs"),
-    Out("profile_trend", "Profile: linear trend", "m", "ft", "profile", group="obs"),
+    Out("profile_original", "Profile: observed", "m", "ft", "profile", group="obs",
+        note="Observed water level over time; NaN at gaps so the line breaks across "
+             "missing data."),
+    Out("profile_trend", "Profile: linear trend", "m", "ft", "profile", group="obs",
+        note="Fitted linear-trend line overlaid on the observed level, passing through "
+             "the datum at the pivot year."),
     # Panel 2 (group "detr"): detrended level with the horizontal datum.
-    Out("profile_detrended", "Profile: detrended", "m", "ft", "profile", group="detr"),
-    Out("profile_datum", "Profile: datum", "m", "ft", "profile", group="detr"),
+    Out("profile_detrended", "Profile: detrended", "m", "ft", "profile", group="detr",
+        note="Water level with the linear trend removed, referenced to the pivot; the "
+             "residual variability about the trend."),
+    Out("profile_datum", "Profile: datum", "m", "ft", "profile", group="detr",
+        note="Horizontal reference level (mean of the detrended series) drawn across "
+             "the detrended panel."),
     # full-resolution detrended series for the workflow hand-off (emitted only when
     # the `handoff` input is set); carried into 10-2 / 10-3. Not shown or plotted.
-    Out("handoff_csv", "handoff", "", "", "data"),
+    Out("handoff_csv", "handoff", "", "", "data",
+        note="Full-resolution detrended series (year, level) passed in-memory to the "
+             "10-2 / 10-3 workflow apps; not displayed."),
 )
 
 

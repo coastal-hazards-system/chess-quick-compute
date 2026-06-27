@@ -69,6 +69,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -96,12 +97,18 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("R_A", "Overfill ratio", "", "", "scalar"),
-    Out("R_J", "Renourishment factor", "", "", "scalar"),
-    Out("VOL_D", "Design (borrow) volume", "m^3", "yd^3", "scalar"),
-    Out("delta", "Phi-mean difference (scaled)", "", "", "scalar"),
-    Out("sigma_ratio", "Sorting ratio", "", "", "scalar"),
-    Out("category", "James category", "", "", "scalar"),
+    Out("R_A", "Overfill ratio", "", "", "scalar",
+        note="Volume of borrow sand that must be placed to yield one unit volume of usable beach fill (James 1975)."),
+    Out("R_J", "Renourishment factor", "", "", "scalar",
+        note="Ratio of borrow-sand to native-sand erosion/renourishment rate; R_J > 1 means borrow erodes faster than native."),
+    Out("VOL_D", "Design (borrow) volume", "m^3", "yd^3", "scalar",
+        note="Borrow volume to place to obtain the target usable fill volume, VOL_D = VOL_I times R_A."),
+    Out("delta", "Phi-mean difference (scaled)", "", "", "scalar",
+        note="Scaled phi-mean difference (M_b - M_n)/sigma_n; delta > 0 borrow is finer than native, delta < 0 coarser."),
+    Out("sigma_ratio", "Sorting ratio", "", "", "scalar",
+        note="Phi sorting ratio sigma_b/sigma_n; > 1 borrow is more poorly sorted than native, < 1 better sorted."),
+    Out("category", "James category", "", "", "scalar",
+        note="James (1975) classification (I-IV) of the borrow vs native sand by finer/coarser and sorting, which sets the integration thresholds."),
 )
 
 

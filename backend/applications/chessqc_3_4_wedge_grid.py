@@ -71,6 +71,7 @@ class Out:
     unit_si: str = ""
     unit_us: str = ""
     kind: str = "scalar"
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -97,14 +98,22 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("L",       "Wave length",                       "m", "ft", "scalar"),
-    Out("mod_max", "Maximum modification factor",       "",  "",   "scalar"),
-    Out("mod_min", "Minimum modification factor",       "",  "",   "scalar"),
-    Out("H_max",   "Maximum modified wave height",      "m", "ft", "scalar"),
-    Out("grid_x",  "Grid X coordinates",                "m", "ft", "profile"),
-    Out("grid_y",  "Grid Y coordinates",                "m", "ft", "profile"),
-    Out("mod_grid", "Modification-factor field",        "",  "",   "grid"),
-    Out("H_grid",  "Modified-height field",             "m", "ft", "grid"),
+    Out("L",       "Wave length",                       "m", "ft", "scalar",
+        note="Linear-theory wavelength L = 2 pi / k from the dispersion relation for the given period and depth."),
+    Out("mod_max", "Maximum modification factor",       "",  "",   "scalar",
+        note="Largest wave-height modification factor |phi| (diffraction/reflection coefficient) found over the grid, dimensionless."),
+    Out("mod_min", "Minimum modification factor",       "",  "",   "scalar",
+        note="Smallest wave-height modification factor |phi| over the grid, dimensionless (values below 1 indicate sheltering)."),
+    Out("H_max",   "Maximum modified wave height",      "m", "ft", "scalar",
+        note="Largest modified wave height H = |phi| H_i found over the grid."),
+    Out("grid_x",  "Grid X coordinates",                "m", "ft", "profile",
+        note="X-axis node positions of the uniform grid, measured from the wedge apex."),
+    Out("grid_y",  "Grid Y coordinates",                "m", "ft", "profile",
+        note="Y-axis node positions of the uniform grid, measured from the wedge apex."),
+    Out("mod_grid", "Modification-factor field",        "",  "",   "grid",
+        note="Field of the dimensionless modification factor |phi| (diffraction/reflection coefficient) at every grid node."),
+    Out("H_grid",  "Modified-height field",             "m", "ft", "grid",
+        note="Field of the modified wave height H = |phi| H_i at every grid node."),
 )
 
 

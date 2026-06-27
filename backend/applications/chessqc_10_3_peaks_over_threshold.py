@@ -87,6 +87,7 @@ class Out:
     kind: str = "scalar"
     group: str = ""
     x_key: str = ""        # for kind "scatter": the output key giving the marker x-values
+    note: str = ""           # hover definition shown on the output label
 
 
 APP_META = AppMeta(
@@ -138,20 +139,32 @@ INPUTS = (
 )
 
 OUTPUTS = (
-    Out("threshold", "Threshold", "m", "ft", "scalar"),
-    Out("n_peaks", "Peaks retained", "", "", "scalar"),
-    Out("events_per_year", "Effective rate", "1/yr", "1/yr", "scalar"),
-    Out("final_percentile", "Threshold percentile", "%", "%", "scalar"),
-    Out("eff_duration", "Effective duration", "yr", "yr", "scalar"),
-    Out("converged", "Converged", "", "", "scalar"),
-    Out("profile_year", "Profile: year", "yr", "yr", "profile"),
-    Out("profile_series", "Profile: series", "m", "ft", "profile", group="ts"),
-    Out("profile_threshold", "Profile: threshold", "m", "ft", "profile", group="ts"),
+    Out("threshold", "Threshold", "m", "ft", "scalar",
+        note="auto-selected exceedance threshold u; the series level above which samples are counted as exceedances."),
+    Out("n_peaks", "Peaks retained", "", "", "scalar",
+        note="number of independent declustered storm peaks kept after rank-trimming to round(target x effective duration)."),
+    Out("events_per_year", "Effective rate", "1/yr", "1/yr", "scalar",
+        note="achieved declustered exceedance rate = retained peaks divided by the effective record duration (events per year)."),
+    Out("final_percentile", "Threshold percentile", "%", "%", "scalar",
+        note="series percentile p at which the converged threshold sits; higher percentile means a more extreme threshold."),
+    Out("eff_duration", "Effective duration", "yr", "yr", "scalar",
+        note="effective record length in years from the count of valid (non-NaN) samples; gaps do not count toward the rate."),
+    Out("converged", "Converged", "", "", "scalar",
+        note="yes if the achieved rate landed within [target, target + tolerance], otherwise no."),
+    Out("profile_year", "Profile: year", "yr", "yr", "profile",
+        note="decimal-year time axis for the plotted water-level / NTR series (decimated for display only)."),
+    Out("profile_series", "Profile: series", "m", "ft", "profile", group="ts",
+        note="the input water-level / non-tidal-residual series plotted against time."),
+    Out("profile_threshold", "Profile: threshold", "m", "ft", "profile", group="ts",
+        note="the selected threshold u drawn as a constant horizontal level across the series panel."),
     # peaks as scatter markers (own x), drawn on the series panel
-    Out("peaks_t", "Peak times", "yr", "yr", "scatter_x"),
-    Out("peaks_v", "Peaks", "m", "ft", "scatter", group="ts", x_key="peaks_t"),
+    Out("peaks_t", "Peak times", "yr", "yr", "scatter_x",
+        note="decimal-year times of the extracted independent storm peaks (marker x-values)."),
+    Out("peaks_v", "Peaks", "m", "ft", "scatter", group="ts", x_key="peaks_t",
+        note="values of the declustered storm peaks (one maximum per independent event), shown as markers on the series."),
     # the declustered peaks as a year,value series for the hand-off into 10-4 PST
-    Out("handoff_csv", "handoff", "", "", "data"),
+    Out("handoff_csv", "handoff", "", "", "data",
+        note="declustered peaks as a year,value CSV passed in memory to the 10-4 PST application."),
 )
 
 
