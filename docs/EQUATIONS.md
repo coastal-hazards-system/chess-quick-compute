@@ -112,18 +112,22 @@ ln( |V_g| / (f · z_0) ) = A − ln( U_* / |V_g| ) + √( k²|V_g|² / U_*²  �
 ```
 **(15)** Cross-isobar angle:
 ```
-sin θ = − B · U_* / ( k · |V_g| )
+sin θ = B · U_* / ( k · |V_g| )
 ```
 `V_g` = geostrophic wind; `f` = Coriolis acceleration; `θ` = angle between `V_g`
 and the surface stress.
 
-**(16)** Nondimensional stability functions A, B, stable/neutral (μ ≤ 0):
+**(16)** Nondimensional stability functions A, B, unstable/neutral (μ ≤ 0),
+using the later Sherlock (1996) revision published by Silva (2005, eq. 7.16):
 ```
-A = A_0 · [ 1 − e^(0.0153 μ) ]
-B = B_0 − B_1 · [ 1 − e^(0.0153 μ) ]
+A = A_0 + (C − A_0) · [ 1 − e^(0.015 μ) ]
+B = B_0 − B_1 · [ 1 − e^(0.03 μ) ]
 ```
-(Exponent constant 0.0153 confirmed at 300 DPI, p06.)
-**(17)**, unstable (μ > 0):
+`A_0 = 0.8`, `B_0 = B_1 = 3.5`, and `C = −7.0`. The two exponent
+coefficients are distinct in both the ACES page image and Silva's published revision.
+The revised form is continuous at neutral conditions: `A(0)=A_0`, `B(0)=B_0`.
+
+**(17)**, stable (μ > 0):
 ```
 A = A_0 − 0.96 √μ + ln(μ + 1)
 B = B_0 + 0.7 √μ
@@ -132,7 +136,9 @@ B = B_0 + 0.7 √μ
 ```
 μ = k · U_* / ( f · L' )
 ```
-`A_0, B_0, B_1` = constants (values to be read from later page / appendix).
+`A_0, B_0, B_1` = the Sherlock constants above. Because `ΔT=T_air−T_sea` in
+eq. (8), unstable conditions have `L'<0` and `μ<0`; stable conditions have
+`L'>0` and `μ>0`.
 
 #### Full-PBL convergence & final adjustments  [TR 1-1-6, p07]
 
@@ -1964,14 +1970,15 @@ F_s = (4/3π)·[ ∫₀¹ (…)³ dy / ∫₀¹ (…)² dy ]
 Solved iteratively: assume φ → evaluate R_s, F_2 → new φ → repeat to convergence.
 
 #### Synthesis of internal + external dissipation  [TR 5-4-12/13, p31–p32]
-Armor-layer stone treated as rough impermeable slope (external); remainder via
-internal dissipation. `R_si, T_si` = external (slope) coefficients; `R_ti, T_ti` =
-internal coefficients.
-**(51)** `a_r = R_si·a_i` (reflection after seaward-slope dissipation).
-**(52)** `|a_r| = R_si·R_ti·a_i`.
-**(53)** `|a_t| = T_si·T_ti·a_i`.
-**(54)** Combined reflection: `R = |a_r|/a_i = R_si·R_ti`.
-**(55)** Combined transmission: `K_Tt = |a_t|/a_i = T_si·T_ti`.
+Armor-layer stone is treated as a rough impermeable slope (external); the remainder
+is handled by the equivalent porous rectangle (internal). `R_II` is the external
+slope reflection/remaining-amplitude coefficient; `R_I, T_I` are the internal
+reflection and transmission coefficients.
+**(51)** `a_I = R_II·a_i` (equivalent amplitude remaining after slope dissipation).
+**(52)** `|a_r| = R_I·a_I = R_I·R_II·a_i`.
+**(53)** `|a_t| = T_I·a_I = T_I·R_II·a_i`.
+**(54)** Combined reflection: `R = |a_r|/a_i = R_I·R_II`.
+**(55)** Combined transmission: `K_Tt = |a_t|/a_i = T_I·R_II`.
 
 #### Hydraulically equivalent rectangular breakwater  [TR 5-4-14/15, p33–p34]
 Reduces a trapezoidal multilayer breakwater to an equivalent homogeneous rectangle
@@ -1990,19 +1997,21 @@ Q_trap = √( g·ΔH_t/β_r )·d_s·Σ_i [ 1/√( Σ_x (β_x/β_r)·l_x ) ·(Δh
 **(58)** Equate discharges: `Q_rect = Q_trap`.
 **(59)** Solve for equivalent width (Σ_j = layers, Σ_n = materials):
 ```
-l_e = { Σ_j [ 1/√( Σ_n (β_n/β_r)·l_n )·(Δh_j/d_s) ] }^(−2)·(ΔH_t/ΔH_r)
+l_e = { Σ_j [ 1/√( Σ_n (β_n/β_r)·l_n )·(Δh_j/d_s) ] }^(−2)·(ΔH_e/ΔH_T)
 ```
 **(60)** Material-n characteristic (confirmed at 310 DPI): `β_n = β_o·((1 − n_n)/n_n³)·(1/d_n)`, `β_o = 2.7`.
 **(61)** Reference characteristic: `β_r = β_o·((1 − n_r)/n_r³)·(1/d_r)`, `n_r = 0.435`.
-`n_n, d_n` = porosity & mean diameter of material n; `d_r` = reference diameter.
-**(62)** Seaward-face head difference (reference): `ΔH_r = (1 + R_si)·a_i`.
+`n_n, d_n` = porosity & mean diameter of material n; `d_r` = mean diameter of the
+representative reference material. The earlier ACES phrase “1/2 mean diameter” means
+`(d_max+d_min)/2`, not half of an already supplied D50 (Madsen & White Table 1).
+**(62)** Equivalent-rectangle head difference: `ΔH_e = (1 + R_I)·a_I = (1 + R_I)·R_II·a_i`.
 
 #### Head-difference closure & iteration  [TR 5-4-16, p35]
-**(63)** Trapezoidal head difference: `ΔH_t = R_si·H_i = 2·R_si·a_i` (`H_i = 2a_i`).
-**(64)** Head-difference ratio (function of equivalent-breakwater reflection R_i;
-known once l_e is found, **iterative**):
+**(63)** Trapezoidal head difference: `ΔH_T = R_u·H_i = 2·R_u·a_i` (`H_i = 2a_i`).
+**(64)** Head-difference ratio (function of equivalent-breakwater reflection `R_I`;
+known once `l_e` is found, **iterative**):
 ```
-ΔH_r/ΔH_t = (1 + R_si)·R_ti / (2·R_si)
+ΔH_e/ΔH_T = (1 + R_I)·R_II / (2·R_u)
 ```
 
 **References [TR 5-4-16, p35]:** Ahrens & McCartney 1975; Bear 1968; Cross & Sollitt

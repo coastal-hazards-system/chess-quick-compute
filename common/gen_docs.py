@@ -38,7 +38,8 @@ _UNITS = _load_module(os.path.join(ROOT, "common", "units.py"), "doc_units")
 AREA_ORDER = [
     "Wave Prediction", "Wave Theory", "Wave Transformation", "Structural Design",
     "Wave Runup, Transmission, and Overtopping", "Littoral Processes",
-    "Inlet Processes", "Harbor Design", "Storm Surge", "Miscellaneous Routines",
+    "Inlet Processes", "Harbor Design", "Storm Surge", "Coastal Hazards",
+    "Miscellaneous Routines",
 ]
 
 # Fidelity classification: A exact, B standard, C provisional.
@@ -102,6 +103,11 @@ def _input_rows(mod, system):
         elif f.kind == "bool":
             rng = "yes / no"
             default = "yes" if f.default else "no"
+        elif f.kind == "csv":
+            # CSV defaults can contain thousands of sample records; the field note
+            # describes the expected columns, so keep generated manuals readable.
+            rng = "CSV text / uploaded file"
+            default = "embedded sample" if f.default else "(none)"
         elif f.kind == "table":
             cols = getattr(f, "columns", ()) or ()
             rng = "table: " + ", ".join(c[0] for c in cols) if cols else "table"

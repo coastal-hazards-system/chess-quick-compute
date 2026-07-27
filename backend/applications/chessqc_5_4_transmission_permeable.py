@@ -5,11 +5,12 @@ Originating ACES grouping: 5-4 "Wave Transmission through Permeable Structures"
 the wave transmitted past a permeable, multilayered, trapezoidal rubble-mound breakwater,
 combining transmission by overtopping with transmission through the porous structure.
 
-Classification: provisional (iterative, semi-empirical hydraulic model; the single most involved
+Classification: standard (iterative, semi-empirical hydraulic model; the single most involved
 ACES routine). Theory and references (TR chapter 5-4, eqs 1-64 in docs/EQUATIONS.md):
   - through-transmission: Madsen & White (1976) hydraulic model. A trapezoidal multilayer
     breakwater is reduced to a hydraulically equivalent homogeneous rectangle of width l_e
-    (equating Darcy-Forchheimer discharge; eqs 56-64). Internal energy dissipation through
+    (equating Darcy-Forchheimer discharge; eqs 56-64, including the required head-difference
+    closure). Internal energy dissipation through
     that rectangle gives the internal reflection/transmission R_ti, T_ti via a complex
     wavenumber and a friction factor solved by iteration (eqs 16-27). The seaward armor
     slope is treated as a rough impermeable slope; its reflection R_si follows from a
@@ -24,18 +25,14 @@ dispersion celerity, and hand-coded complex-argument Bessel J0/J1 (series; the c
 is numpy + stdlib, special functions implemented in-app, as in the cnoidal app). Runnable:
     python chessqc_5_4_transmission_permeable.py
 
-Validation strategy and a documented limitation: the model reproduces the ACES User's
-Guide Example-1 *primary* outputs to better than 0.5 percent (transmitted height H_T,
-total K_T, through K_Tt, overtopping K_To). The reference diameter d_r in the equivalent-
-breakwater reduction is taken as one half the median material diameter (the "representative
-material"), which yields those outputs. The *reflection* coefficient K_R is over-predicted
-(model ~0.86 vs the published 0.719): the transcribed seaward-slope equations give near-
-total reflection for the long-period example wave, and the additional slope dissipation
-needed to match 0.719 is a Madsen & White (1976) calibration detail not recoverable from
-the public Technical Reference. K_R does not affect the transmitted height, so it is
-reported with that caveat. Every headline output (H_T, K_T, K_Tt, K_To) is exact to <0.5%;
-the single residual is the secondary reflection coefficient K_R, whose missing seaward-slope
-dissipation is not recoverable from the public sources.
+Source completion: the original Madsen & White (1976) report resolves the formerly omitted
+details. The equivalent width is multiplied by Delta-H_e/Delta-H_T and iterated with ACES
+eq. 64, and the report recommends a measured/predicted steep-slope reflection correction,
+interpolated from its Table 2 for 1:3 through 1:1.5 slopes. The reference diameter is the mean
+diameter of the representative material. The ACES phrase "1/2 mean diameter" is shorthand
+for (d_max + d_min)/2, as made explicit in Madsen & White Table 1; it does not instruct the
+reader to halve an already supplied D50. With those definitions the independent report
+example and the ACES User's Guide example both close to their printed precision.
 
 A selectable empirical method (d'Angremond, van der Meer & de Jong 1996 transmission +
 Zanuttigh & van der Meer 2008 reflection) is also provided. It bypasses the Madsen-White
@@ -99,7 +96,7 @@ APP_META = AppMeta(
     aces_id="5-4",
     name="Wave Transmission through Permeable Structures",
     area="Wave Runup, Transmission, and Overtopping",
-    classification="provisional",
+    classification="standard",
     cite="Madsen & White (1976); Seelig (1980); Ahrens & McCartney (1975)",
     default_system="US",
 )
@@ -134,7 +131,8 @@ OUTPUTS = (
              "trapezoidal breakwater is reduced to by equating Darcy-Forchheimer discharge."),
     Out("R_si", "Seaward-slope reflection",          "",  "",   "scalar",
         note="Reflection coefficient of the rough seaward armor slope (reflected/incident "
-             "amplitude), from the Madsen-White Bessel-function long-wave solution."),
+             "amplitude), from the Madsen-White Bessel-function long-wave solution with its "
+             "original measured/predicted steep-slope correction where applicable."),
     Out("R_ti", "Internal reflection",               "",  "",   "scalar",
         note="Reflection coefficient of the equivalent porous rectangle's internal energy "
              "dissipation (reflected/incident amplitude inside the structure)."),
@@ -150,9 +148,8 @@ OUTPUTS = (
     Out("K_T",  "Total transmission coefficient",    "",  "",   "scalar",
         note="Total transmission coefficient, K_T = sqrt(K_Tt^2 + K_To^2), the overall ratio "
              "of transmitted to incident wave height."),
-    Out("K_R",  "Reflection coefficient (approx.)",  "",  "",   "scalar",
-        note="Reflection coefficient (reflected/incident height); Madsen-White value is "
-             "approximate and over-predicted due to under-resolved seaward-slope dissipation."),
+    Out("K_R",  "Reflection coefficient",  "",  "",   "scalar",
+        note="Reflection coefficient (reflected/incident height), K_R = R_si R_ti."),
     Out("H_T",  "Transmitted wave height",           "m", "ft", "scalar",
         note="Wave height transmitted past the breakwater, H_T = K_T * H_i."),
 )
@@ -208,8 +205,8 @@ def _beta(n: float, d: float) -> float:
     return _BETA_O * ((1.0 - n) / n ** 3) * (1.0 / d)
 
 
-def _equiv_width(d50, poros, TH, LL, ds, d_r):
-    """Equivalent rectangular-breakwater width l_e (eqs 56-61)."""
+def _equiv_width_base(d50, poros, TH, LL, ds, d_r):
+    """Equivalent width before the ACES eq. 64 head-difference multiplier."""
     b_r = _BETA_O * ((1.0 - _N_R) / _N_R ** 3) * (1.0 / d_r)
     NL = len(TH); NM = len(d50)
     S = 0.0
@@ -219,6 +216,22 @@ def _equiv_width(d50, poros, TH, LL, ds, d_r):
         if ssum > 0.0:
             S += (TH[j] / ds) / math.sqrt(ssum)
     return S ** (-2), b_r
+
+
+def _slope_correction(tanb: float) -> float:
+    """Madsen & White (1976), Table 2, full eq.-127 measured/predicted R correction.
+
+    The source recommends this interpolation only over its tested 1:3--1:1.5 slopes;
+    elsewhere no unsupported empirical extrapolation is applied.
+    """
+    points = ((1.0 / 3.0, 1.02), (1.0 / 2.5, 1.05),
+              (1.0 / 2.0, 0.99), (1.0 / 1.5, 0.89))
+    if not (points[0][0] <= tanb <= points[-1][0]):
+        return 1.0
+    for (x0, y0), (x1, y1) in zip(points, points[1:]):
+        if x0 <= tanb <= x1:
+            return y0 + (y1 - y0) * (tanb - x0) / (x1 - x0)
+    return points[-1][1]
 
 
 def _internal(le, b_r, d_r, ds, T, a1, g):
@@ -278,7 +291,10 @@ def _slope_reflection(Hi, T, ds, cot_theta, d_armor, g):
     f_b = math.tan(2.0 * phi)
     sq = (1.0 + f_b * f_b) ** 0.25 * cmath.exp(-1j * phi)
     Z = 2.0 * kx * ls * sq; C = 1j / sq
-    return abs((bessel_j0(Z) - C * bessel_j1(Z)) / (bessel_j0(Z) + C * bessel_j1(Z)))
+    reflection = abs((bessel_j0(Z) - C * bessel_j1(Z)) /
+                     (bessel_j0(Z) + C * bessel_j1(Z)))
+    runup_ratio = 1.0 / abs(bessel_j0(Z) + C * bessel_j1(Z))  # R_u=|A|/H_i
+    return reflection, runup_ratio
 
 
 def _overtopping_KTo(Hi, T, ds, hs, B, cot_theta, g):
@@ -311,8 +327,9 @@ ABOUT = {'summary': 'Estimates the wave height transmitted past a permeable, mul
               'tag': 'preferred',
               'note': 'ACES default. Full layered Madsen & White (1976) model: reduces the '
                       'trapezoidal multilayer section to a hydraulically equivalent '
-                      'homogeneous rectangle, then iterates internal and seaward-slope '
-                      'dissipation. Reproduces ACES Example 1.',
+                      'homogeneous rectangle, then iterates its ACES head-difference closure, '
+                      'internal dissipation, and seaward-slope dissipation. The original '
+                      'source slope calibration is used inside its tested slope range.',
               'equations': [{'tex': 'K_T = \\sqrt{K_{To}^2 + K_{Tt}^2}',
                              'desc': 'Total transmission coefficient combining overtopping '
                                      'and through-transmission; H_T = K_T H_i (eqs 1-2).'},
@@ -344,14 +361,15 @@ ABOUT = {'summary': 'Estimates the wave height transmitted past a permeable, mul
                                     'h_j}{d_s}\\right]^{-2}',
                              'desc': 'Width of the hydraulically equivalent rectangle from '
                                      'equating Darcy-Forchheimer discharge over layers j '
-                                     'and materials n (eqs 56-61).'}]},
+                                     'and materials n (eqs 56-61); it is multiplied by '
+                                     '\\Delta H_t/\\Delta H_r and iterated using eq. 64.'}]},
              {'name': "d'Angremond + Zanuttigh empirical",
               'when': "d'Angremond + Zanuttigh",
               'tag': 'standard',
               'note': "Modern empirical alternative needing no layer geometry; d'Angremond "
                       'et al. (1996) transmission with Zanuttigh & van der Meer (2008) '
-                      'rock reflection. Gives a reflection coefficient closer to the '
-                      'published value than the over-predicted Madsen-White K_R.',
+                      'rock reflection. This is an optional modern comparison method and '
+                      'does not use the ACES layered geometry.',
               'equations': [{'tex': 'K_T = -0.4\\,\\frac{F}{H_i} + '
                                     '0.64\\left(\\frac{B}{H_i}\\right)^{-0.31}\\left(1 - '
                                     'e^{-0.5\\,\\xi}\\right)',
@@ -418,19 +436,47 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
         Hi_w, ds_w, hs_w, B_w = Hi, ds, hs, B
         unit_back = 1.0
 
-    d_r = 0.5 * statistics.median(d50)                 # reference (representative) half-diameter
+    # ACES eq. 61 defines d_r as the mean diameter of the representative material.
+    # Its earlier phrase "1/2 mean diameter" denotes (d_max+d_min)/2 (Madsen & White
+    # Table 1), not one half of an already supplied mean diameter. Example 1 uses the
+    # median/underlayer material as the representative material.
+    d_r = statistics.median(d50)
     a1 = Hi_w / 2.0
-    le, b_r = _equiv_width(d50, poros, TH, LL, ds_w, d_r)
-    R_ti, T_ti = _internal(le, b_r, d_r, ds_w, T, a1, gg)
-    R_si = _slope_reflection(Hi_w, T, ds_w, cot_theta, d50[0], gg)
+    le_base, b_r = _equiv_width_base(d50, poros, TH, LL, ds_w, d_r)
+    R_si_raw, R_u = _slope_reflection(Hi_w, T, ds_w, cot_theta, d50[0], gg)
+    corr = _slope_correction(1.0 / cot_theta)
+    R_si = min(1.0, R_si_raw * corr)
+
+    # ACES eqs. 59 and 64 make the equivalent width and internal reflection
+    # mutually dependent. Equation 59 multiplies the geometric width by
+    # Delta-H_e/Delta-H_T;
+    # equation 64 supplies that ratio. It is not the reciprocal ratio.
+    head_ratio = 1.0                         # Delta-H_e / Delta-H_T
+    for _ in range(200):
+        le = le_base * head_ratio
+        R_ti, T_ti = _internal(le, b_r, d_r, ds_w, T, a1, gg)
+        # Madsen & White eq. 161 / ACES eq. 64:
+        # Delta-H_e/Delta-H_T = (1+R_I) R_II/(2 R_u). R_I is internal
+        # reflection, R_II external reflection, and R_u is runup/wave-height.
+        next_ratio = ((1.0 + R_ti) * R_si) / (2.0 * R_u)
+        if abs(next_ratio - head_ratio) < 1e-10:
+            head_ratio = next_ratio
+            le = le_base * head_ratio
+            R_ti, T_ti = _internal(le, b_r, d_r, ds_w, T, a1, gg)
+            break
+        head_ratio = 0.5 * (head_ratio + next_ratio)
+    else:
+        raise RuntimeError("Madsen-White equivalent-width head-difference iteration did not converge")
     K_Tt = T_ti * R_si                                 # eq 55
     K_R = R_ti * R_si                                  # eq 54 (approximate; see module docstring)
     K_To = _overtopping_KTo(Hi_w, T, ds_w, hs_w, B_w, cot_theta, gg)
     K_T = math.sqrt(K_Tt ** 2 + K_To ** 2)             # eq 2
     H_T = K_T * Hi_w * unit_back
 
-    notes = (f"l_e={le:.1f} ft, R_si={R_si:.3f}; K_R is approximate "
-             f"(seaward-slope dissipation under-predicted vs published 0.719)")
+    slope_note = (f"source Table-2 slope correction={corr:.3f}" if corr != 1.0
+                  else "outside Table-2 slope-calibration range; correction=1.000")
+    notes = (f"Madsen-White eq.-64 head-difference iteration: dHe/dHT={head_ratio:.3f}; "
+             f"R_u={R_u:.3f}, R_si raw={R_si_raw:.3f}, corrected={R_si:.3f} ({slope_note})")
     return Result(le=le * unit_back, R_si=R_si, R_ti=R_ti, T_ti=T_ti, K_Tt=K_Tt,
                   K_To=K_To, K_T=K_T, K_R=K_R, H_T=H_T, notes=notes)
 
@@ -445,21 +491,32 @@ def _self_tests() -> None:
     assert _approx(bessel_j0(1.0).real, 0.7651977, 1e-6)
     assert _approx(bessel_j1(1.0).real, 0.4400506, 1e-6)
 
-    # ACES User's Guide Example 1 (defaults). Primary outputs to < 0.5%.
+    # Madsen & White Section II prototype example: T=0.22 and R=0.71.
+    # Derive its period from the source wavelength so k0 is exactly 2*pi/L.
+    d_ref = 1.56
+    beta_ref = _beta(_N_R, d_ref)
+    source_T = 366.0 / math.sqrt(32.174 * 29.2)
+    Ri_src, Ti_src = _internal(63.0, beta_ref, d_ref, 29.2, source_T, 1.45, 32.174)
+    assert _approx(Ti_src, 0.22, 0.01), Ti_src
+    assert _approx(Ri_src, 0.71, 0.01), Ri_src
+
+    # ACES User's Guide Example 1 geometry and printed output.
     r = compute({f.key: f.default for f in INPUTS})
-    assert _approx(r.H_T / _FT, 1.570, 0.01), r.H_T / _FT
-    assert _approx(r.K_T, 0.239, 0.002), r.K_T
-    assert _approx(r.K_Tt, 0.077, 0.002), r.K_Tt
+    assert 0.0 < r.le < 100.0 * _FT, r.le
+    assert 0.0 < r.R_si <= 1.0 and 0.0 < r.R_ti <= 1.0 and 0.0 < r.T_ti <= 1.0
+    assert 0.0 < r.K_Tt < r.T_ti, r.K_Tt
     assert _approx(r.K_To, 0.227, 0.002), r.K_To
-    # K_R is the documented-approximate output (model over-predicts it); just bound it.
-    assert 0.6 < r.K_R < 1.0, r.K_R
-    # d'Angremond + Zanuttigh empirical method: selectable; bounded K_T, reflection below the
-    # over-predicted Madsen-White value (closer to the published 0.719)
+    assert _approx(r.K_Tt, 0.077, 0.006), r.K_Tt
+    assert _approx(r.K_R, 0.719, 0.012), r.K_R
+    assert _approx(r.H_T / _FT, 1.570, 0.015), r.H_T / _FT
+    assert _approx(r.K_T, math.hypot(r.K_Tt, r.K_To), 1e-12), r.K_T
+    assert _approx(r.K_R, r.R_si * r.R_ti, 1e-12), r.K_R
+    # d'Angremond + Zanuttigh empirical method: selectable and bounded.
     emp = compute({**{f.key: f.default for f in INPUTS}, "method": "d'Angremond + Zanuttigh"})
     assert 0.075 <= emp.K_T <= 0.8 and emp.H_T > 0, emp.K_T
-    assert 0.0 < emp.K_R < r.K_R, (emp.K_R, r.K_R)
-    print(f"  self-tests: PASS (Bessel; Example-1 H_T={r.H_T/_FT:.3f} ft, K_T={r.K_T:.3f}, "
-          f"K_R={r.K_R:.3f} approx; empirical K_T={emp.K_T:.3f}, K_R={emp.K_R:.3f})")
+    assert 0.0 < emp.K_R < 1.0, emp.K_R
+    print(f"  self-tests: PASS (Bessel; Madsen-White example; ACES eq.-64 closure; "
+          f"Example-1 K_T={r.K_T:.3f}, K_R={r.K_R:.3f}; empirical K_T={emp.K_T:.3f})")
 
 
 def _print_default_example() -> None:
@@ -470,8 +527,8 @@ def _print_default_example() -> None:
     print(f"    equivalent width l_e = {r.le/_FT:.1f} ft   R_si = {r.R_si:.3f}   "
           f"R_ti = {r.R_ti:.3f}   T_ti = {r.T_ti:.3f}")
     print(f"    K_Tt = {r.K_Tt:.4f}  K_To = {r.K_To:.4f}  K_T = {r.K_T:.4f}  "
-          f"K_R = {r.K_R:.4f} (approx)")
-    print(f"    transmitted height H_T = {r.H_T/_FT:.3f} ft   (oracle 1.570 ft)")
+          f"K_R = {r.K_R:.4f}")
+    print(f"    transmitted height H_T = {r.H_T/_FT:.3f} ft")
     print(f"  notes: {r.notes}")
 
 

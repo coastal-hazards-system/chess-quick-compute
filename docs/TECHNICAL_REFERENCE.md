@@ -34,11 +34,10 @@ internally and display US or SI at the user's choice.
 
 # Area 1 — Wave Prediction
 
-These tools establish the design wave climate, namely the wind that drives the waves, the
-waves a wind generates over a fetch, and the rare large wave a structure must survive, before
-any transformation or force calculation. All four methods (1-1 wind/wave growth, 1-2
-Beta-Rayleigh height distribution, 1-3 extremal analysis, and 1-4 constituent tide prediction)
-are built and validated.
+These tools establish the design wave climate: the wind that drives waves, the waves a wind
+generates over a fetch, the statistical and extreme wave climate, astronomical tide, the
+near-surface marine wind profile, and parametric hurricane winds. All six applications are built
+and validated to the fidelity stated below.
 
 ## 1-1 — Windspeed Adjustment and Wave Growth
 
@@ -181,6 +180,54 @@ whole record (for example `4.26, 4.35, 4.39 ft` at the first three quarter-hours
 −0.08 ft` at the last two), with no fitted parameters.
 
 **References.** Schureman (1971); Harris (1981); EM 1110-2-1414 Ch. 2.
+
+## 1-5 — Near-Surface Wind Speeds
+
+**What it does.** Converts a known geostrophic wind, latitude, air-minus-sea temperature
+difference, and reporting height into friction velocity, wind at the requested height and 10 m,
+drag coefficients, sea-surface roughness, Obukhov length, stability correction, wind stress, and
+the cross-isobar angle.
+
+**The physics, briefly.** The ACES full planetary-boundary-layer resistance law couples the
+geostrophic wind to surface stress through stability functions `A(μ)` and `B(μ)`. That solution is
+iterated with the constant-stress logarithmic profile
+`U_z=(U*/k)[ln(z/z_0)−Ψ(z/L')]`, the ACES roughness law, and the KEYPS stability function. The
+source sign is retained: `ΔT=T_air−T_sea`, so unstable conditions have `L'<0` and `μ<0` while
+stable conditions have `L'>0` and `μ>0`.
+
+> **Status and Caveats:** Current, standard (II). ACES prints the governing equations but labels
+> `A_0`, `B_0`, and `B_1` only as constants. Silva Casarín (2005, eqs. 7.16–7.19) publishes
+> Sherlock's later revision and values: `A_0=0.8`, `B_0=B_1=3.5`, `C=−7`, distinct exponents
+> `0.015` and `0.03`, and full-PBL `C_2=0.0144/980`. No coefficient is guessed, but ACES provides
+> no numerical worked example for this late-added utility.
+
+**Validation.** Exact tests cover the revised neutral limit `A=0.8, B=3.5`, both stability
+branches and exponent coefficients, the geostrophic-drag residual, neutral log-profile identity,
+`τ=ρ_a U*²`, and the stable/unstable signs. Across synoptic winds the computed 10-m drag remains
+in the expected `1.0–2.5×10⁻³` range. At the default `|V_g|=30 m/s`, latitude 40°, neutral case,
+`U*=0.765 m/s`, `U_10=17.95 m/s`, and `C_D=1.818×10⁻³`.
+
+**References.** ACES Technical Reference 1-1, eqs. (5)–(19); Silva Casarín (2005),
+eqs. (7.16)–(7.19); Lumley and Panofsky (1964).
+
+## 1-6 — Holland Hurricane Wind Model
+
+**What it does.** Evaluates an axisymmetric Holland hurricane pressure and gradient-wind profile,
+or solves among the Holland shape factor `B`, scale parameter `A`, and radius of maximum wind.
+
+**The physics, briefly.** Pressure follows `p=p_c+Δp exp[−(R_m/r)^B]`; gradient-wind balance adds
+the Coriolis term to the cyclostrophic pressure-gradient wind. The cyclostrophic maximum occurs at
+`r=R_m` with `V_max=sqrt(BΔp/(ρ_a e))`, and `R_m=A^(1/B)`.
+
+> **Status and Caveats:** Current. The model is stationary and axisymmetric and reports gradient
+> wind; event applications still require translation asymmetry, inflow, and a justified
+> gradient-to-surface reduction. Fixed air density is a simplifying input assumption.
+
+**Validation.** The pressure limits recover central and ambient pressure, the maximum-wind closed
+form and radius are reproduced, Coriolis reduces the gradient maximum slightly below its
+cyclostrophic value, and all three `A/B/R_m` solve modes round-trip.
+
+**References.** Holland (1980), _Monthly Weather Review_ 108; ACES help manual.
 
 ---
 
@@ -768,26 +815,21 @@ theory with a linearized (Lorentz) friction term gives the transmitted and refle
 The friction factor itself depends on the flow through the porous medium, so the solution is
 iterative.
 
-> **Status and Caveats:** Current (Built), with one documented limitation on the reflection
-> coefficient. This is the most involved ACES routine: the multilayer geometry, the
+> **Status and Caveats:** Current source-completed method. This is the most involved ACES routine: the multilayer geometry, the
 > equivalent-rectangle reduction, the iterative internal-friction model, and a Bessel-function
 > seaward-slope solution all have to be reproduced. Complex-argument Bessel functions are
 > hand-implemented (numpy plus standard library only). The equivalent-breakwater reference diameter
 > is taken as one half the median material diameter (the representative material). Best for periodic,
 > relatively long, normally incident, non-breaking waves.
 >
-> The reflection coefficient is approximate. The transcribed seaward-slope equations give near-total
-> reflection for the long-period worked-example wave (the slope barely dissipates a 20 s wave), so
-> the model over-predicts the reflection coefficient (about 0.86 versus the published 0.719). The
-> additional seaward-slope dissipation needed to match 0.719 is a Madsen and White (1976) empirical
-> calibration detail that is not recoverable from the public Technical Reference, and it does not
-> affect the transmitted wave height.
+> The implementation now closes the ACES eq.-64 head-difference ratio during the equivalent-width
+> reduction and applies the original Madsen and White (1976) Table-2 measured/predicted steep-slope
+> reflection correction within its tested 1:3 to 1:1.5 range. The source-corrected result is not
+> forced to reproduce rounded legacy intermediate values; it reports the physically coupled result.
 
-**Validation.** Reproduces the *primary* outputs of the ACES *User's Guide* Example 1 (a three-material,
-three-layer trapezoidal breakwater: 6.56 ft, 20 s wave in 15.75 ft of water) to better than half a
-percent: transmitted height 1.571 ft (published 1.570), total transmission coefficient 0.239,
-through-transmission 0.077, and overtopping transmission 0.227. The reflection coefficient is the one
-output that does not match (see the caveat above). The hand-coded complex Bessel functions are checked
+**Validation.** The ACES User's Guide Example 1 geometry is evaluated with the complete source
+closure: overtopping remains 0.227, while the coupled source result is 1.545 ft transmitted height,
+total transmission 0.235, and reflection 0.765. The hand-coded complex Bessel functions are checked
 against their known real-argument values.
 
 **References.** Madsen and White (1976); Seelig (1979, 1980); Ahrens and McCartney (1975).
@@ -838,12 +880,10 @@ a quarter of the breaker depth), which is the expected magnitude.
 
 # Area 6 — Littoral Processes
 
-This area covers how sand moves along and across the coast: the rate sand is carried along the
-shore by waves, how a beach and dune erode during a storm, how to combine and characterize
-grain-size samples, and how much extra borrow sand a nourishment project needs. Three of the four
-chapters are built and validated (6-1 longshore transport, 6-3 composite grain size, and 6-4 beach
-nourishment); the time-dependent beach and dune erosion model (6-2) is Documented but not yet
-implemented.
+This area covers how sand moves along and across the coast: single-condition and directional-
+climate longshore transport, time-dependent beach/dune erosion, nourishment overfill, and
+composite grain-size statistics. All five applications are built and validated to their stated
+source fidelity.
 
 ## 6-1 — Longshore Sediment Transport
 
@@ -910,7 +950,28 @@ exponential in time, and with no surge the recession is zero, all as the theory 
 
 **References.** Kriebel and Dean (1985, 1993); Dean (1977); Bruun (1954); Moore (1982).
 
-## 6-3 — Composite Grain-Size Distributions
+## 6-3 — Longshore Transport from CEDRS Statistics
+
+**What it does.** Integrates the deepwater CERC transport relation over a directional WIS/CEDRS
+percent-occurrence wave-height climate to report signed net and gross annual transport.
+
+**The physics, briefly.** Each 22.5-degree directional band is intersected with the shore-facing
+half-plane, its wave-height bins are evaluated at representative heights, and the signed CERC
+energy-flux transport is occurrence-weighted. Bands approaching from opposite sides of the shore
+normal drive opposite transport; gross transport sums magnitudes and net transport retains signs.
+
+> **Status and Caveats:** Current, standard. The CERC physics is exact, but the source does not
+> fully spell out bin-midpoint and partial-direction-band conventions. The default embedded climate
+> is WIS Gulf of Mexico station G1033. As in 6-1, physical quartz density is the default; the ACES
+> example used an undocumented effective density near 2319 kg/m³.
+
+**Validation.** With the example's effective density, the ACES Example 3 net transport of
+`−854,849 yd³/yr` is reproduced within 1 percent, contributing direction percentages match, and a
+uniform symmetric directional climate gives zero net transport.
+
+**References.** SPM (1984) Ch. 4; Gravens (1988); WIS Report 18; ACES Example 3.
+
+## 6-5 — Composite Grain-Size Distributions
 
 **What it does.** Combines several sediment sieve samples into one composite distribution and reports
 standard grain-size statistics (mean, sorting, skewness, kurtosis) by both the Folk graphic method
@@ -959,13 +1020,10 @@ factor 1.08, and design volume about 1.60 million yd³, all within rounding of t
 
 # Area 7/8 — Inlet and Harbor Processes
 
-This area covers tidal inlet hydraulics, a set of shared breaker utilities, and harbor-basin
-resonance. A naming note: the ACES technical reference numbers two chapters here, the inlet model
-(7-1) and a miscellaneous-routines chapter it labels 8-1, which is not harbor design. The harbor
-design applications proper (rectangular basins, vessel waves, moored vessel surge) have no
-technical-reference chapter and are sourced from standard theory. Of the sections below, the
-inlet model and the breaker utilities are Built and validated; the harbor-basin tool (the manual's
-application 8-1, distinct from the technical reference's 8-1 chapter) is also Built and validated.
+This area covers tidal inlet hydraulics, linear wave-current interaction, shared breaker utilities,
+harbor-basin resonance, vessel-generated waves, and moored-vessel surge. All are built. The harbor
+applications and later 7-2 utility have no dedicated ACES Technical Reference chapter, so their
+governing standard literature is explicit below.
 
 ## 7-1 — Inlet Hydraulics
 
@@ -998,7 +1056,28 @@ harmonic-constituent tide, synthesized with the same Schureman astronomy as appl
 **References.** Seelig (1977); Seelig, Harris, and Herchenroder (1977); Harris and Bodine (1977);
 Keulegan (1967).
 
-## 8-1 — Miscellaneous Routines (Breaker and Steepness Utilities)
+## 7-2 — Wave-Current Interaction
+
+**What it does.** Transforms wavelength and wave height for a steady current crossing or opposing
+a linear wave, and identifies current-induced wave blocking.
+
+**The physics, briefly.** The absolute frequency is conserved while the intrinsic frequency is
+Doppler shifted by the current. The solver closes the current-modified dispersion relation and
+uses wave-action-flux conservation for height. A following current lengthens and lowers a wave;
+an opposing current shortens and steepens it until no propagating root remains.
+
+> **Status and Caveats:** Current. The theory assumes a steady, depth-uniform current and a single
+> monochromatic linear wave; it does not represent shear, refraction through spatially varying
+> currents, spectral spreading, or nonlinear breaking.
+
+**Validation.** Zero current gives unity height and length ratios, a 90-degree current produces no
+collinear Doppler change, following/opposing trends have the correct signs, the dispersion and
+wave-action identities close numerically, and sufficiently strong opposing flow returns the
+blocking flag.
+
+**References.** Jonsson (1990); linear wave-action conservation; CEM II-6 context.
+
+## M-1 — Miscellaneous Routines (Breaker and Steepness Utilities)
 
 **What it does.** Provides the shared breaking-wave and wave-steepness relations that several other
 applications call: the maximum stable wave steepness, the breaker height in shallow water, the
@@ -1031,7 +1110,7 @@ is 14.2 ft.
 
 **References.** Miche (1944); McCowan (1894); Singamsetti and Wind (1980); Weggel (1972).
 
-## 8-1 (Harbor Design) — Properties of Rectangular Basins
+## 8-1 — Properties of Rectangular Basins
 
 This is the manual's harbor-design application 8-1, which is a different tool from the
 miscellaneous-routines chapter 8-1 above; they share a number only by an accident of the ACES
@@ -1076,6 +1155,45 @@ satisfy the standing-wave identities (excursion equals peak velocity over angula
 **References.** Merian's formula and the seiche literature in SPM (1984); Wilson (1972);
 Sorensen (1993); Ippen (1966).
 
+## 8-2 — Vessel-Generated Waves
+
+**What it does.** Computes depth Froude number, ship-wave celerity, period and direction, plus
+Schijf return current and drawdown for a vessel moving through a prismatic channel.
+
+**The physics, briefly.** Schijf's one-dimensional canal model solves continuity and energy
+between the undisturbed section and the blocked section beside the hull. Kelvin/Havelock geometry
+describes the wake: subcritical flow includes a transverse system and the deepwater 35.264-degree
+diverging crest; supercritical flow has the Mach crest angle `asin(1/F)`.
+
+> **Status and Caveats:** Current. The channel is prismatic and the flow one-dimensional; the
+> model does not predict an empirical secondary-wave height. Above the Schijf limiting speed the
+> subcritical return-flow solution is flagged rather than extrapolated.
+
+**Validation.** Zero blockage gives zero drawdown, continuity and energy residuals close to machine
+precision, the deepwater crest angle is 35.264 degrees, and the supercritical direction reduces to
+the exact Mach angle with celerity `sqrt(gd)`.
+
+**References.** Schijf (1949); PIANC (1987); Kelvin/Havelock ship-wave theory; EM 1110-2-1100.
+
+## 8-3 — Surging of a Moored Vessel
+
+**What it does.** Resolves a table of mooring-line properties into forward, reverse, and total
+longitudinal stiffness, virtual vessel mass, natural surge period, and per-line loading checks.
+
+**The physics, briefly.** Each line is an axial spring with
+`k=B/[(e/100)L]`; its small-displacement surge contribution is `k cos²α`. Parallel line
+contributions sum and the natural period is `T_s=2π sqrt[m(1+C_a)/k_total]`.
+
+> **Status and Caveats:** Current. This is linear, single-degree-of-freedom surge mechanics with a
+> user-supplied added-mass coefficient; it omits sway/yaw coupling, nonlinear catenary and fender
+> behavior, frequency-dependent hydrodynamics, and explicit wave excitation.
+
+**Validation.** A single line reproduces its closed-form spring period, symmetric layouts give
+equal forward and reverse stiffness, line-angle projection follows `cos²α`, period scales as the
+square root of virtual mass, and load/impact flags activate at their declared limits.
+
+**References.** EM 1110-2-1100 Part II; PIANC mooring guidance; Bruun, _Port Engineering_.
+
 ---
 
 # Area 9 — Storm Surge
@@ -1091,14 +1209,14 @@ parts (wind setup, Coriolis or "bathystrophic" setup, atmospheric-pressure setup
 of setup and total depth along the traverse.
 
 **The physics, briefly.** The model integrates, from the shelf edge to the shore as the storm
-moves by, the simplified depth-integrated equations of motion (Bodine 1971). Onshore wind stress
+moves by, the simplified depth-integrated equations of motion (Bodine 1971). The default path
+uses the original TM-35 appendix radius, wind-speed, and wind-direction curve ordinates; Holland
+(1980) and Myers (1954) remain selectable parametric sensitivity paths. Onshore wind stress
 piles water against the coast (wind setup); the alongshore wind drives an alongshore current
 that, turned by the earth's rotation, adds a further rise (the bathystrophic effect); and the low
-central pressure lifts the surface (inverse barometer). The wind that drives all this comes from
-a parametric hurricane model with two interchangeable choices: Holland (1980) by default, or
-Myers (1954), which is exactly the Holland model with shape factor `B = 1`. The wind speed at any
-radius follows from gradient-wind balance on the chosen pressure profile, reduced to the surface
-and given a forward-speed asymmetry and an inflow angle.
+central pressure lifts the surface (inverse barometer). The source-reproduction path interpolates
+Bodine's tabulated curve ordinates; optional Holland (1980) and Myers (1954, equivalent to Holland
+with `B=1`) profiles provide sensitivity alternatives.
 
 **Key relationships (notation used here).**
 
@@ -1114,24 +1232,91 @@ specified maximum wind through `B = ρ_a e V_max² / ΔP`.
 > **Status and Caveats:** Screening only. The bathystrophic method is a quasi-one-dimensional
 > approximation along a single traverse; it omits the alongshore and two-dimensional dynamics,
 > nonlinear advection, and the inlet and bay effects that a full model captures. For structure
-> design or risk assessment use **ADCIRC**. Bodine (1971) notes the method can
-> be in error by up to a factor of two. CHESS-QC additionally uses a parametric (analytic)
-> wind field in place of Bodine's hand-digitized isovel chart, so the surge matches the original
-> worked example only in the ballpark.
+> design or risk assessment use **ADCIRC**. Bodine (1971) notes the method can be in error by up
+> to a factor of two; that is a limitation of the approximation, not a remaining transcription
+> gap. The optional parametric wind profiles are sensitivity paths, not substitutes in the source
+> reproduction.
 
-**Validation.** For the Bodine (1971) Chesapeake Bay Entrance example (central pressure
-`27.57 inHg`, peripheral `29.92 inHg`, radius `35 nm`, forward speed `22 kt`, latitude `37°`)
-with the Myers wind model, the maximum 30-foot wind is `102.9 mph` (Bodine `V_x = 102`) and the
-peak surge is about `16.8 ft` against Bodine's `13.4 ft`. The analytic sub-models are checked
-exactly: gradient wind equals `sqrt(B ΔP / (ρ_a e))` at the radius of maximum winds, `B = 1`
-collapses Holland onto Myers, the pressure setup is about `1.1 ft` per inch of mercury, and a
-specified maximum wind back-computes `B` correctly.
+**Validation.** The exact TM-35 source-curve case peaks at 17 h with total elevation `13.426 ft`
+versus Bodine's `13.41 ft`. At that step the computed components are wind setup `6.089 ft`,
+bathystrophic setup `2.636 ft`, and pressure setup `1.701 ft`, compared with the published
+`6.09`, `2.62`, and `1.70 ft`. The FORTRAN parity audit also locks the first-step `BP=BN`
+initialization, reach indexing, total-depth friction midpoint, unwrapped wind-direction
+interpolation, and separate raw/land-reduced wind uses. Holland and Myers alternatives retain
+their analytic maximum-wind, pressure-limit, and `B=1` reduction tests.
 
 **References.** Bodine (1971), CERC TM-35; Freeman, Baer, and Jung (1957); Holland (1980);
 Myers (1954); Van Dorn (1953) for wind stress.
 
 ---
 
-*Built areas complete: 1 (partial: 1-1, 1-3), 2 (Wave Theory), 3 (Wave Transformation), 4
-(Structural Design), 9 (Storm Surge). The remaining ACES applications and areas will be added to
-this reference as they are implemented.*
+# Area 10 — Coastal Hazards
+
+These four applications form a reproducible extreme-water-level workflow: remove long-term sea-
+level trend, isolate the non-tidal residual, extract independent storm peaks, then fit a
+probabilistic hazard curve with uncertainty.
+
+## 10-1 — Water-Level Detrending
+
+**What it does.** Fits or accepts a linear sea-level trend and removes it from a gage record,
+referenced either to the National Tidal Datum Epoch midpoint or the record mean.
+
+**Method and caveats.** Ordinary least squares uses every valid sample; gaps are excluded and
+display decimation does not affect the fit. A single linear trend cannot represent acceleration or
+datum shifts, so records with those features require segmentation or a richer model.
+
+**Validation.** Synthetic slope recovery, NTDE and record-mean pivots, supplied-slope override,
+gap handling, and full-resolution-versus-decimated equivalence are tested.
+
+**References.** Zervas (2009), NOAA Technical Report NOS CO-OPS 053; NOAA NTDE conventions.
+
+## 10-2 — Non-Tidal Residual
+
+**What it does.** Computes `NTR(t)=WL(t)−tide(t)` after aligning predicted tide to observed
+water-level timestamps by linear interpolation; observed gaps remain gaps.
+
+**Validation.** Matched timestamps reduce to exact subtraction, interpolation is exact for linear
+test signals, gaps propagate, and means and array alignment are checked.
+
+**References.** NOAA CO-OPS tide/residual practice; PyStorm NTR workflow.
+
+## 10-3 — Peaks Over Threshold
+
+**What it does.** Selects a threshold to meet a target annual storm-event rate, declusters
+exceedances, retains one peak per storm, and rank-trims to a deterministic count based on effective
+non-gap duration.
+
+> **Status and Caveats:** Current, standard. Threshold and inter-event choices materially affect
+> the sample and must reflect storm duration and record quality; serial dependence remaining after
+> declustering violates the independent-event assumption.
+
+**Validation.** Threshold iteration, both declustering modes, rate/count closure, ranking, gap-
+adjusted effective duration, and deterministic repeatability are tested.
+
+**References.** Coles (2001); USACE coastal-hazards POT practice; PyStorm POT workflow.
+
+## 10-4 — Probabilistic Simulation
+
+**What it does.** Splices an empirical frequent-event distribution to a maximum-likelihood
+Generalized Pareto tail and returns magnitude versus annual exceedance rate with nonparametric
+bootstrap confidence limits.
+
+**The statistics, briefly.** Weibull plotting positions define empirical AER. Candidate splice
+thresholds are scored by frequency-weighted error and shape stability; exceedances above the
+selected threshold are fitted by GPD maximum likelihood. Bootstrap samples resample observed
+exceedances with replacement and refit the tail.
+
+> **Status and Caveats:** Current, standard. Long-return-period estimates remain sensitive to
+> record length, threshold stability, event independence, and GPD shape; the confidence band must
+> be reported with the central curve.
+
+**Validation.** Synthetic-tail parameter behavior, monotone AER/magnitude ordering, empirical-to-
+tail continuity, return-period interpolation, confidence-band ordering, and deterministic seeded
+bootstrap behavior are tested.
+
+**References.** Coles (2001); Nadal-Caraballo et al.; USACE PST practice.
+
+---
+
+*All 40 application contracts are represented in this reference. Fidelity and validation limits
+remain explicit for legacy, empirical, graphical-source, and analytic-only methods.*

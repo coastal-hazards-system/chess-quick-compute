@@ -34,19 +34,20 @@ Or manually (Pyodide needs `fetch()`, so serve over http, not `file://`). From t
 **repo root**:
 ```
 python -m http.server 8000
-# landing:    http://localhost:8000/chessqc_web/index.html
-# apps:       http://localhost:8000/chessqc_web/apps.html
-# direct app: http://localhost:8000/chessqc_web/calc.html?app=2-1
+# landing:    http://localhost:8000/frontend/chessqc_web/index.html
+# apps:       http://localhost:8000/frontend/chessqc_web/apps.html
+# direct app: http://localhost:8000/frontend/chessqc_web/calc.html?app=2-1
 ```
-`calc.html` fetches the application from `../applications/...` (relative to the page),
+`calc.html` fetches the application from `../../backend/applications/...` (relative to the page),
 so the server must be rooted at the repo root.
 
 First load pulls Pyodide + numpy (~10–30 MB) from the jsDelivr CDN, then it's cached.
 
 ## Adding applications
-Extend the `APPS` manifest in `driver.js`:
+Add an entry to the `CHESSQC_APPS` manifest in `apps.js`:
 ```js
-const APPS = { "2-1": "../applications/chessqc_2_1_linear_wave_theory.py", /* "2-4": "...", */ };
+{ id: "2-1", name: "Linear Wave Theory", area: "Wave Theory",
+  classification: "exact", src: "../../backend/applications/chessqc_2_1_linear_wave_theory.py" }
 ```
 Any application exposing the contract works with no other changes. Apps needing
 `scipy` (e.g. cnoidal/Fenton): add `await py.loadPackage("scipy")` in `boot()`.
@@ -61,10 +62,10 @@ Any application exposing the contract works with no other changes. Apps needing
 ## Verification
 - **Python side (done, browser-free):** `bridge.py` was validated under CPython
   against the 2-1 contract, `contract()` emits the right meta/inputs/outputs JSON,
-  `run()` returns L=70.88 m, η=1 m, U_r=10.05, 201-point profiles, and the error path
+  `run()` returns L=57.885 m, η≈0 m, U_r=28.40, 201-point profiles, and the error path
   returns the validation message. This is the exact code Pyodide executes.
 - **Browser side (run locally / CI):** load the page per "Run" above; confirm the
   calculator builds, Compute fills the values + plot + table, and the SI/US toggle
-  converts (L 70.883 m ↔ 232.56 ft). For CI, a Playwright script can load the page,
+  converts (L 57.885 m ↔ 189.90 ft). For CI, a Playwright script can load the page,
   wait for boot, click Compute, and assert the rendered values match the headless
   `compute()` (the same check the desktop driver's smoke test performs).

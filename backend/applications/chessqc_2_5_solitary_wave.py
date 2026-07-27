@@ -5,9 +5,9 @@ solitary wave is a single wave of translation lying entirely above the still-wat
 with no trough; long waves such as tsunamis and surge-driven bores approximate it. The app
 returns the wave kinematics and integral properties for a wave of height H in depth d.
 
-Classification: exact (closed-form solitary-wave theory -- McCowan/Munk/SPM -- with the
-M,N coefficient functions tabulated from the source, nothing guessed; validated analytically
-against the standard celerity / crest / breaking / energy relations).
+Classification: exact (CEM's McCowan/Munk solitary-wave equations, with M,N read from
+and linearly interpolated along the source's Figure II-1-17; validated against the
+standard celerity / crest / breaking / energy relations).
 Sources and an honest scope note. ACES 2-5 has NO Technical-Reference chapter and NO
 User's-Guide worked example; it is based on the Shore Protection Manual (SPM 1984) solitary
 wave theory (McCowan 1891 / Munk 1949), which is not available in this repository and was not
@@ -26,21 +26,20 @@ Theory (CEM II-1, eqs II-1-83 to II-1-89; Munk 1949 for M, N):
   - free surface:    eta(x) = H sech^2[ sqrt(3H/(4 d^3)) (x - C t) ]
   - dynamic pressure under the crest at the bed: Dp = rho g H
   - total energy per unit crest width: E = (8/(3 sqrt 3)) rho g H^(3/2) d^(3/2)
-  - McCowan-Munk coefficients: N = (2/3) sin^2[M(1+H/d)],  H/d = (N/M) tan[(M/2)(1+H/d)]
-        (cross-checked against the OpenFOAM McCowan wave model, whose surface elevation
-        eta = [a/tan(0.5 m (a+h))] sin(m z)/(cos(m z)+cosh(m x)) uses m = M/d, so its
-        argument 0.5 m (a+h) equals this (M/2)(1+H/d); the relations are consistent)
-  - breaking (McCowan 1894): H_b/d_b = 0.78 over a flat bed.
+  - McCowan-Munk coefficients M,N: linearly interpolated from CEM Figure II-1-17,
+        exactly as the source directs. They are then used in the local particle-
+        velocity equations CEM II-1-92 and II-1-93.
+  - breaking (Miles 1980/1981): H_b/d_b = 0.78 over a flat bed; for a
+        solitary wave on a 0.01 <= m <= 0.18 slope, CEM II-1-98 gives
+        H_b/d_b = 0.75 + 25m - 112m^2 + 3870m^3.
 
-Self-containment: zero sibling imports; embeds the contract dataclasses. numpy + stdlib only.
+Self-containment: zero sibling imports; embeds the contract dataclasses. stdlib only.
 Runnable:  python chessqc_2_5_solitary_wave.py
 """
 from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-
-import numpy as np
 
 G_SI = 9.80665
 _FT = 0.3048
@@ -125,6 +124,8 @@ OUTPUTS = (
         note="Dimensionless McCowan-Munk solitary-wave coefficient N = (2/3)sin^2[M(1+H/d)], a function of H/d."),
     Out("Hb_flat", "Breaking height (flat bed, McCowan)",   "m",   "ft",   "scalar",
         note="Limiting breaking wave height on a flat bed, H_b = 0.78*d (McCowan 1894 criterion)."),
+    Out("Hb_slope", "Breaking height (sloping bed)",        "m",   "ft",   "scalar",
+        note="Empirical solitary-wave breaking height H_b = d_b(0.75 + 25m - 112m^2 + 3870m^3), valid for 0.01 <= m <= 0.18 (CEM II-1-98)."),
     Out("relative_height", "Relative height H/d",           "",    "",     "scalar",
         note="Ratio of wave height to still-water depth, H/d, the governing nonlinearity parameter."),
 )
@@ -133,43 +134,32 @@ OUTPUTS = (
 @dataclass
 class Result:
     C: float; eta: float; u: float; w: float; dp_crest: float; E: float
-    M: float; N: float; Hb_flat: float; relative_height: float
+    M: float; N: float; Hb_flat: float; Hb_slope: float; relative_height: float
     notes: str = ""
 
 
+_MUNK_MN = (
+    # H/d, M, N — digitized from CEM Figure II-1-17 (the source supplies
+    # these functions graphically rather than as an algebraic correlation).
+    (0.00, 0.000, 0.000), (0.01, 0.154, 0.020), (0.02, 0.222, 0.039),
+    (0.03, 0.294, 0.058), (0.04, 0.329, 0.076), (0.05, 0.370, 0.113),
+    (0.10, 0.529, 0.194), (0.15, 0.629, 0.267), (0.20, 0.694, 0.330),
+    (0.25, 0.743, 0.391), (0.30, 0.784, 0.443), (0.35, 0.817, 0.487),
+    (0.40, 0.844, 0.525), (0.45, 0.869, 0.559), (0.50, 0.888, 0.586),
+    (0.55, 0.907, 0.609), (0.60, 0.924, 0.628), (0.65, 0.940, 0.645),
+    (0.70, 0.955, 0.660), (0.75, 0.968, 0.675), (0.78, 0.974, 0.682),
+)
+
+
 def mccowan_MN(Hd: float) -> tuple[float, float]:
-    """McCowan-Munk solitary-wave coefficients M, N for relative height H/d.
-    Solves A = M(1+H/d) from  H/d = (8/3) sin^3(A/2) cos(A/2) (1+H/d) / A, then
-    M = A/(1+H/d), N = (2/3) sin^2(A).  (Equivalent to N=(2/3)sin^2[M(1+H/d)] with
-    H/d=(N/M)tan[(M/2)(1+H/d)].)"""
-    s = 1.0 + Hd
-    def f(A):
-        return (8.0 / 3.0) * math.sin(A / 2.0) ** 3 * math.cos(A / 2.0) * s / A - Hd
-    # bracket A in (0, pi): f(0+) -> -Hd < 0; grows then falls. Use bisection on the rising branch.
-    lo, hi = 1e-6, math.pi - 1e-6
-    # ensure a sign change; scan for the first root
-    a_prev, f_prev = lo, f(lo)
-    root = None
-    for a in np.linspace(lo, hi, 2000):
-        fa = f(a)
-        if f_prev <= 0.0 <= fa or f_prev >= 0.0 >= fa:
-            # bisect in [a_prev, a]
-            a0, a1 = a_prev, a
-            for _ in range(100):
-                am = 0.5 * (a0 + a1)
-                if (f(a0) <= 0) == (f(am) <= 0):
-                    a0 = am
-                else:
-                    a1 = am
-            root = 0.5 * (a0 + a1)
-            break
-        a_prev, f_prev = a, fa
-    if root is None:
-        root = hi
-    A = root
-    M = A / s
-    N = (2.0 / 3.0) * math.sin(A) ** 2
-    return M, N
+    """CEM Figure II-1-17 interpolation for McCowan-Munk M and N."""
+    if not 0.0 <= Hd <= 0.78:
+        raise ValueError("solitary-wave theory requires 0 <= H/d <= 0.78 (CEM II-1-97)")
+    for (h0, m0, n0), (h1, m1, n1) in zip(_MUNK_MN, _MUNK_MN[1:]):
+        if Hd <= h1:
+            f = (Hd - h0) / (h1 - h0)
+            return m0 + f * (m1 - m0), n0 + f * (n1 - n0)
+    return _MUNK_MN[-1][1], _MUNK_MN[-1][2]
 
 
 def _validate(inp: dict) -> None:
@@ -204,8 +194,14 @@ ABOUT = {'summary': 'Computes solitary-wave kinematics and integral properties (
                              'desc': 'Total wave energy per unit crest width.'},
                             {'tex': 'N = \\frac{2}{3}\\sin^2\\left[M\\left(1 + '
                                     '\\frac{H}{d}\\right)\\right]',
-                             'desc': 'McCowan-Munk coefficient N, with H/d = '
-                                     '(N/M)\\tan[(M/2)(1+H/d)] solved jointly for M, N.'},
+                             'desc': 'McCowan-Munk coefficients M and N, interpolated '
+                                     'from CEM Figure II-1-17.'},
+                            {'tex': 'u = C N\\,\\frac{1+\\cos(My/d)\\cosh(Mx/d)}'
+                                    '{[\\cos(My/d)+\\cosh(Mx/d)]^2}',
+                             'desc': 'Horizontal particle velocity (CEM II-1-92).'},
+                            {'tex': 'w = C N\\,\\frac{\\sin(My/d)\\sinh(Mx/d)}'
+                                    '{[\\cos(My/d)+\\cosh(Mx/d)]^2}',
+                             'desc': 'Vertical particle velocity (CEM II-1-93).'},
                             {'tex': '\\frac{H_b}{d_b} = 0.78',
                              'desc': 'McCowan (1894) breaking limit on a flat bed.'}]}],
  'symbols': [['H', 'Wave height (crest above still-water level)'],
@@ -231,27 +227,48 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
     H = float(inp["H"]); d = float(inp["d"]); z = float(inp["z"]); x = float(inp["x"])
     m = float(inp["m"])
     rho = _RHO_SALT if str(inp["water"]) == "Salt" else _RHO_FRESH
+    if H / d > 0.78:
+        raise ValueError("H/d exceeds the CEM solitary-wave breaking limit of 0.78")
 
     C = math.sqrt(g * (d + H))                         # celerity
     q = math.sqrt(3.0 * H / (4.0 * d ** 3)) * x        # sech^2 argument
     eta = H / math.cosh(q) ** 2                          # surface elevation above SWL
 
-    # lowest-order Boussinesq particle velocities (approximately uniform over depth)
-    u = C * eta / (d + eta)                              # horizontal
-    # vertical velocity grows ~ linearly from the bed; w = u * (z/d) * d(eta)/dx scaling
-    detadx = -2.0 * H * math.tanh(q) / math.cosh(q) ** 2 * math.sqrt(3.0 * H / (4.0 * d ** 3))
-    w = -(z) * C / (d + eta) * detadx                    # vertical (zero at bed, max at surface)
-
-    dp_crest = rho * g * H                               # dynamic pressure at bed under crest
-    E = (8.0 / (3.0 * math.sqrt(3.0))) * rho * g * H ** 1.5 * d ** 1.5   # total energy / width
-
     M, N = mccowan_MN(H / d)
-    Hb_flat = 0.78 * d
+    # CEM II-1-92/93 use y measured upward from the bed. Kinematics are only
+    # meaningful within the water column, so points outside it are clamped to
+    # the local bed/surface before evaluating the CEM expressions.
+    y = min(max(z, 0.0), d + eta)
+    mx = M * x / d
+    my = M * y / d
+    if abs(mx) > 300.0:  # stable far-field form; both components tend to zero
+        u = w = 0.0
+    else:
+        cmy = math.cos(my)
+        chx = math.cosh(mx)
+        denom = (cmy + chx) ** 2
+        u = C * N * (1.0 + cmy * chx) / denom
+        w = C * N * math.sin(my) * math.sinh(mx) / denom
 
-    notes = ("standard solitary-wave theory (CEM/SPM); NO ACES oracle for 2-5 "
-             "(analytic validation only); M,N = McCowan-Munk coefficients")
+    dp_crest = rho * g * H                               # CEM II-1-85 at q=0
+    E = (8.0 / (3.0 * math.sqrt(3.0))) * rho * g * H ** 1.5 * d ** 1.5   # CEM II-1-95
+    Hb_flat = 0.78 * d
+    # CEM II-1-98: empirical solitary-wave limit on a sloping beach.  The
+    # source reports the fit for 0.01 <= m <= 0.20 and says waves did not
+    # break above about 0.18; use the physically established flat-bed limit
+    # outside its experimental range rather than extrapolating the polynomial.
+    if 0.01 <= m <= 0.18:
+        breaker_ratio = 0.75 + 25.0 * m - 112.0 * m * m + 3870.0 * m ** 3
+    else:
+        breaker_ratio = 0.78
+    Hb_slope = breaker_ratio * d
+
+    notes = ("CEM II-1 solitary-wave theory; NO ACES oracle for 2-5 (analytic validation only); "
+             "M,N interpolated from CEM Figure II-1-17")
+    if y != z:
+        notes += f"; z clamped to {y:.3g} m within the local water column"
     return Result(C=C, eta=eta, u=u, w=w, dp_crest=dp_crest, E=E, M=M, N=N,
-                  Hb_flat=Hb_flat, relative_height=H / d, notes=notes)
+                  Hb_flat=Hb_flat, Hb_slope=Hb_slope, relative_height=H / d, notes=notes)
 
 
 # --- self-tests (analytic; no ACES numeric oracle) ------------------------------
@@ -270,16 +287,32 @@ def _self_tests() -> None:
     assert _approx(r.eta / _FT, 3.0, 1e-9), ft(r.eta)
     # McCowan breaking on a flat bed: H_b = 0.78 d
     assert _approx(r.Hb_flat / _FT, 7.8, 1e-9), ft(r.Hb_flat)
+    # CEM II-1-98 is used within its stated slope range, and is not
+    # extrapolated to a flat bed or slopes where CEM reports no breaking.
+    ratio_m02 = 0.75 + 25.0 * 0.02 - 112.0 * 0.02 ** 2 + 3870.0 * 0.02 ** 3
+    assert _approx(r.Hb_slope / r.Hb_flat, ratio_m02 / 0.78, 1e-12), r.Hb_slope
+    r_flat = compute({"H": 3.0 * _FT, "d": 10.0 * _FT, "z": 10.0 * _FT, "x": 0.0,
+                      "m": 0.0, "water": "Salt"}, g=g)
+    assert _approx(r_flat.Hb_slope, r_flat.Hb_flat, 1e-12), r_flat.Hb_slope
     # surface decays to ~0 far from the crest
     r_far = compute({"H": 3.0 * _FT, "d": 10.0 * _FT, "z": 10.0 * _FT, "x": 200.0 * _FT,
                      "m": 0.02, "water": "Salt"}, g=g)
     assert ft(r_far.eta) < 0.05, ft(r_far.eta)
-    # McCowan M small-H/d limit: M -> sqrt(3 H/d)
-    Msmall, Nsmall = mccowan_MN(0.01)
-    assert _approx(Msmall, math.sqrt(3.0 * 0.01), 5e-3), Msmall
-    # M, N positive and increasing with H/d
+    # CEM Figure II-1-17 reading and monotonic M,N functions.
+    Msmall, Nsmall = mccowan_MN(0.30)
+    assert _approx(Msmall, 0.784, 1e-12) and _approx(Nsmall, 0.443, 1e-12), (Msmall, Nsmall)
     M1, N1 = mccowan_MN(0.3); M2, N2 = mccowan_MN(0.6)
     assert 0 < M1 < M2 and 0 < N1 < N2, (M1, N1, M2, N2)
+    # CEM II-1-92/93: w is zero at the crest and bed, reverses sign across
+    # the crest, and the horizontal velocity decays toward zero far away.
+    r_off = compute({"H": 3.0 * _FT, "d": 10.0 * _FT, "z": 5.0 * _FT, "x": 4.0 * _FT,
+                     "m": 0.02, "water": "Salt"}, g=g)
+    r_back = compute({"H": 3.0 * _FT, "d": 10.0 * _FT, "z": 5.0 * _FT, "x": -4.0 * _FT,
+                      "m": 0.02, "water": "Salt"}, g=g)
+    r_bed = compute({"H": 3.0 * _FT, "d": 10.0 * _FT, "z": 0.0, "x": 4.0 * _FT,
+                     "m": 0.02, "water": "Salt"}, g=g)
+    assert _approx(r_off.w, -r_back.w, 1e-12) and _approx(r_bed.w, 0.0, 1e-12), (r_off.w, r_back.w, r_bed.w)
+    assert r_far.u < r.u, (r_far.u, r.u)
     # energy scales as H^1.5 d^1.5 (double H -> 2^1.5 x)
     r2 = compute({"H": 6.0 * _FT, "d": 10.0 * _FT, "z": 10.0 * _FT, "x": 0.0,
                   "m": 0.02, "water": "Salt"}, g=g)
@@ -298,6 +331,7 @@ def _print_default_example() -> None:
     print(f"    dynamic pressure at bed (crest) = {r.dp_crest/47.880259:.1f} psf")
     print(f"    total energy = {r.E/14.5939:.1f} lb/ft   McCowan M = {r.M:.4f}  N = {r.N:.4f}")
     print(f"    flat-bed breaking H_b = {ft(r.Hb_flat):.2f} ft")
+    print(f"    sloping-bed breaking H_b = {ft(r.Hb_slope):.2f} ft")
     print(f"  notes: {r.notes}")
 
 

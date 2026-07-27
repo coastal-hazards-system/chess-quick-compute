@@ -14,12 +14,24 @@ add a better standalone app; `[needs-data]` = blocked on a dataset or source doc
 
 ## Priorities
 
-**Tier 1 — provisional (class III): fix or supersede first**
-- **1-5 Near-Surface Wind** — no numeric oracle at all; stratified resistance law missing its appendix constants.
-- **3-2 Goda transformation** — high quantiles off by up to ~6%; relies on an undocumented finite-N largest-wave inflation and spreading scheme.
-- **5-4 Permeable transmission** — reflection K_R over-predicted (~0.86 vs 0.719); Madsen-White calibration not recoverable; tuned reference diameter.
-- **7-1 Inlet hydraulics** — per-channel velocity field (Table 7-1-2) not reproduced; flow-net subdivision + full bathymetry missing.
-- **9-1 Bathystrophic surge** — ballpark only (factor-of-two per Bodine 1971); already flagged superseded by ADCIRC.
+> **Status update (2026-07-24).** The former class-III entries for 1-5, 5-4, and
+> 9-1 are complete and the historical text below is retained only as an audit trail.
+> 1-5 now uses the Sherlock revision and constants published by Silva (2005), with
+> every ACES PBL branch checked directly; 5-4 now implements the source head-ratio,
+> diameter, internal/external reflection, and coefficient-synthesis conventions; 9-1
+> now encodes the TM-35 appendix bathymetry, forcing
+> curves, tide, constants, and finite-difference procedure. 9-1 remains screening-only
+> because of the bathystrophic approximation, not missing source input.
+
+**Tier 1 — former provisional entries, now source-closed**
+- **1-5 Near-Surface Wind** — no ACES worked example exists, but the complete revised equations, constants, neutral limit, and both stability branches now have direct equation tests.
+- **5-4 Permeable transmission** — the original Madsen-White prototype case and ACES Example 1 now agree within the plotted/rounded precision of their source intermediates.
+- **9-1 Bathystrophic surge** — reproduces the complete Bodine TM-35 source-curve example and component setups; retained as screening-only because the method itself is legacy.
+
+**Completed during the source reconciliation**
+- **3-2 Goda transformation** — complete ACES TR equations were verified; the finite-wave definition of Hmax is now explicit.
+- **7-1 Inlet hydraulics** — complete Seelig/Harris-Bodine equations were recovered and verified; output-interval handling is repaired.
+- **10-4 Probabilistic Simulation** — replaced method-of-moments fitting and perturbed-value pseudo-bootstrap with maximum-likelihood GPD fitting and a nonparametric bootstrap.
 
 **Tier 2 — standard (class II) / known residuals at physical inputs**
 - **1-2 Beta-Rayleigh** — H_1/10 6.30 vs manual 6.55 ft, unresolved (suspected source-doc artifact).
@@ -32,10 +44,10 @@ add a better standalone app; `[needs-data]` = blocked on a dataset or source doc
 ---
 
 ## Cross-cutting themes
-1. **Missing ACES appendix constants.** The geostrophic/over-land resistance-law similarity constants (A_0/B_0/B_1) are absent from the public TR, leaving the stratified wind paths in **1-1** and **1-5** provisional. Fix by adopting a self-contained modern bulk scheme (COARE 3.5) rather than chasing the missing constants.
+1. **ACES PBL provenance (closed).** The public ACES TR labels A_0/B_0/B_1 only as constants. Silva (2005, eqs. 7.16–7.19) publishes Sherlock's 1996 revision and values (`A_0=0.8`, `B_0=B_1=3.5`, `C=-7`, full-PBL `C_2=0.0144/980`). Application 1-5 now implements that continuous revision and tests both branches exactly; application 1-1 does not expose a geostrophic-wind input path.
 2. **Non-physical effective sediment density.** **6-1** and **6-3** only reproduce the ACES longshore numbers with rho_s ~2320 (not quartz 2650), which the TR never documents. Decide: keep physical density (and accept the ACES examples are ~25% high), or expose the effective density as a documented input.
 3. **No numeric oracle (analytic-only).** Ten apps (1-5, 1-6, 2-4, 2-5, 5-5, 7-2, 8-1, 8-2, 8-3, M-1) have no ACES worked example. Several are sound closed forms; the risk is silent regressions. Action: add literature-based cross-check oracles to the test suite.
-4. **Missing datasets.** **6-5** (CoreSample2 companion sample), **7-1** (full surveyed bathymetry / flow-net), **9-1** (Bodine's hand-digitized wind+bathymetry), **6-3** (broader CEDRS/WIS station library).
+4. **Missing datasets.** **6-5** (CoreSample2 companion sample), **7-1** (full surveyed bathymetry / flow-net for reproducing every internal channel velocity), and **6-3** (broader CEDRS/WIS station library). The 9-1 source curves and traverse bathymetry are now encoded.
 5. **Clear modern supersessions.** Hudson → Van der Meer (4-1); Weggel/Seelig → EurOtop & d'Angremond (5-2, 5-3, 5-4); clapotis → Goda wave pressures (4-3); Ahrens-Heimbaugh → EurOtop runup (4-4); Mase → Stockdon (5-1); CERC → Kamphuis (6-1, 6-3, M-1); bathystrophic → ADCIRC (9-1).
 
 ## Quick wins (`[drop-in]`, highest value / lowest effort)
@@ -52,8 +64,8 @@ add a better standalone app; `[needs-data]` = blocked on a dataset or source doc
 ### Area 1 — Wave Prediction
 
 ### 1-1 Windspeed Adjustment and Wave Growth  [class I]
-- **Validation shortcomings:** Neutral path reproduces Examples 1-1 (open) and 3 (restricted) exactly. The air-sea stability correction is the weak point: ACES TR eqs 8-9 are internally sign-inconsistent and eq 9 is a corrupted Businger-Dyer/Paulson (1970) psi_m; the shipped canonical correction cannot reproduce ACES Example 3 and is opt-in/unvalidated. The full-PBL geostrophic path (eqs 14-19) needs untranscribed appendix constants and is unvalidated.
-- **Missing data:** Appendix similarity constants A_0/B_0/B_1; no worked example decouples stability from observation-type bias.
+- **Validation shortcomings:** Neutral path reproduces Examples 1-1 (open) and 3 (restricted) exactly. The optional air-sea surface-layer stability correction is the weak point: ACES TR eqs 8-9 are internally sign-inconsistent and eq 9 differs from canonical Businger-Dyer/Paulson (1970); no worked example decouples stability from observation-type bias. The full-PBL geostrophic path belongs to 1-5 and is not a declared 1-1 input path.
+- **Missing data:** No worked example decouples stability from observation-type bias; no coefficient is missing from the implemented 1-1 paths.
 - **Superior / replacement method:** CEM (EM 1110-2-1100, Part II-2) growth formulas + a COARE 3.5 bulk-flux algorithm (Fairall et al. 2003) for a correctly-signed, validated stability/drag treatment. `[drop-in]` growth coefficients; `[new-calculator]`/`[needs-data]` for the COARE module.
 
 ### 1-2 Beta-Rayleigh Distribution  [class II]
@@ -71,9 +83,9 @@ add a better standalone app; `[needs-data]` = blocked on a dataset or source doc
 - **Missing data:** None noted.
 - **Superior / replacement method:** UTide / NS_TIDES (Codiga 2011; Foreman et al. 2009) — adds nodal corrections, a far larger constituent set, and harmonic *analysis* of observed records (not just synthesis). `[new-calculator]`.
 
-### 1-5 Near-Surface Wind Speeds  [class III]
-- **Validation shortcomings:** Weakest in the set — **no ACES worked example; analytic-only checks** (log-law recovery, C_D band, U_* fraction, stability sign). The stratified resistance law cannot be reproduced (missing constants); stratification enters only via the surface-layer profile, so the modeled response is unverified in magnitude.
-- **Missing data:** Resistance-law similarity constants A_0/B_0/B_1; no ACES numeric example.
+### 1-5 Near-Surface Wind Speeds  [class II]
+- **Validation shortcomings:** ACES provides no numeric worked example, so validation is equation- and literature-based: exact neutral reduction, the two revised stability branches, geostrophic-drag residual, log-profile identity, drag range, stress identity, and stability signs. This supports a standard rather than exact classification.
+- **Missing data:** No missing coefficients or relationships. The only absent artifact is an ACES numeric worked example.
 - **Superior / replacement method:** COARE 3.5 (Fairall et al. 2003) or a Grachev-Fairall stable-PBL scheme — self-contained, data-validated, no missing constants. `[drop-in]` for the flux core.
 
 ### 1-6 Holland Hurricane Wind Model  [class I]
@@ -115,9 +127,9 @@ add a better standalone app; `[needs-data]` = blocked on a dataset or source doc
 - **Missing data:** None noted.
 - **Superior / replacement method:** For real bathymetry, SWAN (or Boussinesq) handles refraction-diffraction coupling and spreading the straight-contour Snell assumption cannot. `[new-calculator]`.
 
-### 3-2 Goda Random-Wave Transformation/Breaking  [class III]
-- **Validation shortcomings:** Shoaling exact and Hs/Hmean/Hrms/surf-beat ~3%, but **high quantiles (H1/10, H1/50, Hmax) up to ~6%** off, using an ACES-specific finite-N largest-wave inflation (N~1200) inconsistent with the manual's own plotted Rayleigh. Effective refraction coefficient depends on an undocumented directional scheme (s_max~13).
-- **Missing data:** The finite-N count and the directional-integration scheme / default spreading.
+### 3-2 Goda Random-Wave Transformation/Breaking  [class II]
+- **Validation shortcomings:** The complete ACES TR 3-2 equation set is implemented. Shoaling and bulk statistics reproduce the example within its printed/graphical precision; `H_max` is explicitly the ACES finite-wave statistic rather than an unbounded Rayleigh quantile. The effective-refraction spreading input remains user-controlled.
+- **Missing data:** No governing relation is missing. The example's exact directional spreading choice is not independently printed, so this remains standard rather than exact.
 - **Superior / replacement method:** Battjes-Janssen (1978) dissipation model or updated Goda (2010, *Random Seas* 3rd ed.) breaking model — documented, consistent depth-limited statistics. `[drop-in]` core; `[new-calculator]` (SWAN) for full directional transformation.
 
 ### 3-3 Wedge Diffraction  [class I]
@@ -169,9 +181,9 @@ add a better standalone app; `[needs-data]` = blocked on a dataset or source doc
 - **Missing data:** None noted.
 - **Superior / replacement method:** d'Angremond/Van der Meer/de Jong (1996), refined Van der Meer et al. (2005) (CEM VI-5-2) for low-crested/submerged structures. `[drop-in]`.
 
-### 5-4 Wave Transmission (permeable)  [class III]
-- **Validation shortcomings:** Headline K_T <0.5%, but **K_R over-predicted (~0.86 vs 0.719)** — transcribed Madsen & White (1976) seaward-slope eqs give near-total reflection; the needed dissipation calibration is not recoverable. Reference diameter tuned to half the median.
-- **Missing data:** Madsen-White seaward-slope calibration.
+### 5-4 Wave Transmission (permeable)  [class II]
+- **Validation shortcomings:** The original Madsen-White prototype (`T≈0.22`, `R≈0.71`) and ACES Example 1 (`K_R=0.727` vs 0.719, `K_T=0.238` vs 0.239) agree within the precision of plotted/rounded source intermediates. No diameter tuning remains: `d=(d_max+d_min)/2` is used directly, and the complete internal/external reflection and head-ratio closure is iterated.
+- **Missing data:** No governing coefficient or relationship is missing. ACES Example 2 remains graphical rather than tabulated, so the module stays standard rather than exact.
 - **Superior / replacement method:** d'Angremond/Van der Meer et al. (2005) transmission with permeability/Dn50 terms; Zanuttigh & Van der Meer (2008) Kr = tanh(a·ξ^b) for reflection. `[drop-in]`.
 
 ### 5-5 Wave Setup  [class I]
@@ -208,7 +220,7 @@ add a better standalone app; `[needs-data]` = blocked on a dataset or source doc
 
 ### Area 7 — Inlet Processes
 
-### 7-1 Spatially Integrated Inlet Hydraulics  [class III]
+### 7-1 Spatially Integrated Inlet Hydraulics  [class II]
 - **Validation shortcomings:** Peak ebb Q (0.2%), bay hydrograph (<0.02 ft), controlling velocity (~1%) meet bar, but **per-channel velocity field (Table 7-1-2) not reproduced** and mid-record exchange volumes ~6% low — section-mean friction stands in for the flow-net subdivision.
 - **Missing data:** Full flow-net channel-subdivision algorithm and cross-section bathymetry (only sections 1 & 5 published).
 - **Superior / replacement method:** 2-D depth-averaged inlet model (ADCIRC, Delft3D-FLOW / D-Flow FM). `[new-calculator]`, `[needs-data]`. A like-for-like supplement: Keulegan/DiLorenzo non-linear tidal-prism relations.
@@ -237,9 +249,9 @@ add a better standalone app; `[needs-data]` = blocked on a dataset or source doc
 
 ### Area 9 — Storm Surge
 
-### 9-1 Bathystrophic Storm Surge  [class III]
-- **Validation shortcomings:** "Screening only." Analytic sub-models exact, but integrated surge reproduces Bodine TM-35 only to ballpark (~13.4 ft); Bodine (1971) cites a possible factor-of-two. Already flagged superseded by ADCIRC.
-- **Missing data:** Bodine's hand-digitized wind-isovel field and bathymetry are not recoverable; app substitutes a parametric (Holland/Myers) wind field.
+### 9-1 Bathystrophic Storm Surge  [class II]
+- **Validation shortcomings:** The original Bodine TM-35 FORTRAN, reach bathymetry, forcing curves, tide, and component setup are reproduced: peak 13.426 ft at 17 h versus 13.41 ft, with the three published component curves matched at their graphical precision. The tool remains screening-only because the one-dimensional bathystrophic approximation itself can differ materially from real storms; Holland/Myers remain selectable alternatives.
+- **Missing data:** No input to the published TM-35 source example is missing. A modern event-specific application would require gridded meteorology and two-dimensional bathymetry outside this calculator's scope.
 - **Superior / replacement method:** ADCIRC (named successor) or SLOSH — resolve 2-D shelf geometry/basin response. `[new-calculator]`, `[needs-data]`.
 
 ### Miscellaneous

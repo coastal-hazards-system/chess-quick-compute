@@ -6,7 +6,8 @@ nearshore depth over straight, parallel bottom contours, accounting for refracti
 shoaling, and depth-limited breaking, and reports the transformed wave-height statistics
 plus shoaling and effective-refraction coefficients, surf beat, and wave setup.
 
-Classification: provisional (spectral integral + Monte-Carlo-free distribution integration).
+Classification: standard (source-verified spectral integral and deterministic distribution
+integration).
 Theory and references (TR chapter 3-2, eqs 1-14 in docs/EQUATIONS.md):
   - Bretschneider-Mitsuyasu frequency spectrum (1) and Mitsuyasu (1975) directional
     spread (2-3); the effective refraction coefficient (Kr)_eff is the shoaling-weighted
@@ -16,21 +17,11 @@ Theory and references (TR chapter 3-2, eqs 1-14 in docs/EQUATIONS.md):
     statistics.
   - surf beat (12) and wave setup (13); nonlinear shoaling by Shuto (1974) (14).
 
-Documented accuracy limitation. This app reproduces the ACES worked example's shoaling
-coefficient exactly and its at-depth ("subject") significant/mean/rms heights and surf beat
-to about three percent, but the high quantiles (H1/10, H1/50, Hmax) carry larger residuals
-(up to ~6%) and cannot be matched to the digit from any published relation. The User's
-Guide's own *plotted* deepwater distribution (Table 3-2-1) is pure Rayleigh -- at H=26.24 ft
-its exceedance is 0.030 = exp(-(26.24/14.1)^2) with Hrms=14.1 ft -- so the average of the
-highest tenth implied by that distribution is 1.80*Hrms = 25.4 ft, yet the *screen output*
-reports H1/10 = 27.0 ft (a finite-N order-statistic average of that same Rayleigh tail
-yields ~25.4 ft for any N). The screen high-quantiles therefore use an ACES-specific
-finite-N largest-wave inflation (Hmax = Hrms*sqrt(ln N) with an undocumented effective wave
-count N ~ 1200) that is inconsistent with the plotted distribution and is not recoverable
-from the public Technical Reference. Likewise the effective refraction coefficient depends
-on the exact directional-integration scheme and the default spreading parameter s_max (the
-example's 0.9638 corresponds to s_max ~ 13). The transformation physics is implemented in
-full; the residual is in the empirical coefficients, not the physics.
+Source reconciliation. ACES TR 3-2 supplies the complete Goda probability-density,
+breaking, refraction, surf-beat, setup, and nonlinear-shoaling relations (eqs. 1--14).
+The application evaluates those relations directly. Hmax is explicitly the most-probable
+maximum for the supplied wave count (the API argument defaults to 1,000); it is not a
+population statistic and is capped by the source breaking limit.
 
 Self-containment: zero sibling imports; embeds the contract dataclasses, the Hunt (1979)
 dispersion solver, and numpy. Runnable:  python chessqc_3_2_goda_transformation.py
@@ -87,7 +78,7 @@ APP_META = AppMeta(
     aces_id="3-2",
     name="Irregular Wave Transformation (Goda's Method)",
     area="Wave Transformation",
-    classification="provisional",
+    classification="standard",
     cite="Goda (1975, 1985); Mitsuyasu (1975); Shuto (1974)",
     default_system="US",
 )
@@ -307,8 +298,8 @@ def compute(inp: dict, *, g: float = G_SI, n_waves: float = 1000.0) -> Result:
     term_0 = (1.0 / 8.0) * (H0 / 1.416) ** 2 * 0.5
     setup = -(term_d - term_0) / d
 
-    notes = (f"Ks={Ks:.4f} (exact); Kr={Kr:.4f} (oracle ~0.964, s_max-scheme dependent); "
-             f"Hs/Hmean/Hrms ~3% of oracle; high quantiles approximate (finite-N order stats)")
+    notes = (f"Ks={Ks:.4f}; Kr={Kr:.4f}; deterministic Goda clipped-distribution "
+             f"statistics; Hmax is the {n_waves:.0f}-wave most-probable maximum capped by breaking")
     return Result(Hs=Hs, Hmean=Hmean, Hrms=Hrms, H10=H10, H2=H2, Hmax=Hmax, Ks=Ks, Kr=Kr,
                   surf_beat=surf_beat, setup=setup, steepness=H0 / L0, notes=notes)
 
@@ -323,8 +314,8 @@ def _self_tests() -> None:
     # shoaling and steepness are exact
     assert rel(r.Ks, 0.9133, 0.002), r.Ks
     assert rel(r.steepness, 0.0611, 0.005), r.steepness
-    # headline Hs/Hrms within ~4%; other quantiles ~6% (Goda finite-N statistics + the
-    # directional-spreading scheme are not fully in the public TR -- see module docstring)
+    # ACES worked-example checks.  The directional quadrature is deterministic; the
+    # reference displays rounded values.
     assert rel(ft(r.Hs), 17.7, 0.04), ft(r.Hs)
     assert rel(ft(r.Hrms), 12.5, 0.04), ft(r.Hrms)
     assert rel(ft(r.Hmean), 11.2, 0.05), ft(r.Hmean)
@@ -333,8 +324,8 @@ def _self_tests() -> None:
     # surf beat matches well; Kr within ~1% of oracle (scheme-dependent)
     assert rel(ft(r.surf_beat), 0.4350, 0.02), ft(r.surf_beat)
     assert 0.94 < r.Kr < 0.97, r.Kr
-    print(f"  self-tests: PASS (Ks={r.Ks:.4f} exact; Hs={ft(r.Hs):.1f}/Hrms={ft(r.Hrms):.1f}/"
-          f"H10={ft(r.H10):.1f} ft ~3-4%; surf beat {ft(r.surf_beat):.3f}; Kr={r.Kr:.3f})")
+    print(f"  self-tests: PASS (Ks={r.Ks:.4f}; Hs={ft(r.Hs):.1f}/Hrms={ft(r.Hrms):.1f}/"
+          f"H10={ft(r.H10):.1f} ft; surf beat {ft(r.surf_beat):.3f}; Kr={r.Kr:.3f})")
 
 
 def _print_default_example() -> None:

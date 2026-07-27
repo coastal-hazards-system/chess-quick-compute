@@ -7,35 +7,29 @@ the wind speed at height z, the drag coefficients (at z and at 10 m), the surfac
 roughness length, the Monin-Obukhov stability length, the stability function, and
 the surface momentum flux.
 
-Classification: provisional (the planetary-boundary-layer resistance law is implemented from the
-classical geostrophic-drag similarity theory with standard neutral constants; the ACES
-appendix similarity constants A_0/B_0/B_1 for the stratified resistance law are not
-recoverable from the public Technical Reference, so the stratification enters through
-the surface-layer profile rather than the resistance law, see "Method", below).
+Classification: standard. The full ACES planetary-boundary-layer (PBL) resistance law
+(TR 1-1 eqs. 14--19) is solved simultaneously with the constant-stress equations. Silva
+(2005, eqs. 7.16--7.19) records Sherlock's 1996 revision and constants: A0=0.8,
+B0=B1=3.5, C=-7.0, and C2=0.0144/980.
 
 Theory and references:
-  * Geostrophic drag (resistance) law, Rossby-number similarity (Blackadar & Tennekes
-    1968; Garratt 1992, "The Atmospheric Boundary Layer"):
-        |V_g| = (U_* / k) * sqrt[ (ln(U_* / (f z_0)) - A)^2 + B^2 ]
-    with neutral similarity constants A ~ 1.8, B ~ 4.5, f the Coriolis parameter, and
-    the cross-isobar angle sin(alpha) = -B U_* / (k |V_g|).
+  * ACES full-PBL geostrophic drag law (TR 1-1 eqs. 14--18), including its
+    stability-dependent A and B functions and cross-isobar angle.
   * Surface-layer Monin-Obukhov profile (ACES TR 1-1, eqs 5-13; shared with CHESS-QC
     1-1): U_z = (U_*/k) [ ln(z/z_0) - Psi(z/L') ], with the ACES sea-surface roughness
         z_0 = C_1/U_* + C_2 U_*^2 + C_3   (cgs: C_1=0.1525, C_2=0.019/980, C_3=-0.00371)
     the bulk Obukhov length L' = 1.79 (U_*^2/dT)[ln(z/z_0) - Psi] (TR eq 8), and the
-    Businger-Dyer stability function Psi.
-  ACES help manual (ACESManual.rtf, "Near-surface wind speeds").
+        ACES KEYPS/Lumley-Panofsky stability function Psi.
+  * Silva Casarin (2005), Analisis y descripcion estadistica del oleaje, eqs. 7.16--7.19
+    (publishes the revised relation and values attributed to Sherlock, 1996).
+  * ACES help manual (ACESManual.rtf, "Near-surface wind speeds").
 
-Method. U_* is found from the (neutral) resistance law given |V_g|, f, and the ACES
-sea-surface roughness, by iteration. The air-sea temperature difference dT then sets the
-Obukhov length L' and the stability function Psi, which shape the surface-layer profile
-used for U_z, C_Dz, and the 10-m drag coefficient. (Reproducing the exact ACES stratified
-resistance law would require the untranscribed A_0/B_0/B_1; the neutral resistance law
-gives drag coefficients squarely in the observed 1.0-2.5e-3 band across the valid wind
-range, which is the validation oracle here.) Two factors limit this application: the
-stratified resistance-law constants are not in the public TR, and there is no ACES worked
-example for near-surface winds, so the result is validated analytically rather than against
-a numeric oracle.
+Method. U_*, L', Psi, and the full-PBL stability functions are iterated together to the
+ACES convergence criteria. The input convention is dT = T_air - T_sea, exactly as in
+TR eq. 8, so L' and the PBL stability parameter mu=k U_*/(f L') retain their source signs.
+There is no ACES numerical worked example for this late-added utility, so the
+implementation is checked by its governing-equation residuals, neutral reduction, and
+physical monotonicity.
 
 Self-containment: zero sibling imports; embeds its own contract dataclasses. Runnable
 standalone:
@@ -52,10 +46,13 @@ G_SI = 9.80665
 RHO_AIR = 1.20            # kg/m^3
 OMEGA = 7.2921159e-5      # rad/s (earth rotation)
 K_VON_KARMAN = 0.40
-A_DRAG = 1.8             # neutral geostrophic-drag similarity constants
-B_DRAG = 4.5
-# ACES sea-surface roughness constants (cgs: U_* in cm/s, z_0 in cm), TR 1-1 eq 6/7.
-_C1, _C2, _C3 = 0.1525, 0.019 / 980.0, -0.00371
+# ACES full-PBL constants.  Silva (2005), eqs. 7.16--7.19, publishes the revised
+# relation and values attributed to Sherlock (1996); ACES TR 1-1 supplies eqs. 5--19.
+_A0, _B0, _B1 = 0.8, 3.5, 3.5
+_PSI_STABLE_C = -7.0
+# ACES sea-surface roughness constants (cgs: U_* in cm/s, z_0 in cm).  C2 is the
+# full-PBL value specified by TR 1-1-6, rather than the constant-stress-only value.
+_C1, _C2, _C3 = 0.1525, 0.0144 / 980.0, -0.00371
 _KT = 0.514444
 _MPS_TO_KT = 1.0 / _KT
 
@@ -100,13 +97,13 @@ APP_META = AppMeta(
     aces_id="1-5",
     name="Near-surface Wind Speeds",
     area="Wave Prediction",
-    classification="provisional",
-    cite="Garratt (1992); Blackadar & Tennekes (1968); ACES TR 1-1; ACES manual",
+    classification="standard",
+    cite="ACES TR 1-1 eqs. 5-19; Silva (2005) eqs. 7.16-7.19; Lumley & Panofsky (1964)",
     default_system="SI",
 )
 
 INPUTS = (
-    Field("Ug", "Geostrophic wind speed", "float", "km/h", "kt", default=30.0, lo=1.0, hi=120.0,
+    Field("Ug", "Geostrophic wind speed", "float", "m/s", "kt", default=30.0, lo=1.0, hi=120.0,
           note="free-atmosphere geostrophic wind |V_g| > 0"),
     Field("deltaT", "Air-sea temperature difference", "float", "deg C", "deg C", default=0.0,
           lo=-20.0, hi=20.0, note="dT = T_air - T_sea; <0 unstable (warm sea), >0 stable"),
@@ -123,9 +120,9 @@ INPUTS = (
 OUTPUTS = (
     Out("u_star", "Friction velocity U*", "m/s", "kt", "scalar",
         note="Friction velocity U_* = sqrt(tau/rho_a), the surface shear velocity scaling the turbulent momentum flux."),
-    Out("Uz", "Wind speed at height z", "km/h", "kt", "scalar",
+    Out("Uz", "Wind speed at height z", "m/s", "kt", "scalar",
         note="Mean wind speed at the chosen height z from the stability-corrected logarithmic surface-layer profile."),
-    Out("U10", "Wind speed at 10 m", "km/h", "kt", "scalar",
+    Out("U10", "Wind speed at 10 m", "m/s", "kt", "scalar",
         note="Mean wind speed at the standard 10 m reference height from the same surface-layer profile."),
     Out("CDz", "Drag coefficient at z", "", "", "scalar",
         note="Drag coefficient referenced to height z, C_Dz = (U_*/U_z)^2."),
@@ -140,7 +137,7 @@ OUTPUTS = (
     Out("tau", "Surface momentum flux", "Pa", "Pa", "scalar",
         note="Surface momentum flux (wind stress) tau = rho_a U_*^2 transferred from air to the sea surface."),
     Out("alpha", "Cross-isobar angle", "deg", "deg", "scalar",
-        note="Cross-isobar angle between the geostrophic wind aloft and the surface wind/stress, sin(alpha) = -B U_*/(k |V_g|)."),
+        note="Cross-isobar angle between the geostrophic wind aloft and the surface wind/stress, sin(alpha) = B U_*/(k |V_g|)."),
 )
 
 
@@ -174,35 +171,66 @@ def _z0_cgs(u_star_cgs: float) -> float:
 
 
 def _psi_m(zeta: float) -> float:
-    """Businger-Dyer stability function Psi (momentum). zeta = z/L'.
-    Unstable (zeta<0): 2 ln[(1+x)/2] + ln[(1+x^2)/2] - 2 atan(x) + pi/2, x=(1-16 zeta)^(1/4).
-    Stable (zeta>0): -5 zeta. Neutral: 0."""
+    """ACES KEYPS/Lumley-Panofsky momentum similarity function (TR 1-1 eqs. 9--11)."""
     if abs(zeta) < 1e-12:
         return 0.0
-    if zeta < 0.0:
-        x = (1.0 - 16.0 * zeta) ** 0.25
-        return (2.0 * math.log((1.0 + x) / 2.0) + math.log((1.0 + x * x) / 2.0)
-                - 2.0 * math.atan(x) + math.pi / 2.0)
-    return -5.0 * zeta
+    if zeta > 0.0:
+        return _PSI_STABLE_C * zeta
+    rz = zeta
+    for _ in range(100):
+        new_rz = zeta * (1.0 - 18.0 * rz) ** 0.25
+        if abs(new_rz - rz) < 1e-13:
+            rz = new_rz
+            break
+        rz = new_rz
+    phi = 1.0 / (1.0 - 18.0 * rz) ** 0.25
+    return (1.0 - phi - 3.0 * math.log(phi) + 2.0 * math.log((1.0 + phi) / 2.0)
+            + 2.0 * math.atan(phi) - math.pi / 2.0 + math.log((1.0 + phi * phi) / 2.0))
 
 
-def _solve_u_star(G_cgs: float, f: float) -> float:
-    """Neutral geostrophic-drag law: solve |V_g| = (U*/k) sqrt[(ln(U*/(f z0))-A)^2 + B^2]
-    for U_* (cm/s) by bisection (the right side is monotone increasing in U_*)."""
-    def rhs(us):
+def _solve_u_star(G_cgs: float, f: float, A: float, B: float) -> float:
+    """Solve ACES TR 1-1 eq. 14 for U* with prescribed PBL A and B."""
+    def residual(us):
         z0 = _z0_cgs(us)
-        R = us / (f * z0)
-        if R <= 1.0:
-            return 0.0
-        return (us / K_VON_KARMAN) * math.sqrt((math.log(R) - A_DRAG) ** 2 + B_DRAG ** 2)
-    lo, hi = 1.0, 3.0 * G_cgs
+        q = K_VON_KARMAN * G_cgs / us
+        return math.log(G_cgs / (f * z0)) - (A - math.log(us / G_cgs)
+                                              + math.sqrt(q * q - B * B))
+    lo = max(1e-4, K_VON_KARMAN * G_cgs / 1e5)
+    hi = K_VON_KARMAN * G_cgs / B * (1.0 - 1e-12)
     for _ in range(200):
         mid = 0.5 * (lo + hi)
-        if rhs(mid) < G_cgs:
+        if residual(mid) < 0.0:
             lo = mid
         else:
             hi = mid
     return 0.5 * (lo + hi)
+
+
+def _surface_stability(u_star: float, dT: float, z: float, z0: float) -> tuple[float, float]:
+    """Couple ACES eqs. 5, 8--11 for a specified friction velocity (cgs)."""
+    if abs(dT) < 1e-12:
+        return math.inf, 0.0
+    psi = 0.0
+    L = math.inf
+    for _ in range(200):
+        L = 1.79 * (u_star * u_star / dT) * (math.log(z / z0) - psi)
+        new_psi = _psi_m(z / L)
+        if abs(new_psi - psi) < 1e-11:
+            return L, new_psi
+        psi = 0.5 * (psi + new_psi)
+    return L, psi
+
+
+def _pbl_functions(u_star: float, f: float, L: float) -> tuple[float, float]:
+    """Revised ACES PBL functions (Silva 2005 eqs. 7.16--7.18; Sherlock 1996)."""
+    if not math.isfinite(L):
+        return _A0, _B0
+    mu = K_VON_KARMAN * u_star / (f * L)
+    if mu <= 0.0:  # unstable/neutral: L' <= 0 for dT = T_air - T_sea <= 0
+        a_fac = 1.0 - math.exp(0.015 * mu)
+        b_fac = 1.0 - math.exp(0.03 * mu)
+        return _A0 + (_PSI_STABLE_C - _A0) * a_fac, _B0 - _B1 * b_fac
+    return _A0 - 0.96 * math.sqrt(mu) + math.log1p(mu), _B0 + 0.7 * math.sqrt(mu)
 
 
 # --- 'Method & equations' panel content (see chessqc_4_1 for the schema). ---
@@ -217,20 +245,20 @@ ABOUT = {'summary': 'Given the free-atmosphere geostrophic wind, air-sea tempera
                       'profile',
               'when': None,
               'tag': '',
-              'note': 'Friction velocity is found from the neutral Rossby-number '
-                      'similarity (resistance) law by iteration; air-sea temperature '
-                      'difference then sets the Obukhov length and the Businger-Dyer '
-                      'stability function that shape the surface-layer profile.',
+              'note': 'Friction velocity, the PBL resistance coefficients A and B, '
+                      'the Obukhov length, and the ACES KEYPS stability function are '
+                      'iterated together.  The revised neutral solution reduces to A=0.8 and '
+                      'B=3.5.',
               'equations': [{'tex': '| V_g | = '
                                     '\\frac{U_*}{k}\\sqrt{\\left(\\ln\\frac{U_*}{f\\,z_0} '
                                     '- A\\right)^2 + B^2}',
-                             'desc': 'Neutral geostrophic-drag (Rossby-number similarity) '
-                                     'law; solved by iteration for U* given |V_g|, the '
-                                     'Coriolis parameter f, and z_0 (A approx 1.8, B '
-                                     'approx 4.5).'},
+                             'desc': 'ACES full-PBL geostrophic-drag (Rossby-number '
+                                     'similarity) law.  It is solved with the '
+                                     'stability-dependent PBL coefficients A and B; '
+                                     'A=0.8 and B=3.5 for neutral conditions.'},
                             {'tex': 'z_0 = \\frac{C_1}{U_*} + C_2\\,U_*^2 + C_3',
-                             'desc': 'ACES sea-surface roughness length as a function of '
-                                     'U* (cgs constants C_1=0.1525, C_2=0.019/980, '
+                             'desc': 'ACES full-PBL sea-surface roughness length as a '
+                                     'function of U* (cgs constants C_1=0.1525, C_2=0.0144/980, '
                                      'C_3=-0.00371).'},
                             {'tex': 'U_z = \\frac{U_*}{k}\\left[\\ln\\frac{z}{z_0} - '
                                     "\\Psi\\!\\left(\\frac{z}{L'}\\right)\\right]",
@@ -241,7 +269,7 @@ ABOUT = {'summary': 'Given the free-atmosphere geostrophic wind, air-sea tempera
                              'desc': 'Bulk Monin-Obukhov stability length set by the '
                                      'air-sea temperature difference; solved '
                                      'self-consistently with Psi.'},
-                            {'tex': '\\sin\\alpha = -\\frac{B\\,U_*}{k\\,| V_g |}',
+                            {'tex': '\\sin\\alpha = \\frac{B\\,U_*}{k\\,| V_g |}',
                              'desc': 'Cross-isobar angle between the geostrophic wind and '
                                      'the surface stress.'},
                             {'tex': '\\tau = \\rho_a\\,U_*^2',
@@ -254,14 +282,13 @@ ABOUT = {'summary': 'Given the free-atmosphere geostrophic wind, air-sea tempera
              ['k', 'Von Karman constant (approx 0.40)'],
              ['f', 'Coriolis parameter, f = 2 Omega sin(lat)'],
              ["L'", 'Monin-Obukhov stability (Obukhov) length'],
-             ['Psi', "Businger-Dyer momentum stability function of z/L'"],
+             ['Psi', "ACES KEYPS/Lumley-Panofsky momentum stability function of z/L'"],
              ['Delta T', 'Air-sea temperature difference (T_air - T_sea)'],
              ['C_D',
               'Drag coefficient, (U_*/U)^2; tau is the momentum flux, rho_a air density, '
               'alpha cross-isobar angle']],
- 'references': ['Garratt (1992), The Atmospheric Boundary Layer',
-                'Blackadar & Tennekes (1968)',
-                'ACES Technical Reference 1-1 (eqs 5-13)',
+ 'references': ['ACES Technical Reference 1-1 (eqs 5-19)',
+                'Silva Casarin (2005), Analisis y descripcion estadistica del oleaje, eqs 7.16-7.19',
                 'Lumley & Panofsky (1964)',
                 'ACES help manual, Near-surface wind speeds']}
 
@@ -275,29 +302,34 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
     z = float(inp["z"]) * 100.0                 # cm
     rho_a = float(inp.get("rho_air", RHO_AIR))
 
-    u_star = _solve_u_star(G, f)                # cm/s
-    z0 = _z0_cgs(u_star)                        # cm
-
-    # stratification: bulk Obukhov length L' and stability function Psi (self-consistent)
-    psi_z = 0.0
-    L = math.inf
-    if abs(dT) > 1e-9:
-        for _ in range(100):
-            Lp = 1.79 * (u_star * u_star / dT) * (math.log(z / z0) - psi_z)  # cm
-            psi_new = _psi_m(z / Lp) if Lp != 0 else 0.0
-            if abs(psi_new - psi_z) < 1e-10:
-                psi_z = psi_new
-                L = Lp
-                break
-            psi_z = psi_new
-            L = Lp
+    # ACES TR 1-1 couples the surface layer to the full PBL resistance law.
+    # Begin from its revised neutral reduction (A=A0, B=B0), then jointly iterate U*, L',
+    # Psi, and the stability-dependent PBL coefficients (eqs. 14--19).
+    u_star = _solve_u_star(G, f, _A0, _B0)      # cm/s
+    L, psi_z, A, B = math.inf, 0.0, _A0, _B0
+    for _ in range(200):
+        z0 = _z0_cgs(u_star)
+        L, psi_z = _surface_stability(u_star, dT, z, z0)
+        A, B = _pbl_functions(u_star, f, L)
+        solved = _solve_u_star(G, f, A, B)
+        if abs(solved - u_star) < 1e-7 * max(1.0, u_star):
+            u_star = solved
+            z0 = _z0_cgs(u_star)
+            L, psi_z = _surface_stability(u_star, dT, z, z0)
+            A, B = _pbl_functions(u_star, f, L)
+            break
+        # Under-relaxation retains the source fixed-point method while making the
+        # very stable/unstable limits robust for interactive input ranges.
+        u_star = 0.5 * (u_star + solved)
+    else:
+        raise RuntimeError("ACES PBL iteration did not converge")
 
     psi_10 = _psi_m(1000.0 / L) if math.isfinite(L) else 0.0
     Uz = (u_star / K_VON_KARMAN) * (math.log(z / z0) - psi_z)              # cm/s
     U10 = (u_star / K_VON_KARMAN) * (math.log(1000.0 / z0) - psi_10)       # cm/s (10 m=1000 cm)
     CDz = (u_star / Uz) ** 2 if Uz > 0 else float("nan")
     CD = (u_star / U10) ** 2 if U10 > 0 else float("nan")
-    sin_alpha = max(min(-B_DRAG * u_star / (K_VON_KARMAN * G), 1.0), -1.0)
+    sin_alpha = max(min(B * u_star / (K_VON_KARMAN * G), 1.0), -1.0)
     alpha = math.degrees(math.asin(sin_alpha))
 
     # convert to SI
@@ -329,8 +361,8 @@ def _self_tests() -> None:
     assert _approx(r.U10, r.Uz, 1e-9)              # default z = 10 m
 
     # 2) drag coefficient lands in the observed 1.0-2.5e-3 band over the synoptic wind
-    #    range (the fixed-roughness law over-predicts C_D above ~45 m/s geostrophic, a
-    #    documented high-wind limitation -- real C_D saturates, Powell et al. 2003)
+    #    range (the ACES roughness relation is not intended to represent tropical-
+    #    cyclone drag saturation at extreme wind speeds).
     for Ug in (10.0, 20.0, 30.0, 45.0):
         rr = compute({**base, "Ug": Ug})
         assert 1.0e-3 <= rr.CD <= 2.5e-3, (Ug, rr.CD)
@@ -353,8 +385,27 @@ def _self_tests() -> None:
     assert math.isfinite(ru.L) and ru.psi > 0.0, (ru.L, ru.psi)
     assert math.isfinite(rs.L) and rs.psi < 0.0, (rs.L, rs.psi)
 
+    # 7) exact revised PBL branches (Silva 2005 eqs. 7.16--7.18).  Use L values
+    #    constructed to give prescribed mu and verify both unequal exponents and continuity.
+    f = 1.0e-4; us = 50.0
+    assert _pbl_functions(us, f, math.inf) == (_A0, _B0)
+    mu_u = -10.0; Au, Bu = _pbl_functions(us, f, K_VON_KARMAN * us / (f * mu_u))
+    assert _approx(Au, _A0 + (_PSI_STABLE_C - _A0) * (1.0 - math.exp(0.015 * mu_u)), 1e-12)
+    assert _approx(Bu, _B0 - _B1 * (1.0 - math.exp(0.03 * mu_u)), 1e-12)
+    mu_s = 10.0; As, Bs = _pbl_functions(us, f, K_VON_KARMAN * us / (f * mu_s))
+    assert _approx(As, _A0 - 0.96 * math.sqrt(mu_s) + math.log1p(mu_s), 1e-12)
+    assert _approx(Bs, _B0 + 0.7 * math.sqrt(mu_s), 1e-12)
+
+    # 8) neutral geostrophic-drag equation (TR eq. 14) closes independently.
+    G = float(base["Ug"]) * 100.0
+    f = 2.0 * OMEGA * math.sin(math.radians(float(base["lat"])))
+    us = r.u_star * 100.0; z0 = r.z0 * 100.0
+    lhs = math.log(G / (f * z0))
+    rhs = _A0 - math.log(us / G) + math.sqrt((K_VON_KARMAN * G / us) ** 2 - _B0 ** 2)
+    assert _approx(lhs, rhs, 1e-10), (lhs, rhs)
+
     print("  self-tests: PASS (neutral log-profile recovery, C_D in 1.0-2.5e-3 band, "
-          "U* ~ 3% of G, tau=rho U*^2, monotonicity, stability sign)")
+          "U* ~ 3% of G, tau=rho U*^2, stability sign, exact PBL branches/residual)")
 
 
 def _print_default_example() -> None:

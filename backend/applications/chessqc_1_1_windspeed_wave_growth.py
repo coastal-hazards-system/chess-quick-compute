@@ -39,8 +39,8 @@ Air-sea temperature (stability) correction, default Neutral; physical correction
   worked example decouples stability from the observation-type bias (Ex1 shore+neutral,
   Ex2 shipboard, Ex3 overwater+deltaT). So the physical correction is shipped as an option
   (small, correctly-signed) and the validated neutral path is the default.
-  (The full-PBL geostrophic model, eqs 14-19, with untranscribed appendix constants
-  A_0/B_0/B_1, is a SEPARATE path used only for Geostrophic/Over-land types.)
+  (The full-PBL geostrophic model, eqs 14-19, is implemented by application 1-5. It is
+  outside this observed-wind application's declared input choices.)
 
 Self-containment: zero sibling imports; embeds its own contract dataclasses and the
 wind-adjustment iteration. Runnable standalone:

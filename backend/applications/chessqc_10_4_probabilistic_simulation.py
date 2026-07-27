@@ -6,7 +6,7 @@ with a bootstrap confidence band. The upper tail is a fitted Generalized Pareto
 Distribution (GPD); the frequent range is carried empirically; the two are
 spliced into one continuous curve.
 
-Method (pure-numpy port of the PyStorm PST module):
+Method (NumPy/SciPy implementation of the PyStorm PST workflow):
   1. Population rate lambda_u = n_pot / record_length. record_length is given or
      auto = n_pot / events_per_year (the POT module trims to exactly
      events_per_year x effective_duration peaks, so this recovers the effective
@@ -14,32 +14,34 @@ Method (pure-numpy port of the PyStorm PST module):
   2. Empirical AER (Weibull plotting position): sort peaks descending; rank i ->
      AER_i = i / (n_pot + 1) * lambda_u.
   3. GPD location mu (Quantile Delta Optimization): scan candidate thresholds in
-     an empirical-percentile band; fit a GPD above each (method of moments, shape
-     clipped to the Luceno band); score by a frequency-weighted MSE between the
+     an empirical-percentile band; fit a GPD above each by maximum likelihood;
+     score by a frequency-weighted MSE between the
      empirical AERs and the GPD-predicted magnitudes; pick mu by the WMSE-
      tolerance set (robust Tukey ceiling) with a shape-stability tie-break.
-  4. Bootstrap the exceedances above mu (truncated-noise resampling) and fit a
+  4. Bootstrap the exceedances above mu by resampling with replacement and fit a
      GPD per realization; the mean is the best estimate, the 10th/90th
      percentiles are the confidence band.
   5. Splice the GPD tail (AER < lambda_mu) onto the empirical bulk (AER >=
      lambda_mu) and report magnitudes at standard return intervals.
 
-The GPD fit uses method of moments (xi = 1/2 (1 - m^2/v), sigma = m (1 - xi));
-the PyStorm default is MLE, which needs scipy - this port stays stdlib + numpy
-and is deterministic given the seed.
+The GPD fit uses the maximum-likelihood estimator used in the PyStorm workflow. The
+bootstrap is nonparametric (resampling with replacement), rather than perturbing peak
+values; this preserves the observed peak distribution and is the standard empirical
+simulation treatment. Results remain deterministic for a chosen seed.
 
 Input is a CSV of POT peaks (column 1 a date or index, column 2 the magnitude):
 the peaks handed off from 10-3, or an uploaded file.
 
-Classification: provisional (method-of-moments GPD and a fixed-seed bootstrap;
-a faithful but simplified port of the PyStorm PST).
+Classification: standard (maximum-likelihood GPD tail with nonparametric bootstrap;
+an auditable implementation of the PST empirical-bulk / parametric-tail workflow).
 Theory and references: Coles (2001) GPD/POT; Nadal-Caraballo et al. PST; USACE
 coastal-hazards practice.
 
-Self-containment: zero sibling imports; embeds its own contract dataclasses.
+Self-containment: zero sibling imports; embeds its own contract dataclasses. Requires
+NumPy and SciPy for the maximum-likelihood optimizer.
 Runnable standalone:
     python chessqc_10_4_probabilistic_simulation.py
-stdlib + numpy only.
+NumPy + SciPy.
 """
 from __future__ import annotations
 
@@ -48,10 +50,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 import numpy as np
-
-_SHAPE_CLIP_LOW = -0.5
-_SHAPE_CLIP_HIGH = 0.33
-
+from scipy.stats import genpareto
 
 # --- embedded contract dataclasses (self-contained) -----------------------------
 @dataclass(frozen=True)
@@ -100,7 +99,7 @@ APP_META = AppMeta(
     aces_id="10-4",
     name="Probabilistic Simulation Technique",
     area="Coastal Hazards",
-    classification="provisional",
+    classification="standard",
     cite="Coles (2001); Nadal-Caraballo et al. PST; PyStorm PST",
     default_system="SI",
 )
@@ -149,9 +148,9 @@ OUTPUTS = (
     Out("gpd_threshold", "GPD location mu", "m", "ft", "scalar",
         note="Selected GPD location (threshold) above which the upper tail is fitted, chosen by quantile delta optimization."),
     Out("gpd_shape", "GPD shape xi", "", "", "scalar",
-        note="Method-of-moments GPD shape parameter of the upper-tail fit (negative = bounded tail, positive = heavy tail), clipped to the stability band."),
+        note="Maximum-likelihood GPD shape parameter of the upper-tail fit (negative = bounded tail, positive = heavy tail)."),
     Out("gpd_scale", "GPD scale sigma", "m", "ft", "scalar",
-        note="Method-of-moments GPD scale parameter of the upper-tail fit, setting the spread of exceedances above mu."),
+        note="Maximum-likelihood GPD scale parameter of the upper-tail fit, setting the spread of exceedances above mu."),
     Out("lambda_u", "Base rate lambda_u", "1/yr", "1/yr", "scalar",
         note="Population (base) annual exceedance rate of the POT peaks, n_pot divided by the record length."),
     Out("lambda_mu", "Rate above mu", "1/yr", "1/yr", "scalar",
@@ -219,21 +218,27 @@ def _parse_values(text: str) -> np.ndarray:
     return np.asarray(vals, dtype=np.float64)
 
 
-# --- GPD primitives (method of moments; closed-form ICDF) -----------------------
-def _fit_gpd_mom(data: np.ndarray, loc: float):
-    """Method-of-moments GPD above `loc`; shape clipped, scale recomputed.
-    Returns (xi, scale) or None for a degenerate sample."""
+# --- GPD primitives (maximum likelihood; closed-form ICDF) ---------------------
+def _fit_gpd_mle(data: np.ndarray, loc: float):
+    """Maximum-likelihood GPD fit above ``loc``.
+
+    The location is fixed at zero for the excesses, exactly enforcing the selected
+    threshold.  A finite positive scale and a valid finite-support fit are required.
+    """
     ex = np.asarray(data, dtype=np.float64) - loc
     if ex.size < 2:
         return None
-    m = float(np.mean(ex))
-    v = float(np.var(ex, ddof=1))
-    if not (v > 0.0 and m > 0.0):
+    if not (np.all(np.isfinite(ex)) and np.all(ex > 0.0) and np.ptp(ex) > 0.0):
         return None
-    xi = 0.5 * (1.0 - m * m / v)
-    xi = min(max(xi, _SHAPE_CLIP_LOW), _SHAPE_CLIP_HIGH)
-    scale = max(m * (1.0 - xi), 1e-12)
-    return xi, scale
+    try:
+        xi, _, scale = genpareto.fit(ex, floc=0.0)
+    except (FloatingPointError, ValueError):
+        return None
+    if not (math.isfinite(float(xi)) and math.isfinite(float(scale)) and scale > 0.0):
+        return None
+    if xi < 0.0 and np.max(ex) >= -scale / xi:
+        return None
+    return float(xi), float(scale)
 
 
 def _gpd_ppf(p, xi: float, loc: float, scale: float):
@@ -287,13 +292,14 @@ ABOUT = {'summary': 'Turns a Peaks-Over-Threshold peak sample into a coastal haz
                              'desc': 'Empirical annual exceedance rate of the rank-i '
                                      '(descending) peak via the Weibull plotting '
                                      'position.'},
-                            {'tex': '\\xi = \\frac{1}{2}\\left(1 - \\frac{m^2}{v}\\right)',
-                             'desc': 'Method-of-moments GPD shape from the mean m and '
-                                     'variance v of the exceedances above the location mu '
-                                     '(clipped to the Luceno band).'},
-                            {'tex': '\\sigma = m\\,(1 - \\xi)',
-                             'desc': 'Method-of-moments GPD scale from the exceedance mean '
-                                     'and the fitted shape.'},
+                            {'tex': 'f_{GPD}(y;\\xi,\\sigma) = '
+                                    '\\frac{1}{\\sigma}\\left(1+\\xi\\frac{y}{\\sigma}\\right)^{-1/\\xi-1}',
+                             'desc': 'Generalized Pareto density for excess y = x - mu; '
+                                     'the support requires 1 + xi y/sigma > 0.'},
+                            {'tex': '\\hat{\\xi},\\hat{\\sigma} = '
+                                    '\\operatorname*{arg\\,max}_{\\xi,\\sigma>0} '
+                                    '\\sum_j \\log f_{GPD}(x_j-\\mu;\\xi,\\sigma)',
+                             'desc': 'Maximum-likelihood GPD fit to the threshold exceedances.'},
                             {'tex': 'x(p) = \\mu + \\frac{\\sigma}{\\xi}\\left[(1 - '
                                     'p)^{-\\xi} - 1\\right]',
                              'desc': 'GPD quantile (inverse CDF) giving the tail magnitude '
@@ -311,9 +317,8 @@ ABOUT = {'summary': 'Turns a Peaks-Over-Threshold peak sample into a coastal haz
               'Effective record length in years (given or auto = n_pot / events-per-year)'],
              ['AER', 'Annual exceedance rate of a peak (1/yr); return interval = 1/AER'],
              ['mu', 'GPD location (threshold) selected by quantile delta optimization'],
-             ['xi', 'GPD shape parameter (clipped to the stability band)'],
+             ['xi', 'Maximum-likelihood GPD shape parameter'],
              ['sigma', 'GPD scale parameter'],
-             ['m, v', 'Sample mean and variance of the exceedances above mu'],
              ['p', 'Non-exceedance probability on the GPD, p = 1 - AER/lambda_mu']],
  'references': ['Coles (2001), An Introduction to Statistical Modeling of Extreme Values '
                 '(GPD/POT)',
@@ -355,7 +360,7 @@ def compute(inp: dict) -> Result:
         n_exc[i] = pot.size
         if np.unique(pot).size <= 1:
             continue
-        fit = _fit_gpd_mom(pot, th)
+        fit = _fit_gpd_mle(pot, th)
         if fit is None:
             continue
         xi, sc = fit
@@ -399,12 +404,10 @@ def compute(inp: dict) -> Result:
         raise ValueError("fewer than 2 peaks exceed the GPD location; widen the band")
     lambda_mu = pot_above.size / record_length
 
-    # --- Step 4: truncated-noise bootstrap of the exceedances ---
+    # --- Step 4: nonparametric bootstrap of the exceedances ---
     n_sims = int(inp["num_simulations"])
     rng = np.random.default_rng(int(inp["seed"]))
-    psort = np.sort(pot_above)[::-1]
-    delta = np.append(np.diff(psort), 0.0)            # spacing to the next-smaller value
-    n_ab = psort.size
+    n_ab = pot_above.size
 
     # dense AER grid for the GPD tail: from just below lambda_mu down to 1e-4
     aer_gpd = np.logspace(math.log10(min(lambda_mu * 0.999, lambda_u)), -4.0, 240)
@@ -414,9 +417,8 @@ def compute(inp: dict) -> Result:
     ens = np.full((n_sims, aer_gpd.size), np.nan)
     for j in range(n_sims):
         idx = rng.integers(0, n_ab, n_ab)
-        noise = _trunc_norm(rng, -1.0, 1.0, n_ab)
-        sample = np.sort(psort[idx] + delta[idx] * noise)[::-1]
-        fit = _fit_gpd_mom(sample, threshold)
+        sample = pot_above[idx]
+        fit = _fit_gpd_mle(sample, threshold)
         if fit is None:
             continue
         xi, sc = fit
@@ -427,7 +429,7 @@ def compute(inp: dict) -> Result:
     cb90 = np.nanpercentile(ens, 90, axis=0)
 
     # best-estimate GPD parameters (fit on the actual exceedances)
-    fit0 = _fit_gpd_mom(pot_above, threshold)
+    fit0 = _fit_gpd_mle(pot_above, threshold)
     xi0, sc0 = fit0 if fit0 else (float("nan"), float("nan"))
 
     # --- Step 5: splice GPD tail + empirical bulk; report key return periods ---
@@ -465,23 +467,12 @@ def compute(inp: dict) -> Result:
     )
 
 
-def _trunc_norm(rng, lo: float, hi: float, n: int) -> np.ndarray:
-    """Standard normal truncated to [lo, hi] by rejection."""
-    out = rng.standard_normal(n)
-    bad = (out < lo) | (out > hi)
-    while bad.any():
-        out[bad] = rng.standard_normal(int(bad.sum()))
-        bad = (out < lo) | (out > hi)
-    return out
-
-
 # --- self-tests -----------------------------------------------------------------
 def _self_tests() -> None:
     base = {f.key: f.default for f in INPUTS}
     r = compute(base)
     assert r.n_pot == 250
     assert np.isfinite(r.gpd_threshold) and np.isfinite(r.gpd_shape)
-    assert _SHAPE_CLIP_LOW - 1e-9 <= r.gpd_shape <= _SHAPE_CLIP_HIGH + 1e-9
     # confidence band is ordered and the curve increases toward rarer events
     fin = np.isfinite(r.profile_be)
     assert np.all(r.profile_cb10[fin] <= r.profile_be[fin] + 1e-6)

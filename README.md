@@ -1,7 +1,7 @@
 # CHESS-QC
 *Coastal Hazards, Engineering, and Structures System (CHESS) — Quick Compute (QC)*
 
-A self-contained toolkit of **35+ coastal-engineering calculators**: an open-source
+A self-contained toolkit of **40 coastal-engineering calculators**: an open-source
 reimplementation of the U.S. Army Corps of Engineers **ACES** (Automated Coastal
 Engineering System) computational library, runnable in the browser with no
 install, as a native desktop application, or as standalone Python scripts.
@@ -36,6 +36,7 @@ primary literature.
 | Inlet Processes | 7-1, 7-2 | 2 |
 | Harbor Design | 8-1, 8-2, 8-3 | 3 |
 | Storm Surge | 9-1 | 1 |
+| Coastal Hazards | 10-1 to 10-4 | 4 |
 | Miscellaneous Routines | M-1 | 1 |
 
 See [`docs/USER_MANUAL.md`](docs/USER_MANUAL.md) for the full list with inputs and outputs.
@@ -85,7 +86,7 @@ Every application carries one of three labels (shorthand **I**, **II**, **III** 
 - **II (standard):** a named published method that involves a self-made convention or only partial validation.
 - **III (provisional):** a coefficient or relationship had to be inferred, is not recoverable from the public sources, or has no numeric reference example.
 
-Current distribution: **28 exact, 3 standard, 5 provisional.** Each application's full
+Current distribution: **28 exact, 12 standard, 0 provisional.** Each application's full
 rationale is in its header and in [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md).
 
 ## Validation
@@ -100,7 +101,7 @@ tolerance are tabulated in [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.
 ## Project layout
 
 ```
-backend/applications/   35+ self-contained application modules (chessqc_*.py)
+backend/applications/   40 self-contained application modules (chessqc_*.py)
 common/                 Python/JS bridge, unit conversion, documentation generators
 frontend/chessqc_web/   serverless web calculator (Pyodide)
 frontend/chessqc_gui/   PySide6 desktop application
