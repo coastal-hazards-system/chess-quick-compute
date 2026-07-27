@@ -37,6 +37,10 @@ from matplotlib.backends.backend_qtagg import NavigationToolbar2QT as Navigation
 from matplotlib.backends.backend_agg import FigureCanvasAgg
 from matplotlib.figure import Figure
 
+# profile series with at most this many samples are drawn with point markers
+# (mirrored in frontend/chessqc_web/driver.js)
+_MARK_MAX = 20
+
 # LaTeX equation -> QPixmap via matplotlib mathtext (the same `tex` strings the web
 # front-end feeds to KaTeX). Cached by (tex, color, dpr); transparent background so it
 # sits on any themed panel. Returns None if mathtext can't parse the string.
@@ -260,8 +264,12 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         and works for any field without per-field decimal settings)."""
         x = float(x)
         d = self.decimals
-        if x == 0 or not math.isfinite(x):
-            return f"{0.0:.{d}f}" if x == 0 else str(x)
+        if x == 0:
+            return f"{0.0:.{d}f}"
+        if not math.isfinite(x):
+            # a neutrally stratified boundary layer really does have an infinite
+            # Monin-Obukhov length: show the symbol, not "inf" (mirrors driver.js)
+            return "n/a" if math.isnan(x) else ("∞" if x > 0 else "−∞")
         s = f"{x:.{d}f}"
         if float(s) != 0:
             return s
@@ -1041,6 +1049,9 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             ys = units.from_si(np.asarray(getattr(r, o.key), dtype=float), self._out_unit(o))
             scatters.append((getattr(o, "group", ""), o.label.split(":", 1)[-1].strip(), xs, ys))
         colors = [pal["eta"], pal["u"], pal["w"], pal["fg"], pal["text"]]   # series color cycle
+        # series of only a few points (a modal spectrum, a directional band table) get
+        # their samples marked, so a discrete series does not read as a continuous curve
+        mark = "o" if len(X) <= _MARK_MAX else None
         n, ci, axes = len(groups), 0, []
         for gi, g in enumerate(groups):
             ax = fig.add_subplot(n, 1, gi + 1, sharex=axes[0] if axes else None)
@@ -1049,7 +1060,7 @@ class CalculatorWindow(QtWidgets.QMainWindow):
                 color = s[2] if len(s) > 2 and s[2] else colors[ci % len(colors)]
                 if not (len(s) > 2 and s[2]):
                     ci += 1
-                ax.plot(X, arr, label=lab, color=color)
+                ax.plot(X, arr, label=lab, color=color, marker=mark, markersize=3.2)
             for sgid, slab, sxs, sys_ in scatters:
                 if sgid == g.get("gid"):
                     ax.plot(sxs, sys_, "o", color="#d62728", markersize=3.5,

@@ -54,6 +54,11 @@ Each app header carries a fidelity class:
   - 8-3 Surging of a Moored Vessel
 - **Storm Surge**
   - 9-1 Bathystrophic Storm Surge
+- **Coastal Hazards**
+  - 10-1 Water Level Detrending
+  - 10-2 Non-Tidal Residual
+  - 10-3 Peaks Over Threshold
+  - 10-4 Probabilistic Simulation Technique
 - **Miscellaneous Routines**
   - M-1 Miscellaneous Breaker and Steepness Routines
 
@@ -71,7 +76,7 @@ Originating ACES application: 1-1 "Windspeed Adjustment and Wave Growth" (functi
 | Input | key | units (US/SI) | range | default | notes |
 | --- | --- | --- | --- | --- | --- |
 | Elevation of observed wind | z_obs | ft / m | 1 to 32808.4 | 25 | >= 1 ft |
-| Observed wind speed | U_obs | mph / m/s | 0.1 to 447.387 | 45 | > 0 |
+| Observed wind speed | U_obs | mph / km/h | 0.1 to 447.387 | 45 | > 0 |
 | Air-sea temperature difference | deltaT | C | -50 to 50 | 0 | T_air - T_sea; 0 = neutral. <0 unstable, >0 stable |
 | Stability model | stability | (none) | choices: Neutral (validated), Businger-Dyer (physical) | Neutral (validated) | Neutral: validated default. Businger-Dyer: physical correction when deltaT!=0 (opt-in; does not reproduce ACES Example 3, see docstring) |
 | Duration of observed wind | dur_obs | hr | 0.000277778 to 10 | 3 | >= 0.1 (stored internally in seconds) |
@@ -91,8 +96,8 @@ Originating ACES application: 1-1 "Windspeed Adjustment and Wave Growth" (functi
 
 | Output | key | units (US/SI) | kind |
 | --- | --- | --- | --- |
-| Equivalent neutral wind speed | U_e | mph / m/s | scalar |
-| Adjusted wind speed | U_a | mph / m/s | scalar |
+| Equivalent neutral wind speed | U_e | mph / km/h | scalar |
+| Adjusted wind speed | U_a | mph / km/h | scalar |
 | Effective wind fetch | F_eff | mi / km | scalar |
 | Mean wave direction | wave_dir | deg | scalar |
 | Wave height | H_mo | ft / m | scalar |
@@ -186,8 +191,8 @@ Originating ACES application: 1-4 "Constituent Tide Record Generation" (function
 | Start year | year | (none) | 1800 to 2200 | 1989 |  |
 | Start month | month | (none) | 1 to 12 | 1 |  |
 | Start day | day | (none) | 1 to 31 | 10 |  |
-| Start hour (local) | hour | hr | 0 to 0.00666667 | 0.00277778 | hour of day at the gage (0 to 24) |
-| Record length | length_hr | hr | 2.77778e-05 to 27.7778 | 0.0333333 |  |
+| Start hour (local) | hour | hr | 0 to 24 | 10 | hour of day at the gage (0 to 24) |
+| Record length | length_hr | hr | 0.1 to 100000 | 120 |  |
 | Output interval | interval_min | min | 0.1 to 1440 | 15 |  |
 | Mean water level above datum | H0 | ft / m | -3280.84 to 3280.84 | 1.79 | datum offset (e.g. MLLW) |
 | Gage longitude | gage_lon | deg | -180 to 360 | 70.62 | degrees West (positive) |
@@ -209,7 +214,7 @@ Originating ACES application: 1-4 "Constituent Tide Record Generation" (function
 
 *Module:* `backend/applications/chessqc_1_4_tide_record.py`
 
-### 1-5 — Near-surface Wind Speeds  `[III]`
+### 1-5 — Near-surface Wind Speeds  `[II]`
 
 **Status:** Current.
 
@@ -241,7 +246,7 @@ Originating ACES application: 1-5 "Near-surface Wind Speeds" (functional area: W
 | Surface momentum flux | tau | Pa | scalar |
 | Cross-isobar angle | alpha | deg | scalar |
 
-*Reference:* Garratt (1992); Blackadar & Tennekes (1968); ACES TR 1-1; ACES manual
+*Reference:* ACES TR 1-1 eqs. 5-19; Silva (2005) eqs. 7.16-7.19; Lumley & Panofsky (1964)
 
 *Module:* `backend/applications/chessqc_1_5_near_surface_wind.py`
 
@@ -270,17 +275,17 @@ Originating ACES application: 1-6 "Holland Hurricane Wind Model" (functional are
 
 | Output | key | units (US/SI) | kind |
 | --- | --- | --- | --- |
-| Maximum wind speed (gradient) | U_max | kt / m/s | scalar |
+| Maximum wind speed (gradient) | U_max | kt / km/h | scalar |
 | Radius of maximum wind | r_at_max | nmi / km | scalar |
-| Maximum wind (cyclostrophic) | U_max_cyclo | kt / m/s | scalar |
+| Maximum wind (cyclostrophic) | U_max_cyclo | kt / km/h | scalar |
 | R_max (computed/echoed) | R_max_out | nmi / km | scalar |
 | A (computed/echoed) | A_out | m^B | scalar |
 | B (computed/echoed) | B_out | (none) | scalar |
 | Pressure deficit | dP | hPa | scalar |
 | Profile: radial distance | profile_r | nmi / km | profile |
 | Profile: pressure | profile_p | hPa | profile |
-| Profile: gradient wind | profile_Vgr | kt / m/s | profile |
-| Profile: cyclostrophic wind | profile_Vc | kt / m/s | profile |
+| Profile: gradient wind | profile_Vgr | kt / km/h | profile |
+| Profile: cyclostrophic wind | profile_Vc | kt / km/h | profile |
 
 *Reference:* Holland (1980) Mon. Wea. Rev. 108; ACES manual
 
@@ -536,6 +541,7 @@ Originating ACES grouping: 2-5 "Solitary Wave Theory" (functional area: Wave The
 | McCowan-Munk coefficient M | M | (none) | scalar |
 | McCowan-Munk coefficient N | N | (none) | scalar |
 | Breaking height (flat bed, McCowan) | Hb_flat | ft / m | scalar |
+| Breaking height (sloping bed) | Hb_slope | ft / m | scalar |
 | Relative height H/d | relative_height | (none) | scalar |
 
 *Reference:* McCowan (1891); Munk (1949); SPM (1984); CEM (EM 1110-2-1100); Zaroodny (1972)
@@ -598,7 +604,7 @@ Transforms a wave of known height/period/direction at one depth to deep water an
 
 *Module:* `backend/applications/chessqc_3_1_snell.py`
 
-### 3-2 — Irregular Wave Transformation (Goda's Method)  `[III]`
+### 3-2 — Irregular Wave Transformation (Goda's Method)  `[II]`
 
 **Status:** Current.
 
@@ -913,7 +919,7 @@ Originating ACES grouping: 5-2 "Wave Runup and Overtopping on Impermeable Struct
 | Overtopping coefficient alpha | alpha | (none) | 0.0001 to 1 | 0.076463 | SPM figures; or set alpha_from_slope |
 | Overtopping coefficient Q*0 | Qstar0 | (none) | 0 to 10 | 0.025 |  |
 | Use alpha = 0.06 - 0.01431 sin(theta) | alpha_from_slope | (none) | yes / no | no |  |
-| Onshore wind velocity | U | kt / m/s | 0 to 388.769 | 35 | 0 = no wind correction |
+| Onshore wind velocity | U | kt / km/h | 0 to 388.769 | 35 | 0 = no wind correction |
 | Refraction coefficient | KR | (none) | 0 to 1 | 1 | H'0 = KR * H0 |
 | Overtopping method | overtopping_method | (none) | choices: Weggel, EurOtop | Weggel | Weggel 1976 (ACES) or EurOtop 2018 mean discharge (modern standard) |
 | Roughness factor (EurOtop) | gamma_f | (none) | 0.3 to 1 | 0.55 | EurOtop only: ~0.55 rough rock, 1.0 smooth |
@@ -973,7 +979,7 @@ Originating ACES grouping: 5-3 "Wave Transmission on Impermeable Structures" (fu
 
 *Module:* `backend/applications/chessqc_5_3_transmission_impermeable.py`
 
-### 5-4 — Wave Transmission through Permeable Structures  `[III]`
+### 5-4 — Wave Transmission through Permeable Structures  `[II]`
 
 **Status:** Current.
 
@@ -1006,7 +1012,7 @@ Originating ACES grouping: 5-4 "Wave Transmission through Permeable Structures" 
 | Through-transmission coefficient | K_Tt | (none) | scalar |
 | Overtopping transmission coeff. | K_To | (none) | scalar |
 | Total transmission coefficient | K_T | (none) | scalar |
-| Reflection coefficient (approx.) | K_R | (none) | scalar |
+| Reflection coefficient | K_R | (none) | scalar |
 | Transmitted wave height | H_T | ft / m | scalar |
 
 *Reference:* Madsen & White (1976); Seelig (1980); Ahrens & McCartney (1975)
@@ -1102,7 +1108,7 @@ Originating ACES grouping: 6-2 "Time-Dependent Beach and Dune Erosion" (function
 | Peak storm surge above berm datum | surge | ft / m | 0 to 10 | 2 |  |
 | Berm/dune height above surge | berm_height | ft / m | 0.1 to 50 | 3 |  |
 | Beach-face slope (tan) | beach_slope | (none) | 0.001 to 1 | 0.1 |  |
-| Storm surge duration | duration | hr | 2.77778e-05 to 2.77778 | 0.0555556 |  |
+| Storm surge duration | duration | hr | 0.1 to 10000 | 200 |  |
 
 **Outputs**
 
@@ -1222,7 +1228,7 @@ Originating ACES application: 6-5 "Composite Grain Size" (functional area: Litto
 
 ## Inlet Processes
 
-### 7-1 — Spatially Integrated Numerical Model for Inlet Hydraulics  `[III]`
+### 7-1 — Spatially Integrated Numerical Model for Inlet Hydraulics  `[II]`
 
 **Status:** Current.
 
@@ -1232,7 +1238,7 @@ Originating ACES grouping: 7-1 "A Spatially Integrated Numerical Model for Inlet
 
 | Input | key | units (US/SI) | range | default | notes |
 | --- | --- | --- | --- | --- | --- |
-| M2 tide amplitude | tide_amp | ft / m | 0.00328084 to 164.042 | 6.56168 |  |
+| M2 tide amplitude | tide_amp | ft / m | 0.001 to 50 | 2 |  |
 | M2 epoch (phase lag kappa) | tide_epoch | deg | 0 to 360 | 90 |  |
 | Sea boundary longitude (deg West) | gage_lon | deg | -180 to 180 | 75 |  |
 | Start year | year | (none) | 1900 to 2100 | 1988 |  |
@@ -1249,8 +1255,8 @@ Originating ACES grouping: 7-1 "A Spatially Integrated Numerical Model for Inlet
 | Bay surface area | bay_area | ft^2 / m^2 | 1 to 1e+15 | 1.8e+09 |  |
 | Bay area variation parameter | bay_beta | (none) | 0 to 10 | 0 |  |
 | River inflow tabulation interval | river_dt_min | min | 1 to 10000 | 260 |  |
-| River / non-inlet inflow series | river | ft^3/s / m^3/s | any | (4000.0, 3800.0, 3600.0, 3200.0, 3500.0, 3800.0, 4200.0, 4300.0, 4500.0) | tabulated discharge (cfs) at the river interval; linearly interpolated |
-| Inlet cross-sections (bathymetry) | sections | (none) | any | ((104.0, 1750.0, [0, -27, -27, -27, -27, -27, -27, -27, -27, -27, -27, -18, -13, -13, -13, -13, -13, -13, -13, -18, -24, -30, -32, -34, -34, -34, -34, -32, -32, -32, -32, -24, -24, -24, -24, -25, -25, -18, -18, -18, -18, 0]), (104.0, 1625.0, [0, -30, -33, -33, -33, -34, -34, -34, -34, -34, -30, -30, -20, -10, 0]), (104.0, 1917.0, [0, -12, -18, -20, -25, -30, -33, -34, -34, -34, -34, -34, -34, -30, -18, -12, -8, -8, -8, -6, -6, -6, -6, 0]), (104.0, 1250.0, [0, -18, -37, -37, -50, -50, -50, -34, -34, -34, -34, -24, -10, 0]), (104.0, 0.0, [0, -11, -11, -11, -12, -12, -17, -17, -17, -15, -15, -15, -18, -25, -25, -20, -20, -20, -34, -34, -34, -34, -23, -18, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, -10, 0])) | one row per cross-section: (dX ft, along-inlet length dY ft, [bed elevations ft]); area and width are integrated from the elevation profile relative to datum 0 |
+| River / non-inlet inflow series | river | ft^3/s / m^3/s | any | (113.267386, 107.604017, 101.940648, 90.613909, 99.108963, 107.604017, 118.930756, 121.76244, 127.42581) | tabulated discharge (m^3/s) at the river interval; linearly interpolated |
+| Inlet cross-sections (bathymetry) | sections | m | any | ((31.6992, 533.4, [0.0, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -5.4864, -3.9624, -3.9624, -3.9624, -3.9624, -3.9624, -3.9624, -3.9624, -5.4864, -7.3152, -9.144, -9.7536, -10.3632, -10.3632, -10.3632, -10.3632, -9.7536, -9.7536, -9.7536, -9.7536, -7.3152, -7.3152, -7.3152, -7.3152, -7.62, -7.62, -5.4864, -5.4864, -5.4864, -5.4864, 0.0]), (31.6992, 495.3, [0.0, -9.144, -10.0584, -10.0584, -10.0584, -10.3632, -10.3632, -10.3632, -10.3632, -10.3632, -9.144, -9.144, -6.096, -3.048, 0.0]), (31.6992, 584.3016, [0.0, -3.6576, -5.4864, -6.096, -7.62, -9.144, -10.0584, -10.3632, -10.3632, -10.3632, -10.3632, -10.3632, -10.3632, -9.144, -5.4864, -3.6576, -2.4384, -2.4384, -2.4384, -1.8288, -1.8288, -1.8288, -1.8288, 0.0]), (31.6992, 381.0, [0.0, -5.4864, -11.2776, -11.2776, -15.24, -15.24, -15.24, -10.3632, -10.3632, -10.3632, -10.3632, -7.3152, -3.048, 0.0]), (31.6992, 0.0, [0.0, -3.3528, -3.3528, -3.3528, -3.6576, -3.6576, -5.1816, -5.1816, -5.1816, -4.572, -4.572, -4.572, -5.4864, -7.62, -7.62, -6.096, -6.096, -6.096, -10.3632, -10.3632, -10.3632, -10.3632, -7.0104, -5.4864, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, 0.0])) | one row per cross-section: (dX m, along-inlet length dY m, [bed elevations m]); area and width are integrated from the elevation profile relative to datum 0 |
 
 **Outputs**
 
@@ -1322,8 +1328,8 @@ Originating ACES grouping: 8-1 "Properties of Rectangular Basins" (functional ar
 | Standing-wave height | H | ft / m | 0 to 3280.84 | 1 | antinode crest-to-trough height; used for the node kinematics |
 | Longitudinal mode n | n | (none) | 0 to 50 | 1 | closed/2-D: n>=1; open: n>=0 (n=0 is the fundamental) |
 | Transverse mode m | m_mode | (none) | 0 to 50 | 1 | 2-D only: m>=0 (m=0 reduces to the 1-D longitudinal mode) |
-| Basin surface area | Ab | ft^2 / m^2 | 0.001 to 1e+12 | 557418 | Helmholtz only: plan area of the basin |
-| Channel cross-section area | Ac | ft^2 / m^2 | 0.001 to 1e+10 | 557.418 | Helmholtz only: flow area of the entrance channel |
+| Basin surface area | Ab | ft^2 / m^2 | 0.0107639 to 1.07639e+13 | 6e+06 | Helmholtz only: plan area of the basin |
+| Channel cross-section area | Ac | ft^2 / m^2 | 0.0107639 to 1.07639e+11 | 6000 | Helmholtz only: flow area of the entrance channel |
 | Channel length | L_ch | ft / m | 0 to 328084 | 500 | Helmholtz only: length of the entrance channel |
 | Mouth length correction | L_corr | ft / m | 0 to 328084 | 100 | Helmholtz only: added-mass correction at the mouth |
 
@@ -1358,7 +1364,7 @@ Originating ACES application: 8-2 "Vessel-Generated Waves" (functional area: Har
 | --- | --- | --- | --- | --- | --- |
 | Channel width | b | ft / m | 1 to 10000 | 100 | prismatic channel top width b > 0 |
 | Channel depth | d | ft / m | 0.5 to 200 | 6 | still-water channel depth d > 0 |
-| Vessel speed | VS | kt / m/s | 0.01 to 30 | 3 | vessel speed through the water V_s > 0 |
+| Vessel speed | VS | kt / km/h | 0.036 to 108 | 10.8 | vessel speed through the water V_s > 0 |
 | Wetted cross-sectional area | Am | ft^2 / m^2 | 0 to 10000 | 25 | submerged midship section area A_m >= 0 |
 
 **Outputs**
@@ -1414,7 +1420,7 @@ Originating ACES application: 8-3 "Surging of a Moored Vessel" (functional area:
 
 ## Storm Surge
 
-### 9-1 — Bathystrophic Storm Surge  `[III]`
+### 9-1 — Bathystrophic Storm Surge  `[II]`
 
 **Status:** Screening only. Newer method: ADCIRC (risk assessment).
 
@@ -1424,22 +1430,22 @@ First Quick Compute tool beyond the original 34 ACES applications (functional ar
 
 | Input | key | units (US/SI) | range | default | notes |
 | --- | --- | --- | --- | --- | --- |
-| Traverse bathymetry | bathy | (none) | table: Distance from shore, Depth below SWL | 11 default rows | shelf edge -> shore; one row per station |
+| Traverse bathymetry | bathy | (none) | table: Distance from shore, Depth below SWL | 17 default rows | shelf edge -> shore; one row per station |
 | Central pressure | Pc | inHg / hPa | 23.624 to 30.1206 | 27.57 | storm central pressure |
 | Peripheral pressure | Pn | inHg / hPa | 28.9394 to 30.4159 | 29.92 | ambient/peripheral pressure |
 | Radius of maximum winds | R | nm / km | 1.07991 to 107.991 | 35 | > 0 |
-| Forward speed | Vf | kt / m/s | 0 to 77.7538 | 22 | storm translation speed |
+| Forward speed | Vf | kt / km/h | 0 to 77.7538 | 22 | storm translation speed |
 | Track offset from traverse | track_offset | nm / km | 0 to 269.978 | 35 | alongshore distance from the traverse to the storm landfall/track |
 | Latitude | lat | deg | 0 to 80 | 37 | for the Coriolis parameter |
-| Wind model | wind_model | (none) | choices: Holland (1980), Myers / Bodine (1954) | Holland (1980) | Holland (B adjustable) or Myers/Bodine (B=1) |
+| Wind model | wind_model | (none) | choices: Bodine TM-35 source curves, Holland (1980), Myers / Bodine (1954) | Bodine TM-35 source curves | Bodine's published source curves, or Holland/Myers parametric sensitivity paths |
 | Holland B (peakedness) | B_holland | (none) | 0.5 to 2.5 | 1.5 | Holland shape factor; locked to 1.0 for Myers/Bodine |
-| Max wind (optional) | Vmax | mph / m/s | 0 to 268.432 | 0 | if > 0, overrides B via B = rho_a e Vmax^2 / dP |
+| Max wind (optional) | Vmax | mph / km/h | 0 to 268.432 | 0 | if > 0, overrides B via B = rho_a e Vmax^2 / dP |
 | Air density | rho_air | kg/m^3 | 1 to 1.3 | 1.2 | ambient air density |
 | Bottom friction coefficient | K_bottom | (none) | 0.0001 to 0.02 | 0.0025 | bed friction K (~0.002-0.005) |
-| Initial water-level rise | Se | ft / m | -9.84252 to 32.8084 | 0 | initial setup at start of computation |
-| Astronomical tide | SA | ft / m | -16.4042 to 32.8084 | 0 | astronomical tide above MSL datum |
+| Initial water-level rise | Se | ft / m | -9.84252 to 32.8084 | 0.5 | initial setup at start of computation |
+| Astronomical tide | SA | ft / m | -16.4042 to 32.8084 | 2.5 | astronomical tide above MSL datum |
 | Time step | dt | hr | 0.0166667 to 2 | 0.5 | integration time step (stored in seconds) |
-| Number of time steps | n_steps | (none) | 10 to 400 | 80 | storm is swept past the traverse over these steps |
+| Number of time steps | n_steps | (none) | 10 to 400 | 62 | storm is swept past the traverse over these steps |
 
 **Outputs**
 
@@ -1449,7 +1455,7 @@ First Quick Compute tool beyond the original 34 ACES applications (functional ar
 |   wind setup (Sx) | S_wind | ft / m | scalar |
 |   bathystrophic setup (Sy) | S_bathy | ft / m | scalar |
 |   pressure setup | S_press | ft / m | scalar |
-| Max wind speed (30 ft) | Vmax_out | mph / m/s | scalar |
+| Max wind speed (30 ft) | Vmax_out | mph / km/h | scalar |
 | Holland B used | B_used | (none) | scalar |
 | Time of peak | t_peak | hr / s | scalar |
 | Profile: distance from shore | profile_X | nm / m | profile |
@@ -1460,6 +1466,161 @@ First Quick Compute tool beyond the original 34 ACES applications (functional ar
 *Reference:* Bodine (1971) TM-35; Holland (1980); Myers (1954); TR/CERC
 
 *Module:* `backend/applications/chessqc_9_1_surge_bathystrophic.py`
+
+
+## Coastal Hazards
+
+### 10-1 — Water Level Detrending  `[II]`
+
+**Status:** Current.
+
+Functional area: Coastal Hazards. Removes the long-term linear sea-level trend from a water-level record by least-squares regression of level on time, so that the residual series reflects variability about the trend rather than the trend itself.
+
+**Inputs** (values in SI units)
+
+| Input | key | units (US/SI) | range | default | notes |
+| --- | --- | --- | --- | --- | --- |
+| Water-level record | csv | (none) | CSV text / uploaded file | embedded sample | Select a bundled NOAA station or upload your own CSV (column 1 = date, column 2 = water level in m). Header and blank water-level rows are ignored. |
+| Trend reference | method | (none) | choices: NTDE midpoint (pivot), Record mean (no pivot) | NTDE midpoint (pivot) | Pivot the trend at the NTDE midpoint (NOAA datum convention) or center it on the record mean. |
+| NTDE start year | ntde_start | yr | 1800 to 2100 | 1983 | National Tidal Datum Epoch start year (inclusive); used only with the NTDE midpoint pivot |
+| NTDE end year | ntde_end | yr | 1800 to 2100 | 2001 | National Tidal Datum Epoch end year (inclusive) |
+| Slope source | fit_mode | (none) | choices: Fit (least squares), Specified slope | Fit (least squares) | Fit the slope from the record, or apply a supplied slope. |
+| Specified slope | slope_value | ft/yr / m/yr | -1 to 1 | 0.003 | used only when Slope source = Specified slope |
+
+**Outputs**
+
+| Output | key | units (US/SI) | kind |
+| --- | --- | --- | --- |
+| Linear trend (slope) | slope_per_year | ft/yr / m/yr | scalar |
+| Pivot (reference) year | pivot_year | yr | scalar |
+| Total trend over record | total_trend | ft / m | scalar |
+| Record length | record_years | yr | scalar |
+| Samples used in fit | n_samples | (none) | scalar |
+| RMS residual about trend | rms_residual | ft / m | scalar |
+| NTDE midpoint | pivot_line | yr | vline |
+| Profile: year | profile_year | yr | profile |
+| Profile: observed | profile_original | ft / m | profile |
+| Profile: linear trend | profile_trend | ft / m | profile |
+| Profile: detrended | profile_detrended | ft / m | profile |
+| Profile: datum | profile_datum | ft / m | profile |
+| handoff | handoff_csv | (none) | data |
+
+*Reference:* Zervas (2009) NOAA CO-OPS 053; NTDE datum convention
+
+*Module:* `backend/applications/chessqc_10_1_water_level_detrending.py`
+
+### 10-2 — Non-Tidal Residual  `[II]`
+
+**Status:** Current.
+
+Functional area: Coastal Hazards. The non-tidal residual is the (detrended) observed water level minus the predicted astronomical tide on the same time grid:
+
+**Inputs** (values in SI units)
+
+| Input | key | units (US/SI) | range | default | notes |
+| --- | --- | --- | --- | --- | --- |
+| Water-level record | csv_wl | (none) | CSV text / uploaded file | embedded sample | Observed (ideally detrended, via 10-1) water level: a bundled NOAA station or an uploaded CSV (column 1 = date, column 2 = level in m). |
+| Tide prediction | csv_tide | (none) | CSV text / uploaded file | embedded sample | Predicted astronomical tide on the same grid: a bundled NOAA station or an uploaded CSV (column 1 = date, column 2 = tide in m). |
+
+**Outputs**
+
+| Output | key | units (US/SI) | kind |
+| --- | --- | --- | --- |
+| Mean NTR | mean_ntr | ft / m | scalar |
+| RMS NTR | rms_ntr | ft / m | scalar |
+| Maximum NTR | max_ntr | ft / m | scalar |
+| Samples | n_samples | (none) | scalar |
+| Profile: year | profile_year | yr | profile |
+| Profile: water level | profile_wl | ft / m | profile |
+| Profile: tide | profile_tide | ft / m | profile |
+| Profile: NTR | profile_ntr | ft / m | profile |
+| handoff | handoff_csv | (none) | data |
+
+*Reference:* NOAA CO-OPS tide/residual practice; PyStorm NTR
+
+*Module:* `backend/applications/chessqc_10_2_non_tidal_residual.py`
+
+### 10-3 — Peaks Over Threshold  `[II]`
+
+**Status:** Current.
+
+Functional area: Coastal Hazards. Extracts independent storm peaks from a continuous water-level / non-tidal-residual series: an automatically chosen percentile threshold is raised until the declustered exceedance rate matches a target average number of events per year, then the exceedances are declustered into one peak per independent storm and rank-trimmed to exactly round(target x effective-duration) peaks. These peaks are the input to the Probabilistic Simulation Technique (10-4).
+
+**Inputs** (values in SI units)
+
+| Input | key | units (US/SI) | range | default | notes |
+| --- | --- | --- | --- | --- | --- |
+| Water-level / NTR record | csv | (none) | CSV text / uploaded file | embedded sample | Select a bundled NOAA station or upload your own CSV (column 1 = date, column 2 = value). Typically the detrended water level (10-1) or NTR (10-2). |
+| Target events per year | target_events_per_year | 1/yr | 0.1 to 365 | 10 | average number of independent peaks per year to retain (matches PST) |
+| Inter-event window | interevent_hours | hr | 1 to 2160 | 48 | minimum separation between independent events |
+| Declustering method | method | (none) | choices: hydrograph, peak_gap | hydrograph | hydrograph: group + per-group max; peak_gap: sequential gap filter |
+| Start percentile | start_percentile | % | 0 to 99.9 | 75 | series percentile where the upward threshold scan begins |
+| Percentile step | step_size | % | 0.001 to 5 | 0.05 | percentile increment per scan step (smaller = finer, slower) |
+| Convergence tolerance | tolerance | 1/yr | 0.001 to 10 | 0.25 | accept a rate in [target, target + tolerance] |
+
+**Outputs**
+
+| Output | key | units (US/SI) | kind |
+| --- | --- | --- | --- |
+| Threshold | threshold | ft / m | scalar |
+| Peaks retained | n_peaks | (none) | scalar |
+| Effective rate | events_per_year | 1/yr | scalar |
+| Threshold percentile | final_percentile | % | scalar |
+| Effective duration | eff_duration | yr | scalar |
+| Converged | converged | (none) | scalar |
+| Profile: year | profile_year | yr | profile |
+| Profile: series | profile_series | ft / m | profile |
+| Profile: threshold | profile_threshold | ft / m | profile |
+| Peak times | peaks_t | yr | scatter_x |
+| Peaks | peaks_v | ft / m | scatter |
+| handoff | handoff_csv | (none) | data |
+
+*Reference:* Coles (2001); USACE coastal-hazards practice; PyStorm POT
+
+*Module:* `backend/applications/chessqc_10_3_peaks_over_threshold.py`
+
+### 10-4 — Probabilistic Simulation Technique  `[II]`
+
+**Status:** Current.
+
+Functional area: Coastal Hazards. Turns a Peaks-Over-Threshold sample (10-3) into a hazard curve: response magnitude versus annual exceedance rate (AER), with a bootstrap confidence band. The upper tail is a fitted Generalized Pareto Distribution (GPD); the frequent range is carried empirically; the two are spliced into one continuous curve.
+
+**Inputs** (values in SI units)
+
+| Input | key | units (US/SI) | range | default | notes |
+| --- | --- | --- | --- | --- | --- |
+| POT peak sample | csv | (none) | CSV text / uploaded file | embedded sample | Peaks over threshold (handed off from 10-3) or an uploaded CSV with the peak magnitude in column 2. |
+| Events per year | events_per_year | 1/yr | 0.1 to 365 | 10 | POT target rate; sets the auto record length (n_pot / events_per_year) when record length is 0 |
+| Record length | record_length_years | yr | 0 to 100000 | 0 | 0 = auto (n_pot / events_per_year) |
+| Bootstrap simulations | num_simulations | (none) | 20 to 2000 | 300 | Monte-Carlo realizations for the confidence band |
+| Random seed | seed | (none) | 0 to 1e+06 | 12345 | fixed for reproducible confidence bands |
+| GPD band: min percentile | threshold_min_percentile | % | 0 to 99 | 50 | lower bound of the GPD-location scan band |
+| GPD band: max percentile | threshold_max_percentile | % | 1 to 99.9 | 95 | upper bound of the GPD-location scan band |
+| Min exceedances | min_exceedances | (none) | 5 to 100000 | 30 | a candidate location must retain at least this many exceedances |
+
+**Outputs**
+
+| Output | key | units (US/SI) | kind |
+| --- | --- | --- | --- |
+| POT peaks | n_pot | (none) | scalar |
+| GPD location mu | gpd_threshold | ft / m | scalar |
+| GPD shape xi | gpd_shape | (none) | scalar |
+| GPD scale sigma | gpd_scale | ft / m | scalar |
+| Base rate lambda_u | lambda_u | 1/yr | scalar |
+| Rate above mu | lambda_mu | 1/yr | scalar |
+| 10-yr magnitude | mag_10yr | ft / m | scalar |
+| 100-yr magnitude | mag_100yr | ft / m | scalar |
+| 500-yr magnitude | mag_500yr | ft / m | scalar |
+| Profile: log10 return interval | profile_logmri | log10 yr | profile |
+| Profile: best estimate | profile_be | ft / m | profile |
+| Profile: 10% confidence | profile_cb10 | ft / m | profile |
+| Profile: 90% confidence | profile_cb90 | ft / m | profile |
+| Empirical log10 MRI | emp_logmri | log10 yr | scatter_x |
+| Empirical peaks | emp_mag | ft / m | scatter |
+
+*Reference:* Coles (2001); Nadal-Caraballo et al. PST; PyStorm PST
+
+*Module:* `backend/applications/chessqc_10_4_probabilistic_simulation.py`
 
 
 ## Miscellaneous Routines

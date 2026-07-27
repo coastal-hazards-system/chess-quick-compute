@@ -287,6 +287,15 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
             Q_left += Qb
     Q_gross = Q_right - Q_left
 
+    # Emit the bands ordered by their angle to the shore normal rather than by
+    # azimuth: the angle is the plotted x axis, and the azimuth sweep wraps through
+    # +/-180 deg, which would otherwise draw the series as a line doubling back on
+    # itself. Sorting the three parallel arrays together leaves the values paired.
+    order = sorted(range(len(band_angle)), key=lambda i: band_angle[i])
+    band_angle = [band_angle[i] for i in order]
+    band_pct = [band_pct[i] for i in order]
+    band_Q = [band_Q[i] for i in order]
+
     direction = "rightward" if Q_net > 0 else ("leftward" if Q_net < 0 else "balanced")
     notes = (f"net {Q_net * _M3_TO_YD3:,.0f} yd^3/yr ({direction}); gross "
              f"{Q_gross * _M3_TO_YD3:,.0f}; rho_s={rho_s:.0f} kg/m^3 (a'={a_solid:.2f}); "
@@ -314,6 +323,8 @@ def _self_tests() -> None:
     # the band beyond +/-90 (delta = -95) contributes ~0 (oracle -0.5 yd^3/yr)
     i95 = r.band_angle.index(-95.0)
     assert abs(r.band_Q[i95]) < 1.0, r.band_Q[i95]
+    # bands are emitted in ascending angle order, so the plotted series is single-valued
+    assert r.band_angle == sorted(r.band_angle), r.band_angle
 
     # 2) net is the signed sum of the per-band rates; gross is the sum of magnitudes
     assert _approx(r.Q_net, sum(r.band_Q), 1e-9)

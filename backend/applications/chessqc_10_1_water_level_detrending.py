@@ -110,9 +110,25 @@ STATIONS = (
 )
 
 # A small embedded annual-mean sample (default, so the app computes without a
-# file): level rises at exactly 3 mm/yr about year 2005, base 0.10 m.
+# file): a 3 mm/yr rise about year 2005 on a 0.10 m base, carrying interannual
+# variability of about 27 mm RMS - the scale of real annual-mean sea level - so the
+# detrended panel shows the residual variability the application exists to expose
+# rather than floating-point noise. The variability is a deterministic sum of
+# cosines with whole numbers of cycles over the record, which are orthogonal to a
+# linear trend at these sample times, so the fitted rate is still exactly 3 mm/yr.
+_SAMPLE_SPAN_YR = 30.0                    # 1990 -> 2020, the span the cycles fit
+
+
+def _sample_level(yr: int) -> float:
+    p = 2.0 * math.pi * (yr - 1990) / _SAMPLE_SPAN_YR
+    return (0.10 + 0.003 * (yr - 2005)
+            + 0.030 * math.cos(2.0 * p)      # ~15 yr
+            + 0.018 * math.cos(5.0 * p)      # ~6 yr
+            + 0.010 * math.cos(9.0 * p))     # ~3.3 yr
+
+
 _SAMPLE_CSV = "date,water_level_m\n" + "\n".join(
-    f"{yr}-07-01,{0.10 + 0.003 * (yr - 2005):.4f}" for yr in range(1990, 2021)
+    f"{yr}-07-01,{_sample_level(yr):.4f}" for yr in range(1990, 2021)
 )
 
 # Cap on the number of points returned in the display profiles (the fit always
@@ -440,12 +456,20 @@ def compute(inp: dict) -> Result:
 def _self_tests() -> None:
     base = {f.key: f.default for f in INPUTS}
 
-    # The embedded sample rises at ~3 mm/yr (exactly linear in calendar year;
-    # decimal-year leap spacing leaves a ~1e-8 wobble). Both references recover it.
+    # The embedded sample rises at 3 mm/yr under whole-cycle interannual
+    # variability that is orthogonal to the trend (decimal-year leap spacing leaves
+    # a small wobble). Both references recover the rate.
     r_mid = compute({**base, "method": "NTDE midpoint (pivot)"})
     r_ord = compute({**base, "method": "Record mean (no pivot)"})
     assert abs(r_mid.slope_per_year - 0.003) < 1e-6, r_mid.slope_per_year
     assert abs(r_ord.slope_per_year - 0.003) < 1e-6, r_ord.slope_per_year
+
+    # The sample carries real variability: the observed series stands clear of the
+    # fitted trend line, and the detrended series is not a flat (noise-only) trace.
+    assert np.max(np.abs(r_mid.profile_original - r_mid.profile_trend)) > 0.02
+    detr = r_mid.profile_detrended
+    assert float(np.ptp(detr)) > 0.05, float(np.ptp(detr))
+    assert 0.02 < r_mid.rms_residual < 0.05, r_mid.rms_residual
 
     # Slope is reference-independent; the two references give the same rate.
     assert abs(r_mid.slope_per_year - r_ord.slope_per_year) < 1e-12
@@ -462,8 +486,12 @@ def _self_tests() -> None:
     diff = r_mid.profile_detrended - r_ord.profile_detrended
     assert np.allclose(diff, expected, atol=1e-9), (diff[0], expected)
 
-    # The detrended series has negligible residual for a near-linear input.
-    assert r_ord.rms_residual < 1e-4, r_ord.rms_residual
+    # A near-linear input leaves a negligible residual after detrending.
+    lin = "date,v\n" + "\n".join(
+        f"{yr}-07-01,{0.10 + 0.003 * (yr - 2005):.6f}" for yr in range(1990, 2021))
+    r_lin = compute({**base, "csv": lin, "method": "Record mean (no pivot)"})
+    assert abs(r_lin.slope_per_year - 0.003) < 1e-6, r_lin.slope_per_year
+    assert r_lin.rms_residual < 1e-4, r_lin.rms_residual
 
     # Specified-slope override is used verbatim.
     r_sp = compute({**base, "fit_mode": "Specified slope", "slope_value": 0.005})

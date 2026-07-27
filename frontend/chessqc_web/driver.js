@@ -36,8 +36,9 @@ const TO_SI = {
   "1/m": 1, "1/ft": 3.280839895,
   "nmi": 1852,
   // unit strings that are identical in SI and US (no conversion)
-  "kg/m^3": 1, "deg C": 1, "1/s": 1, "yr": 1, "h": 1, "min": 1, "kg": 1,
+  "kg/m^3": 1, "deg C": 1, "1/s": 1, "1/yr": 1, "yr": 1, "h": 1, "min": 1, "kg": 1,
   "tonne": 1, "x1000": 1, "m^(1/3)": 1, "m^B": 1, "s or 1/s": 1, "g": 1, "mm": 1,
+  "log10 yr": 1,
 };
 const f = (u) => (u in TO_SI ? TO_SI[u] : 1);
 const toSI = (v, u) => v * f(u);
@@ -64,6 +65,12 @@ const fmtNum = (x) => {
   return (+x.toPrecision(Math.max(d, 2))).toString();
 };
 
+// The bridge sends non-finite scalars as string tokens (JSON has no Infinity/NaN).
+// Show them as the symbols an engineer expects rather than the raw token: a neutrally
+// stratified boundary layer really does have an infinite Monin-Obukhov length.
+const _TOKENS = { inf: "∞", "-inf": "−∞", nan: "n/a" };
+const fmtToken = (s) => _TOKENS[s] || String(s);
+
 // INPUT-field formatter: preserve precision (up to 6 significant figures, no trailing
 // zeros). The output `decimals` setting must NOT round inputs -- a small coefficient like
 // 0.0025 would collapse to "0.00" and fail the app's range validation on load.
@@ -85,7 +92,10 @@ async function boot() {
     py = await loadPyodide();
     // bridge.py is written and imported ONCE; app modules are (re)loaded per selection in
     // loadApp(), so Pyodide and numpy stay warm when switching apps (no per-app re-boot).
-    const brSrc = await (await fetch("../../common/bridge.py")).text();
+    // `no-cache` revalidates instead of serving from the browser cache: these two
+    // sources ARE the calculator, so a stale copy silently computes the old answers
+    // after a deploy (unchanged files still come back as a cheap 304).
+    const brSrc = await (await fetch("../../common/bridge.py", { cache: "no-cache" })).text();
     py.FS.writeFile("/bridge.py", brSrc);
     py.runPython(`
 import sys, importlib.util
@@ -132,7 +142,7 @@ async function loadApp(id) {
   if (!entry) { fail(`unknown app '${id}'`); return; }
   if (entry.comingSoon) { fail(`${id} ${entry.name} is coming soon`); return; }
   setStatus(`loading ${id}…`, true);
-  const appSrc = await (await fetch(entry.src)).text();
+  const appSrc = await (await fetch(entry.src, { cache: "no-cache" })).text();
   // load numpy only when the app imports it; stdlib-only apps skip it (faster)
   const pkgs = [...(entry.packages || [])];
   if (/import\s+numpy|from\s+numpy/.test(appSrc)) pkgs.push("numpy");
@@ -549,6 +559,7 @@ function addTableRow(wrap, rowSI) {
 function buildTable(fld) {
   const cols = tableCols(fld);
   const wrap = document.createElement("div"); wrap.dataset.tableKey = fld.key; wrap._cols = cols;
+  wrap.className = "tablewrap";
   const t = document.createElement("table"); t.className = "intable";
   const htr = document.createElement("tr");
   for (const c of cols) {
@@ -623,7 +634,7 @@ function render(res) {
     const u = outUnit(o), raw = res[o.key];
     // numeric -> convert+format; string (a label like "Beta-Rayleigh", or an inf/nan
     // sentinel from the bridge) -> show as-is with the unit appended when present
-    const numTxt = typeof raw === "number" ? fmtNum(fromSI(raw, u)) : String(raw);
+    const numTxt = typeof raw === "number" ? fmtNum(fromSI(raw, u)) : fmtToken(raw);
     const row = document.createElement("div"); row.className = "vrow";
     const n = document.createElement("span"); n.innerHTML = fmtLabel(o.label);
     if (o.note) { n.title = o.note; n.classList.add("has-tip"); }   // hover definition
@@ -674,14 +685,37 @@ function profileSeries(res) {
   }
   return { x, groups };
 }
-const fmtTick = (v) => {
+// Axis tick label. When the tick step is known the decimal count follows the step
+// rather than the magnitude, so adjacent ticks can never collapse to the same text
+// (a 30-day record on a decimal-year axis reads 2000.000, 2000.016, ... instead of
+// "2000.0" six times over, and a near-flat series still shows its true range).
+const fmtTick = (v, step) => {
   if (v === 0) return "0";
   const a = Math.abs(v);
+  if (step > 0 && a < 1e5) {
+    return v.toFixed(Math.max(0, Math.min(10, Math.ceil(-Math.log10(step)) + 1)));
+  }
   if (a >= 1e5 || a < 1e-3) return v.toExponential(1);
   // keep the integer part intact for large values (e.g. years: 1992.5, not 1990)
   if (a >= 100) return String(Math.round(v * 10) / 10);
   return String(+v.toPrecision(4));
 };
+
+// profile series with at most this many samples are drawn with point markers
+const _MARK_MAX = 20;
+
+// Common tick offset, as matplotlib's axes use on the desktop side: when the span is
+// tiny next to the values themselves (a 30-day record on a decimal-year axis, say),
+// factor a shared base out of the labels and annotate it once on the axis. Returns 0
+// when the plain labels already read well.
+const tickBase = (lo, hi) => {
+  const span = hi - lo, mag = Math.max(Math.abs(lo), Math.abs(hi));
+  if (!(span > 0) || !(mag / span >= 1000)) return 0;
+  const decade = Math.pow(10, Math.floor(Math.log10(span)));
+  return Math.floor(lo / decade) * decade;
+};
+// "+2000" / "−0.0031" annotation for a factored-out tick base (exact, no padding zeros)
+const fmtBase = (b) => (b > 0 ? "+" : "−") + String(+Math.abs(b).toPrecision(12));
 
 const cssVar = (name, fallback) => {
   const v = getComputedStyle(document.body).getPropertyValue(name).trim();
@@ -778,16 +812,26 @@ function drawPlotInto(res, cv) {
 
     ctx.font = "10px sans-serif"; ctx.lineWidth = 1;
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    const ystep = (hi - lo) / 4, xstep = (xmax - xmin) / 5;
+    const ybase = tickBase(lo, hi), xbase = tickBase(xmin, xmax);
     for (let i = 0; i <= 4; i++) {
-      const val = lo + (hi - lo) * i / 4, y = sy(val);
+      const val = lo + ystep * i, y = sy(val);
       ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(L, y); ctx.lineTo(R, y); ctx.stroke();
-      ctx.fillStyle = C.text; ctx.fillText(fmtTick(val), L - 5, y);
+      ctx.fillStyle = C.text; ctx.fillText(fmtTick(val - ybase, ystep), L - 5, y);
     }
     ctx.textAlign = "center"; ctx.textBaseline = "top";
     for (let i = 0; i <= 5; i++) {
-      const val = xmin + (xmax - xmin) * i / 5, xp = sx(val);
+      const val = xmin + xstep * i, xp = sx(val);
       ctx.strokeStyle = C.grid; ctx.beginPath(); ctx.moveTo(xp, T); ctx.lineTo(xp, B); ctx.stroke();
-      ctx.fillStyle = C.text; ctx.fillText(fmtTick(val), xp, B + 4);
+      ctx.fillStyle = C.text; ctx.fillText(fmtTick(val - xbase, xstep), xp, B + 4);
+    }
+    // the factored-out y base, annotated above the axis (as matplotlib does); the x
+    // base is shared by every panel and goes on the x-axis label below the plot
+    if (ybase) {
+      ctx.fillStyle = C.text; ctx.font = "9px sans-serif";
+      ctx.textAlign = "left"; ctx.textBaseline = "bottom";
+      ctx.fillText(fmtBase(ybase), L - 44, T - 2);
+      ctx.font = "10px sans-serif";
     }
     ctx.strokeStyle = C.axis; ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(L, T); ctx.lineTo(L, B); ctx.lineTo(R, B); ctx.stroke();
@@ -795,7 +839,10 @@ function drawPlotInto(res, cv) {
       ctx.strokeStyle = C.grid; const yz = sy(0);
       ctx.beginPath(); ctx.moveTo(L, yz); ctx.lineTo(R, yz); ctx.stroke();
     }
-    // data: clipped to the box, with the line broken across NaN gaps
+    // data: clipped to the box, with the line broken across NaN gaps. Series of only
+    // a few points (a modal spectrum, a directional band table) get their samples
+    // marked, so a discrete series does not read as a continuous curve.
+    const marks = X.length <= _MARK_MAX;
     ctx.save(); ctx.beginPath(); ctx.rect(L, T, R - L, B - T); ctx.clip();
     for (const s of series) {
       ctx.strokeStyle = s.color; ctx.lineWidth = 1.8; ctx.beginPath();
@@ -807,6 +854,14 @@ function drawPlotInto(res, cv) {
         if (pen) ctx.lineTo(px, py); else { ctx.moveTo(px, py); pen = true; }
       });
       ctx.stroke();
+      if (marks) {
+        ctx.fillStyle = s.color;
+        X.forEach((xx, i) => {
+          const v = s.data[i];
+          if (!Number.isFinite(v)) return;
+          ctx.beginPath(); ctx.arc(sx(xx), sy(v), 2.2, 0, 2 * Math.PI); ctx.fill();
+        });
+      }
     }
     // vertical markers (e.g. NTDE midpoint), dashed, clipped to the box
     if (vlines.length) {
@@ -816,7 +871,7 @@ function drawPlotInto(res, cv) {
         if (v.x < xmin || v.x > xmax) continue;
         const px = sx(v.x);
         ctx.beginPath(); ctx.moveTo(px, T); ctx.lineTo(px, B); ctx.stroke();
-        if (y0 < 1) { ctx.fillStyle = C.fg; ctx.fillText(`${v.label} ${fmtTick(v.x)}`, px + 4, T + 2); }
+        if (y0 < 1) { ctx.fillStyle = C.fg; ctx.fillText(`${v.label} ${fmtTick(v.x, xstep)}`, px + 4, T + 2); }
       }
       ctx.setLineDash([]);
     }
@@ -851,8 +906,10 @@ function drawPlotInto(res, cv) {
     const label = g.series.length === 1 ? `${g.series[0].name} (${g.unit})` : `(${g.unit})`;
     box = panel((H * i) / n, (H * (i + 1)) / n, g.series, label, g.gid);
   });
+  // x-axis label, carrying the factored-out tick base when there is one
+  const xb = tickBase(xmin, xmax);
   ctx.fillStyle = C.text; ctx.textAlign = "right"; ctx.textBaseline = "bottom"; ctx.font = "10px sans-serif";
-  ctx.fillText(`${x.label} (${x.unit})`, W - 12, H - 2);
+  ctx.fillText(`${x.label} (${x.unit})${xb ? ` ${fmtBase(xb)}` : ""}`, W - 12, H - 2);
   cv._plotBox = box ? { L: box.L, R: box.R, xmin, xmax } : null;
   attachPlotZoom(cv);
 }
@@ -893,14 +950,13 @@ function drawHeatmap(ctx, W, H, C, res, zout) {
   ctx.strokeRect(L, T, R - L, B - T);
   ctx.font = "10px sans-serif"; ctx.fillStyle = C.text;
   ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const xstep = (xs[xs.length - 1] - xs[0]) / 4, ystep = (ys[ys.length - 1] - ys[0]) / 4;
   for (let i = 0; i <= 4; i++) {
-    const xv = xs[0] + (xs[xs.length - 1] - xs[0]) * i / 4;
-    ctx.fillText(fmtTick(xv), L + (R - L) * i / 4, B + 4);
+    ctx.fillText(fmtTick(xs[0] + xstep * i, xstep), L + (R - L) * i / 4, B + 4);
   }
   ctx.textAlign = "right"; ctx.textBaseline = "middle";
   for (let j = 0; j <= 4; j++) {
-    const yv = ys[0] + (ys[ys.length - 1] - ys[0]) * j / 4;
-    ctx.fillText(fmtTick(yv), L - 5, B - (B - T) * j / 4);
+    ctx.fillText(fmtTick(ys[0] + ystep * j, ystep), L - 5, B - (B - T) * j / 4);
   }
   // colorbar
   const cbx = R + 14, cbw = 12;
@@ -910,8 +966,8 @@ function drawHeatmap(ctx, W, H, C, res, zout) {
   }
   ctx.strokeStyle = C.axis; ctx.strokeRect(cbx, T, cbw, B - T);
   ctx.fillStyle = C.text; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.font = "9px sans-serif";
-  ctx.fillText(fmtTick(hi), cbx + cbw + 2, T);
-  ctx.fillText(fmtTick(lo), cbx + cbw + 2, B);
+  ctx.fillText(fmtTick(hi, (hi - lo) / 4), cbx + cbw + 2, T);
+  ctx.fillText(fmtTick(lo, (hi - lo) / 4), cbx + cbw + 2, B);
   // titles
   ctx.fillStyle = C.fg; ctx.textAlign = "left"; ctx.textBaseline = "top"; ctx.font = "11px sans-serif";
   ctx.fillText(`${_shortLabel(zout)}${zu ? ` (${zu})` : ""}`, L + 2, 4);
@@ -987,7 +1043,7 @@ function reportText() {
     const u = outUnit(o), raw = lastRes[o.key];
     const txt = typeof raw === "number"
       ? `${fmtNum(fromSI(raw, u))} ${u}`.trim()
-      : `${raw}${u ? " " + u : ""}`;
+      : `${fmtToken(raw)}${u ? " " + u : ""}`;
     s += `  ${o.label}: ${txt}\n`;
   }
   if (lastRes && lastRes.notes) s += `\nNotes: ${lastRes.notes}\n`;

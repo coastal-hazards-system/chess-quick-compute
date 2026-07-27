@@ -149,9 +149,12 @@ INPUTS = (
     Field("year", "Start year", "int", "", "", default=1989, lo=1800, hi=2200),
     Field("month", "Start month", "int", "", "", default=1, lo=1, hi=12),
     Field("day", "Start day", "int", "", "", default=10, lo=1, hi=31),
-    Field("hour", "Start hour (local)", "float", "hr", "hr", default=10.0, lo=0.0, hi=24.0,
-          note="hour of day at the gage (0 to 24)"),
-    Field("length_hr", "Record length", "float", "hr", "hr", default=120.0, lo=0.1, hi=1e5),
+    # durations are held in SI seconds (the "hr" unit is the display unit; the
+    # front-ends divide by 3600 to show hours)
+    Field("hour", "Start hour (local)", "float", "hr", "hr", default=10.0 * 3600.0,
+          lo=0.0, hi=24.0 * 3600.0, note="hour of day at the gage (0 to 24)"),
+    Field("length_hr", "Record length", "float", "hr", "hr", default=120.0 * 3600.0,
+          lo=0.1 * 3600.0, hi=1e5 * 3600.0),
     Field("interval_min", "Output interval", "float", "min", "min", default=15.0, lo=0.1, hi=1440.0),
     Field("H0", "Mean water level above datum", "float", "m", "ft", default=1.79 * _FT,
           lo=-1e3, hi=1e3, note="datum offset (e.g. MLLW)"),
@@ -320,7 +323,8 @@ def compute(inp: dict) -> Result:
     """Constituent tide record for SI inputs. Returns the elevation time series."""
     _validate(inp)
     year = int(inp["year"]); month = int(inp["month"]); day = int(inp["day"])
-    hour = float(inp["hour"]); length = float(inp["length_hr"])
+    # the harmonic synthesis works in hours; the contract carries seconds
+    hour = float(inp["hour"]) / 3600.0; length = float(inp["length_hr"]) / 3600.0
     interval = float(inp["interval_min"]) / 60.0
     H0 = float(inp["H0"]); lon = float(inp["gage_lon"])
 
@@ -354,8 +358,8 @@ def compute(inp: dict) -> Result:
              f"{hour:05.2f}h, {length:.0f} h record"]
     return Result(h_max=float(hsum.max()), h_min=float(hsum.min()),
                   range=float(hsum.max() - hsum.min()), h_start=float(hsum[0]),
-                  n_constituents=float(len(terms)), profile_t=t, profile_h=hsum,
-                  notes="; ".join(notes))
+                  n_constituents=float(len(terms)), profile_t=t * 3600.0,
+                  profile_h=hsum, notes="; ".join(notes))
 
 
 # --- self-tests (User's Guide Example 1-4 oracle) -------------------------------
@@ -364,7 +368,10 @@ def _self_tests() -> None:
     # ACES User's Guide Table 1-4-1 (Buzzards Bay), elevations in ft at given hours
     oracle = {0.0: 4.26, 0.25: 4.35, 0.5: 4.39, 0.75: 4.38, 1.0: 4.32,
               118.5: 0.65, 119.0: 0.38, 119.75: 0.01, 120.0: -0.08}
-    t = r.profile_t; hft = r.profile_h / _FT
+    hft = r.profile_h / _FT
+    # the time axis is carried in SI seconds (the front-ends display it in hours)
+    assert abs(r.profile_t[-1] - 120.0 * 3600.0) < 1e-6, r.profile_t[-1]
+    assert abs(r.profile_t[1] - r.profile_t[0] - 15.0 * 60.0) < 1e-9
     worst = 0.0
     for tt, exp in oracle.items():
         i = int(round(tt / 0.25))

@@ -7,7 +7,7 @@ application: a 1-D continuity + momentum model (Seelig 1977; Seelig, Harris & He
 Q(t) and bay water level h_b(t) under a constituent sea tide, through a multi-cross-section
 inlet, by 4th-order Runge-Kutta. It is NOT the Keulegan lumped-parameter model.
 
-Classification: provisional. The headline outputs (peak discharge, controlling-section
+Classification: standard. The headline outputs (peak discharge, controlling-section
 velocity, bay tidal range) reproduce the User's Guide Example-1 hydrograph to <2%, but a
 published output -- the per-channel velocity field (Table 7-1-2) -- is NOT reproduced, and
 the mid-record flood/ebb exchange volumes run ~6% low, because the full flow-net channel-
@@ -15,6 +15,13 @@ subdivision algorithm and the complete cross-section bathymetry are not in the a
 materials (only cross-sections 1 and 5 have their channel divisions published). That gap is
 not recoverable from public sources.
 Theory and references: equations (1)-(16) of the Technical Reference chapter 7-1.
+
+Units: the application contract is SI like every other CHESS-QC application - inputs
+arrive in SI and results are returned in SI, and each front-end displays SI or US from
+those values. The governing system below is stated (and the Manning factor k = 1.486^2
+is defined) in US customary units, which is how the source formulation and the ACES
+oracle are published, so compute() converts SI to feet on entry and back on exit; the
+time march itself is unchanged.
 
 Governing coupled system (US units; lengths ft, areas ft^2, Q ft^3/s, t s):
     (15)  dQ/dt   = -(I_g/2)*k_loss*(Q*|Q|/A_min^2) - g*I_g*(h_b - h_s) - I_g*F
@@ -55,6 +62,15 @@ import numpy as np
 G_US = 32.174        # ft/s^2
 _K_US = 1.486 ** 2   # US Manning unit-conversion factor
 D2R = math.pi / 180.0
+
+# The Seelig/Harris-Bodine formulation is stated, and validated, in US customary
+# units, so the time march below runs in ft / ft^2 / ft^3 s^-1. The application
+# contract is SI like every other CHESS-QC application: inputs arrive in SI and are
+# converted to feet on entry, results are converted back to SI on exit, and both
+# front-ends then display SI or US from those SI values.
+_FT = 0.3048           # m per ft
+_FT2 = _FT * _FT       # m^2 per ft^2
+_FT3 = _FT2 * _FT      # m^3 per ft^3
 
 
 @dataclass(frozen=True)
@@ -97,7 +113,7 @@ APP_META = AppMeta(
     aces_id="7-1",
     name="Spatially Integrated Numerical Model for Inlet Hydraulics",
     area="Inlet Processes",
-    classification="provisional",
+    classification="standard",
     cite="Seelig (1977); Seelig, Harris & Herchenroder (1977); Harris & Bodine (1977); "
          "Keulegan (1967); Schureman (1971)",
     default_system="US",
@@ -119,8 +135,16 @@ _EX1_SECTIONS = [
 ]
 _EX1_RIVER = [4000.0, 3800.0, 3600.0, 3200.0, 3500.0, 3800.0, 4200.0, 4300.0, 4500.0]
 
+# the same Example-1 geometry expressed in SI, which is what the contract carries
+# (rounded to the micrometre / 1e-6 m^3 s^-1 so the JSON editors read cleanly)
+_EX1_SECTIONS_SI = tuple((round(dX * _FT, 6), round(dY * _FT, 6),
+                          [round(e * _FT, 6) for e in elevs])
+                         for dX, dY, elevs in _EX1_SECTIONS)
+_EX1_RIVER_SI = tuple(round(q * _FT3, 6) for q in _EX1_RIVER)
+
 INPUTS = (
-    Field("tide_amp", "M2 tide amplitude", "float", "m", "ft", default=2.0, lo=1e-3, hi=50.0),
+    Field("tide_amp", "M2 tide amplitude", "float", "m", "ft", default=2.0 * _FT,
+          lo=1e-3 * _FT, hi=50.0 * _FT),
     Field("tide_epoch", "M2 epoch (phase lag kappa)", "angle", "deg", "deg", default=90.0, lo=0.0, hi=360.0),
     Field("gage_lon", "Sea boundary longitude (deg West)", "float", "deg", "deg", default=75.0, lo=-180.0, hi=180.0),
     Field("year", "Start year", "int", "", "", default=1988, lo=1900, hi=2100),
@@ -134,13 +158,14 @@ INPUTS = (
     Field("ebb_loss", "Ebb loss coefficient", "float", "", "", default=1.0, lo=0.0, hi=100.0),
     Field("manning_C1", "Manning coefficient C1", "float", "", "", default=0.05, lo=0.0, hi=1.0),
     Field("manning_C2", "Manning coefficient C2", "float", "", "", default=0.0007, lo=0.0, hi=1.0),
-    Field("bay_area", "Bay surface area", "float", "m^2", "ft^2", default=1.80e9, lo=1.0, hi=1e15),
+    Field("bay_area", "Bay surface area", "float", "m^2", "ft^2", default=1.80e9 * _FT2,
+          lo=1.0 * _FT2, hi=1e15 * _FT2),
     Field("bay_beta", "Bay area variation parameter", "float", "", "", default=0.0, lo=0.0, hi=10.0),
     Field("river_dt_min", "River inflow tabulation interval", "float", "min", "min", default=260.0, lo=1.0, hi=10000.0),
-    Field("river", "River / non-inlet inflow series", "list", "m^3/s", "ft^3/s", default=tuple(_EX1_RIVER),
-          note="tabulated discharge (cfs) at the river interval; linearly interpolated"),
-    Field("sections", "Inlet cross-sections (bathymetry)", "matrix", "", "", default=tuple(_EX1_SECTIONS),
-          note="one row per cross-section: (dX ft, along-inlet length dY ft, [bed elevations ft]); "
+    Field("river", "River / non-inlet inflow series", "list", "m^3/s", "ft^3/s", default=_EX1_RIVER_SI,
+          note="tabulated discharge (m^3/s) at the river interval; linearly interpolated"),
+    Field("sections", "Inlet cross-sections (bathymetry)", "matrix", "m", "m", default=_EX1_SECTIONS_SI,
+          note="one row per cross-section: (dX m, along-inlet length dY m, [bed elevations m]); "
                "area and width are integrated from the elevation profile relative to datum 0"),
 )
 
@@ -250,7 +275,10 @@ def _validate(inp):
 ABOUT = {'summary': 'Time-marches a spatially-integrated 1-D continuity-plus-momentum model of a '
             'tidal inlet, solving the coupled inlet discharge Q(t) and bay water level '
             'h_b(t) under a harmonic sea tide by 4th-order Runge-Kutta. Reports peak '
-            'ebb/flood discharge, controlling-section velocity, and bay tidal range.',
+            'ebb/flood discharge, controlling-section velocity, and bay tidal range. The '
+            'equations below are stated in the US customary units of the source '
+            'formulation (the Manning factor k = 1.486^2); inputs and results are carried '
+            'in SI and converted at that boundary.',
  'methods': [{'name': 'Spatially-integrated 1-D inlet hydraulics (RK4)',
               'when': None,
               'tag': '',
@@ -295,17 +323,23 @@ ABOUT = {'summary': 'Time-marches a spatially-integrated 1-D continuity-plus-mom
 
 
 def compute(inp: dict, *, g: float = G_US) -> Result:
-    """Time-march the coupled inlet discharge / bay-level ODEs (US units)."""
+    """Time-march the coupled inlet discharge / bay-level ODEs.
+
+    Inputs are SI (the application contract); lengths, areas and discharges are
+    converted to the feet-based units the Seelig/Harris-Bodine formulation is
+    stated in, the march runs there, and the results are converted back to SI."""
     _validate(inp)
-    amp = float(inp["tide_amp"]); kappa = float(inp["tide_epoch"]); lon = float(inp["gage_lon"])
+    amp = float(inp["tide_amp"]) / _FT; kappa = float(inp["tide_epoch"]); lon = float(inp["gage_lon"])
     year = int(inp["year"]); month = int(inp["month"]); day = int(inp["day"]); hour = float(inp["hour"])
     length_hr = float(inp["length_hr"]); dt_s = float(inp["dt_s"])
+    out_interval_min = float(inp["out_interval_min"])
     flood_loss = float(inp["flood_loss"]); ebb_loss = float(inp["ebb_loss"])
     C1 = float(inp["manning_C1"]); C2 = float(inp["manning_C2"])
-    A_bay0 = float(inp["bay_area"]); beta = float(inp["bay_beta"])
+    A_bay0 = float(inp["bay_area"]) / _FT2; beta = float(inp["bay_beta"])
     river_dt_hr = float(inp["river_dt_min"]) / 60.0
-    river = list(inp["river"])
-    sections = inp["sections"]
+    river = [float(q) / _FT3 for q in inp["river"]]
+    sections = [(float(dX) / _FT, float(dY) / _FT, [float(e) / _FT for e in elevs])
+                for dX, dY, elevs in inp["sections"]]
 
     # flow-net geometry: per-section area, width, mean depth, Manning n, along-inlet length
     geom = []
@@ -368,14 +402,28 @@ def compute(inp: dict, *, g: float = G_US) -> Result:
         th += dth
         ts.append(th); seas.append(h_sea(th)); bays.append(h_b); Qs.append(Q)
 
-    t = np.array(ts); sea = np.array(seas); bay = np.array(bays); Qa = np.array(Qs)
-    vel = Qa / A_min
+    t_full = np.array(ts); sea_full = np.array(seas); bay_full = np.array(bays); Qa_full = np.array(Qs)
+    vel_full = Qa_full / A_min
+    # Keep the numerical integration resolution independent of the requested
+    # reporting interval.  ACES' tabular interval controls the displayed
+    # hydrograph rows, not the RK4 step or the extrema calculated from it.
+    out_step = max(1, int(round(out_interval_min * 60.0 / dt_s)))
+    out_idx = np.arange(0, len(t_full), out_step, dtype=int)
+    if out_idx[-1] != len(t_full) - 1:
+        out_idx = np.append(out_idx, len(t_full) - 1)
+    t = t_full[out_idx]; sea = sea_full[out_idx]; bay = bay_full[out_idx]
+    Qa = Qa_full[out_idx]; vel = vel_full[out_idx]
     notes = (f"A_min={A_min:.0f} ft^2 (throat); I_g={I_g:.3f} ft; M2 amp_eff={amp_eff:.4f} ft, "
-             f"arg0={arg0:.2f} deg; RK4 dt={dt_s:.0f}s over {length_hr:.0f}h")
+             f"arg0={arg0:.2f} deg; RK4 dt={dt_s:.0f}s over {length_hr:.0f}h; "
+             f"reported every {out_step * dt_s / 60.0:.3g} min")
+    # back to SI for the contract (time stays in hours, its declared unit)
     return Result(
-        throat_area=A_min, I_g=I_g, bay_range=float(bay.max() - bay.min()),
-        max_ebb_Q=float(Qa.min()), max_flood_Q=float(Qa.max()), max_vel=float(np.abs(vel).max()),
-        t=t, sea_el=sea, bay_el=bay, inlet_Q=Qa, control_vel=vel, notes=notes)
+        throat_area=A_min * _FT2, I_g=I_g * _FT,
+        bay_range=float(bay_full.max() - bay_full.min()) * _FT,
+        max_ebb_Q=float(Qa_full.min()) * _FT3, max_flood_Q=float(Qa_full.max()) * _FT3,
+        max_vel=float(np.abs(vel_full).max()) * _FT,
+        t=t, sea_el=sea * _FT, bay_el=bay * _FT, inlet_Q=Qa * _FT3,
+        control_vel=vel * _FT, notes=notes)
 
 
 # --- self-tests (ACES User's Guide Example 1 oracle) ----------------------------
@@ -395,20 +443,27 @@ def _self_tests() -> None:
     assert _approx(A1, 100360.0, 1.0), A1
     assert _approx(A5, 60112.0, 1.0), A5
 
+    # the contract is SI, so the Example-1 oracle (feet, cfs) is compared against
+    # the returned SI values converted back to the ACES units
     r = compute({f.key: f.default for f in INPUTS})
-    assert _approx(r.throat_area, 40456.0, 1.0), r.throat_area
+    throat_ft2 = r.throat_area / _FT2
+    assert _approx(throat_ft2, 40456.0, 1.0), throat_ft2
     # 2) hydrograph oracle (Table 7-1-3), validated at the documented sample times
-    assert _approx(_at(r.t, r.sea_el, 1.77), -1.79, 0.02), _at(r.t, r.sea_el, 1.77)
-    assert _approx(_at(r.t, r.bay_el, 1.73), -0.58, 0.03), _at(r.t, r.bay_el, 1.73)
-    assert _approx(_at(r.t, r.bay_el, 29.00), -1.15, 0.03), _at(r.t, r.bay_el, 29.00)
-    q173 = _at(r.t, r.inlet_Q, 1.73)
+    assert _approx(_at(r.t, r.sea_el, 1.77) / _FT, -1.79, 0.02), _at(r.t, r.sea_el, 1.77)
+    assert _approx(_at(r.t, r.bay_el, 1.73) / _FT, -0.58, 0.03), _at(r.t, r.bay_el, 1.73)
+    assert _approx(_at(r.t, r.bay_el, 29.00) / _FT, -1.15, 0.03), _at(r.t, r.bay_el, 29.00)
+    q173 = _at(r.t, r.inlet_Q, 1.73) / _FT3
     assert _approx(q173, -207260.0, 0.012 * 207260.0), q173       # first-ebb peak, 1.2%
-    v173 = abs(q173) / r.throat_area
+    v173 = abs(q173) / throat_ft2
     assert _approx(v173, 5.05, 0.10), v173                          # controlling velocity ~1%
-    assert _approx(_at(r.t, r.inlet_Q, 30.0), 104462.0, 0.03 * 104462.0), _at(r.t, r.inlet_Q, 30.0)
-    print(f"  self-tests: PASS (CS1 A={A1:.0f}, CS5 A={A5:.0f}, throat={r.throat_area:.0f}; "
+    assert _approx(_at(r.t, r.inlet_Q, 30.0) / _FT3, 104462.0, 0.03 * 104462.0), \
+        _at(r.t, r.inlet_Q, 30.0)
+    # 3) the contract is SI end to end: peak velocity is |Q|/A_min in m/s
+    assert _approx(r.max_vel, abs(float(np.min(r.inlet_Q))) / r.throat_area, 1e-9), r.max_vel
+    assert _approx(r.max_vel / _FT, 5.76, 0.05), r.max_vel
+    print(f"  self-tests: PASS (CS1 A={A1:.0f}, CS5 A={A5:.0f}, throat={throat_ft2:.0f}; "
           f"first-ebb peak Q={q173:.0f} cfs [oracle -207260], control vel={v173:.2f} ft/s "
-          f"[oracle 5.05], bay range={r.bay_range:.2f} ft)")
+          f"[oracle 5.05], bay range={r.bay_range / _FT:.2f} ft)")
 
 
 def _print_default_example() -> None:
@@ -416,13 +471,16 @@ def _print_default_example() -> None:
     print(f"\nACES application {APP_META.aces_id} - {APP_META.name}  [{APP_META.classification}]")
     print(f"  cite: {APP_META.cite}")
     print("  (default = User's Guide Example 1: 1 sea / 1 inlet / 1 bay, pure M2 tide)")
-    print(f"    throat area A_min = {r.throat_area:.0f} ft^2   geometry integral I_g = {r.I_g:.3f} ft")
+    # results are SI; echoed here in the ACES units of the published example
+    print(f"    throat area A_min = {r.throat_area / _FT2:.0f} ft^2   "
+          f"geometry integral I_g = {r.I_g / _FT:.3f} ft")
     i173 = int(np.argmin(np.abs(r.t - 1.73)))
-    print(f"    first-ebb peak (t=1.73 h): Q = {r.inlet_Q[i173]:11.0f} cfs (oracle -207,260), "
-          f"vel = {abs(r.inlet_Q[i173]) / r.throat_area:.2f} ft/s (oracle 5.05)")
-    print(f"    bay elevation (t=1.73 h) = {r.bay_el[i173]:+.2f} ft (oracle -0.58)")
-    print(f"    30-h record extremes: ebb Q {r.max_ebb_Q:.0f} / flood Q {r.max_flood_Q:.0f} cfs; "
-          f"peak vel {r.max_vel:.2f} ft/s; bay range {r.bay_range:.2f} ft")
+    print(f"    first-ebb peak (t=1.73 h): Q = {r.inlet_Q[i173] / _FT3:11.0f} cfs (oracle -207,260), "
+          f"vel = {abs(r.inlet_Q[i173]) / r.throat_area / _FT:.2f} ft/s (oracle 5.05)")
+    print(f"    bay elevation (t=1.73 h) = {r.bay_el[i173] / _FT:+.2f} ft (oracle -0.58)")
+    print(f"    30-h record extremes: ebb Q {r.max_ebb_Q / _FT3:.0f} / "
+          f"flood Q {r.max_flood_Q / _FT3:.0f} cfs; peak vel {r.max_vel / _FT:.2f} ft/s; "
+          f"bay range {r.bay_range / _FT:.2f} ft")
     print(f"  notes: {r.notes}")
 
 

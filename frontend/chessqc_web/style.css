@@ -125,6 +125,11 @@ button#compute:hover { background: var(--accent-hover); }
 html[data-style="forge"] .switch .track, html[data-style="forge"] .switch .thumb { border-radius: 0; }
 
 .calc-main { display: grid; grid-template-columns: 3fr auto 4fr; gap: 14px; padding: 16px; align-items: start; }
+/* keep the fr shares honest: without min-width:0 a wide input table (e.g. the 6-3
+   occurrence matrix) grows past its column and starves the outputs/plot column */
+.calc-main > * { min-width: 0; }
+/* wide table inputs scroll inside their own block rather than stretching the page */
+#inputs .tablewrap { overflow-x: auto; max-width: 100%; }
 fieldset {
   border: var(--bw) solid var(--border); border-radius: var(--radius); background: var(--panel);
   padding: 10px 14px; box-shadow: var(--shadow);

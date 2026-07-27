@@ -45,6 +45,20 @@ TO_SI = {
     "m^3/s/m": 1.0, "ft^3/s/ft": 0.09290304,   # 1 ft^3/s/ft = 0.3048^2 m^3/s/m
     # phi grain-size scale (dimensionless; identical in both systems)
     "phi": 1.0,
+    # areas, flows, impulse per area, inverse length, nautical mile
+    "m^2": 1.0, "ft^2": 0.09290304,
+    "m^3/s": 1.0, "ft^3/s": 0.028316846592,
+    "m^2/s": 1.0, "ft^2/s": 0.09290304,
+    "m^2/s^2": 1.0, "ft^2/s^2": 0.09290304,
+    "N*s/m^2": 1.0, "lb*s/ft^2": 47.880259,
+    "1/m": 1.0, "1/ft": 3.280839895,
+    "nmi": 1852.0,
+    # unit strings carried through unchanged (identical in SI and US, or already
+    # expressed in their own unit): declared so both front-ends agree explicitly
+    # rather than relying on the unknown-unit fallback
+    "kg/m^3": 1.0, "deg C": 1.0, "1/s": 1.0, "1/yr": 1.0, "h": 1.0, "min": 1.0,
+    "kg": 1.0, "tonne": 1.0, "x1000": 1.0, "m^(1/3)": 1.0, "m^B": 1.0,
+    "s or 1/s": 1.0, "g": 1.0, "mm": 1.0, "log10 yr": 1.0,
 }
 
 

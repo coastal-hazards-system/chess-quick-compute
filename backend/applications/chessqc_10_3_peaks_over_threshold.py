@@ -9,8 +9,10 @@ round(target x effective-duration) peaks. These peaks are the input to the
 Probabilistic Simulation Technique (10-4).
 
 Method (after the PyStorm peaks_over_threshold module):
-  - Effective duration = (non-NaN samples) / (365.25 x 24) years; gaps do not
-    count toward the rate.
+  - Effective duration = (non-NaN samples) x (median sampling interval) in years;
+    gaps do not count toward the rate. For the hourly records this application is
+    normally driven with, that is the PyStorm form (non-NaN samples) / (365.25 x
+    24), and it stays correct for records held at any other resolution.
   - Iterative threshold search: the threshold is raised from a start percentile
     in small percentile steps; at each level the exceedances are declustered and
     the event rate is measured against the effective duration. The highest
@@ -41,11 +43,12 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import numpy as np
 
 _HOURS_PER_YEAR = 365.25 * 24.0
+_SECONDS_PER_YEAR = _HOURS_PER_YEAR * 3600.0
 
 
 # --- embedded contract dataclasses (self-contained) -----------------------------
@@ -108,11 +111,24 @@ STATIONS = (
     "8771450|Galveston Pier 21, TX",
 )
 
-# small embedded sample: 6 years of "daily" values with a clear seasonal storm
-# signal, so a handful of independent peaks are extracted without a file.
+# Small embedded sample: 6 years of daily residual-like values built from an annual
+# cycle plus four incommensurate short-period components, which produces a dense,
+# quasi-random population of independent storm peaks - enough for the threshold scan
+# to converge on the default 10 events/yr without a data file.
+_SAMPLE_START = datetime(1990, 1, 1)
+
+
+def _sample_value(d: int) -> float:
+    return (0.20
+            + 0.12 * math.sin(2.0 * math.pi * d / 365.25 - 1.2)    # seasonal
+            + 0.10 * math.sin(2.0 * math.pi * d / 29.5 + 0.7)
+            + 0.08 * math.sin(2.0 * math.pi * d / 11.7 + 1.9)
+            + 0.06 * math.sin(2.0 * math.pi * d / 7.3 + 2.8)
+            + 0.05 * math.sin(2.0 * math.pi * d / 3.1 + 0.4))
+
+
 _SAMPLE_CSV = "date,value\n" + "\n".join(
-    f"{1990 + d // 365}-{(d % 365) // 31 + 1:02d}-{(d % 31) + 1:02d},"
-    f"{round(0.4 + 0.3 * math.sin(d / 18.0) + (1.2 if d % 73 == 0 else 0.0), 4)}"
+    f"{(_SAMPLE_START + timedelta(days=d)).strftime('%Y-%m-%d')},{_sample_value(d):.4f}"
     for d in range(6 * 365)
 )
 
@@ -125,8 +141,11 @@ INPUTS = (
     Field("target_events_per_year", "Target events per year", "float", "1/yr", "1/yr",
           default=10.0, lo=0.1, hi=365.0,
           note="average number of independent peaks per year to retain (matches PST)"),
-    Field("interevent_hours", "Inter-event window", "float", "hr", "hr", default=48.0,
-          lo=1.0, hi=2160.0, note="minimum separation between independent events"),
+    # held in SI seconds like every other duration in the suite (the "hr" unit is the
+    # display unit; the front-ends divide by 3600 to show it)
+    Field("interevent_hours", "Inter-event window", "float", "hr", "hr",
+          default=48.0 * 3600.0, lo=1.0 * 3600.0, hi=2160.0 * 3600.0,
+          note="minimum separation between independent events"),
     Field("method", "Declustering method", "choice", default="hydrograph",
           choices=("hydrograph", "peak_gap"),
           note="hydrograph: group + per-group max; peak_gap: sequential gap filter"),
@@ -301,10 +320,10 @@ ABOUT = {'summary': 'Extracts independent storm peaks from a continuous water-le
               'tag': 'preferred',
               'note': 'Default: groups consecutive exceedances into one storm hydrograph '
                       "and keeps that group's single maximum.",
-              'equations': [{'tex': 'D_{eff} = \\frac{N}{365.25 \\cdot 24}',
-                             'desc': 'Effective duration in years from the count of '
-                                     'non-NaN samples (gaps do not count toward the '
-                                     'rate).'},
+              'equations': [{'tex': 'D_{eff} = N \\, \\Delta t',
+                             'desc': 'Effective duration in years: the count of non-NaN '
+                                     'samples times the median sampling interval (gaps '
+                                     'do not count toward the rate).'},
                             {'tex': 'u = y_{(k)}, \\quad k = \\lfloor (1 - p/100)(N - 1) '
                                     '\\rfloor',
                              'desc': 'Threshold u is the value at percentile p of the '
@@ -329,10 +348,10 @@ ABOUT = {'summary': 'Extracts independent storm peaks from a continuous water-le
               'tag': '',
               'note': 'Sequential gap filter: drops a later sample that lies within the '
                       'window of, and is not larger than, the preceding exceedance.',
-              'equations': [{'tex': 'D_{eff} = \\frac{N}{365.25 \\cdot 24}',
-                             'desc': 'Effective duration in years from the count of '
-                                     'non-NaN samples (gaps do not count toward the '
-                                     'rate).'},
+              'equations': [{'tex': 'D_{eff} = N \\, \\Delta t',
+                             'desc': 'Effective duration in years: the count of non-NaN '
+                                     'samples times the median sampling interval (gaps '
+                                     'do not count toward the rate).'},
                             {'tex': 'u = y_{(k)}, \\quad k = \\lfloor (1 - p/100)(N - 1) '
                                     '\\rfloor',
                              'desc': 'Threshold u is the value at percentile p of the '
@@ -355,12 +374,13 @@ ABOUT = {'summary': 'Extracts independent storm peaks from a continuous water-le
  'symbols': [['u', 'selected exceedance threshold (m)'],
              ['p', 'series percentile defining the current threshold (%)'],
              ['N', 'number of valid (non-NaN) samples in the series'],
-             ['D_{eff}', 'effective record duration in years (count-based)'],
+             ['Delta t', 'median sampling interval of the record, in years'],
+             ['D_{eff}', 'effective record duration in years (valid samples x sampling interval)'],
              ['N_p', 'number of declustered peaks retained'],
              ['lambda', 'declustered exceedance rate (events per year)'],
              ['mu', 'target average events per year'],
              ['epsilon', 'convergence tolerance on the rate (1/yr)'],
-             ['tau', 'inter-event window (years) = inter-event hours / (365.25 x 24)'],
+             ['tau', 'inter-event window in years = window seconds / (365.25 x 24 x 3600)'],
              ['N_{keep}',
               'deterministic retained peak count = round(target x effective duration)']],
  'references': ['Coles (2001), An Introduction to Statistical Modeling of Extreme Values '
@@ -378,19 +398,26 @@ def compute(inp: dict) -> Result:
     n = t.size
 
     target = float(inp["target_events_per_year"])
-    interevent = float(inp["interevent_hours"]) / _HOURS_PER_YEAR    # hours -> years
+    interevent = float(inp["interevent_hours"]) / _SECONDS_PER_YEAR  # seconds -> years
     method = str(inp.get("method", "hydrograph"))
     start_pct = float(inp["start_percentile"])
     step = float(inp["step_size"])
     tol = float(inp["tolerance"])
     segmenter = _segment_hydrograph if method == "hydrograph" else _segment_peak_gap
 
-    eff_dur = n / _HOURS_PER_YEAR                  # count-based effective duration (yr)
+    # Effective duration: the valid-sample count times the record's own sampling
+    # interval, so gaps do not count toward the rate. The interval is the median
+    # timestamp spacing, which for the hourly records this application is normally
+    # driven with reduces to the count-based form n / (365.25 x 24).
+    dt_year = float(np.median(np.diff(t))) if n > 1 else 0.0
+    if not (dt_year > 0.0):
+        dt_year = 1.0 / _HOURS_PER_YEAR
+    eff_dur = n * dt_year                          # effective duration (yr)
     sorted_desc = np.sort(y)[::-1]
     max_iter = int((100.0 - start_pct) / step) + 1
 
     # one-sided scan: keep the highest-threshold state whose rate is still >= target
-    ge = None; last = None
+    ge = None; first = None
     pct = start_pct
     for _ in range(max_iter):
         if pct >= 100.0:
@@ -403,23 +430,35 @@ def compute(inp: dict) -> Result:
             peak_idx = segmenter(y, t, exceed, interevent)
             if peak_idx.size:
                 rate = peak_idx.size / eff_dur
-                last = (threshold, peak_idx, rate, pct)
+                if first is None:
+                    first = (threshold, peak_idx, rate, pct)
                 if rate >= target:
-                    ge = last
+                    ge = (threshold, peak_idx, rate, pct)
         pct += step
 
+    why = ""
     if ge is not None:
         threshold, peak_idx, rate, fpct = ge
         converged = rate <= target + tol
-    elif last is not None:
-        threshold, peak_idx, rate, fpct = last
+        if not converged:
+            why = (f"the rate at the highest qualifying threshold ({rate:.2f}/yr) "
+                   f"overshoots the tolerance: lower the percentile step or widen it")
+    elif first is not None:
+        # the target rate is out of reach for this record: fall back to the lowest
+        # scanned threshold, which yields the most events (the closest achievable
+        # rate), rather than the most extreme threshold, which yields almost none
+        threshold, peak_idx, rate, fpct = first
         converged = False
+        why = (f"{target:.3g}/yr is out of reach for this record: even at the p"
+               f"{start_pct:g} start threshold it holds only {rate:.2f} independent "
+               f"events/yr over {eff_dur:.2f} yr")
     else:
         # no exceedances at any scanned percentile (e.g. a flat / near-constant
         # series); report zero peaks rather than failing
         threshold = float(sorted_desc[0])
         peak_idx = np.empty(0, dtype=np.int64)
         rate, fpct, converged = 0.0, start_pct, False
+        why = "no sample exceeds any scanned threshold (a flat or near-constant series)"
 
     # rank-trim to exactly round(target * eff_dur) largest peaks (deterministic)
     n_keep = int(round(target * eff_dur))
@@ -433,10 +472,12 @@ def compute(inp: dict) -> Result:
 
     pyear, pser = _decimate(t_all, y_all)
     pthr = np.full(len(pyear), threshold)
-    notes = (f"{method} declustering, inter-event {inp['interevent_hours']:.0f} h; "
+    notes = (f"{method} declustering, inter-event "
+             f"{float(inp['interevent_hours']) / 3600.0:.0f} h; "
              f"threshold {threshold:.3f} at p{fpct:.2f}; {peak_idx.size} peaks over "
              f"{eff_dur:.1f} yr ({eff_rate:.2f}/yr); "
-             f"{'converged' if converged else 'did not converge'}")
+             f"{'converged' if converged else 'did not converge'}"
+             + ("" if converged or not why else f" - {why}"))
 
     handoff = ""
     if inp.get("handoff"):           # the peaks (year,value) for 10-4 PST
@@ -471,7 +512,33 @@ def _self_tests() -> None:
     # peak_gap method also runs and yields declustered peaks
     r_pg = compute({**base, "method": "peak_gap"})
     assert r_pg.n_peaks >= 1
-    print(f"  self-tests: PASS (threshold search, declustering, rank-trim, methods)")
+
+    # the default (daily) sample spans its full 6 years and converges on the target
+    assert abs(r.eff_duration - 6.0) < 0.02, r.eff_duration
+    assert abs(r.events_per_year - base["target_events_per_year"]) < 0.02
+    assert r.converged == "yes", r.notes
+
+    # effective duration follows the record's own sampling interval: the same
+    # signal sampled hourly and daily reports the same duration in years
+    hourly = "date,v\n" + "\n".join(
+        f"{(datetime(2000, 1, 1) + timedelta(hours=h)).strftime('%Y-%m-%d %H:%M')},"
+        f"{math.sin(h / 7.0):.4f}" for h in range(24 * 200))
+    daily = "date,v\n" + "\n".join(
+        f"{(datetime(2000, 1, 1) + timedelta(days=d)).strftime('%Y-%m-%d')},"
+        f"{math.sin(d / 3.0):.4f}" for d in range(200))
+    r_h = compute({**base, "csv": hourly})
+    r_d = compute({**base, "csv": daily})
+    assert abs(r_h.eff_duration - 200 / 365.25) < 0.01, r_h.eff_duration
+    assert abs(r_d.eff_duration - 200 / 365.25) < 0.01, r_d.eff_duration
+
+    # an unreachable target falls back to the lowest scanned threshold (the most
+    # events available), not to the most extreme one (which would yield almost none)
+    r_un = compute({**base, "target_events_per_year": 300.0})
+    assert r_un.converged == "no"
+    assert r_un.final_percentile == base["start_percentile"], r_un.final_percentile
+    assert r_un.n_peaks > compute({**base, "target_events_per_year": 2.0}).n_peaks
+    print(f"  self-tests: PASS (threshold search, declustering, rank-trim, methods, "
+          f"sampling interval, unreachable-target fallback)")
 
 
 def _print_default_example() -> None:

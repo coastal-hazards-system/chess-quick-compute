@@ -111,7 +111,9 @@ INPUTS = (
     Field("berm_height", "Berm/dune height above surge", "float", "m", "ft", default=3.0,
           lo=0.1, hi=50.0),
     Field("beach_slope", "Beach-face slope (tan)", "float", "", "", default=0.10, lo=1e-3, hi=1.0),
-    Field("duration", "Storm surge duration", "float", "hr", "hr", default=200.0, lo=0.1, hi=1e4),
+    # held in SI seconds; the "hr" display unit makes the front-ends show hours
+    Field("duration", "Storm surge duration", "float", "hr", "hr",
+          default=200.0 * 3600.0, lo=0.1 * 3600.0, hi=1e4 * 3600.0),
 )
 
 OUTPUTS = (
@@ -211,7 +213,7 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
     _validate(inp)
     D50 = float(inp["D50"]); Hb = float(inp["Hb"]); S = float(inp["surge"])
     B = float(inp["berm_height"]); m1 = float(inp["beach_slope"])
-    dur_hr = float(inp["duration"])
+    dur = float(inp["duration"])                               # seconds
 
     A = moore_A(D50)
     hb = Hb / KAPPA
@@ -221,7 +223,7 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
     geom = 1.0 + hb / B + m1 * Wb / hb
     T_s = _C1 * Hb ** 1.5 / (g ** 0.5 * A ** 3) / geom         # seconds
     T_s_hr = T_s / 3600.0
-    frac = 1.0 - math.exp(-dur_hr / T_s_hr) if T_s_hr > 0 else 1.0
+    frac = 1.0 - math.exp(-dur / T_s) if T_s > 0 else 1.0
     R_storm = R_inf * frac
     # eroded volume above the surge level ~ recession times the active height (berm + half surge)
     V_inf = R_inf * (B + 0.5 * S)
@@ -229,7 +231,7 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
 
     notes = (f"A={A:.3f}, h_b={hb:.2f} m, W_b={Wb:.0f} m; R_inf from equilibrium sand balance; "
              f"T_s={T_s_hr:.1f} hr (Kriebel-Dean 1993); surge-driven (no-surge case -> 0)")
-    return Result(A=A, hb=hb, Wb=Wb, R_inf=R_inf, T_s=T_s_hr, R_storm=R_storm,
+    return Result(A=A, hb=hb, Wb=Wb, R_inf=R_inf, T_s=T_s, R_storm=R_storm,
                   V_inf=V_inf, V_storm=V_storm, notes=notes)
 
 
@@ -242,15 +244,15 @@ def _self_tests() -> None:
     g = G_SI
     # Kriebel & Dean (1985) Fig-5 case: D50=0.5mm, S=2m, Hb=4.6m, berm 3m, slope 1:10
     r = compute({"D50": 0.50, "Hb": 4.6, "surge": 2.0, "berm_height": 3.0,
-                 "beach_slope": 0.10, "duration": 1e4}, g=g)
+                 "beach_slope": 0.10, "duration": 1e4 * 3600.0}, g=g)
     assert _approx(r.A, 0.118, 1e-3), r.A
     # equilibrium recession matches the Bruun sand balance (~79 m; paper's tens of m)
     assert _approx(r.R_inf, 79.4, 2.0), r.R_inf
-    # time scale in the paper's stated 10-100 hr storm range
-    assert 10.0 < r.T_s < 100.0, r.T_s
+    # time scale (carried in SI seconds) in the paper's stated 10-100 hr storm range
+    assert 10.0 < r.T_s / 3600.0 < 100.0, r.T_s
     # recession is linear in surge (paper Fig 5)
     r2 = compute({"D50": 0.50, "Hb": 4.6, "surge": 4.0, "berm_height": 3.0,
-                  "beach_slope": 0.10, "duration": 1e4}, g=g)
+                  "beach_slope": 0.10, "duration": 1e4 * 3600.0}, g=g)
     assert _approx(r2.R_inf, 2.0 * r.R_inf, 1e-6), (r2.R_inf, r.R_inf)
     # T_s independent of surge (paper Figs 5-6)
     assert _approx(r2.T_s, r.T_s, 1e-9)
@@ -260,9 +262,10 @@ def _self_tests() -> None:
     assert _approx(r3.R_storm, r.R_inf * (1.0 - math.exp(-1.0)), 0.5), r3.R_storm
     # no surge -> no recession (surge-driven model)
     r0 = compute({"D50": 0.50, "Hb": 4.6, "surge": 0.0, "berm_height": 3.0,
-                  "beach_slope": 0.10, "duration": 200.0}, g=g)
+                  "beach_slope": 0.10, "duration": 200.0 * 3600.0}, g=g)
     assert _approx(r0.R_inf, 0.0, 1e-12), r0.R_inf
-    print(f"  self-tests: PASS (Fig-5 R_inf={r.R_inf:.1f} m [Bruun ~79], T_s={r.T_s:.1f} hr "
+    print(f"  self-tests: PASS (Fig-5 R_inf={r.R_inf:.1f} m [Bruun ~79], "
+          f"T_s={r.T_s / 3600.0:.1f} hr "
           f"[10-100], R linear in surge, exponential, no-surge->0)")
 
 
@@ -272,7 +275,8 @@ def _print_default_example() -> None:
     print(f"  cite: {APP_META.cite}")
     print("  (default = Kriebel & Dean 1985 Fig-5 case: D50=0.5mm, S=2m, Hb=4.6m, berm 3m)")
     print(f"    A={r.A:.3f} m^1/3   h_b={r.hb:.2f} m   W_b={r.Wb:.0f} m")
-    print(f"    equilibrium recession R_inf = {r.R_inf:.1f} m   time scale T_s = {r.T_s:.1f} hr")
+    print(f"    equilibrium recession R_inf = {r.R_inf:.1f} m   "
+          f"time scale T_s = {r.T_s / 3600.0:.1f} hr")
     print(f"    recession over {200.0:.0f} hr = {r.R_storm:.1f} m   eroded volume = {r.V_storm:.0f} m^3/m")
     print(f"  notes: {r.notes}")
 
