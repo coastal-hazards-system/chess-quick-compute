@@ -143,10 +143,12 @@ async function loadApp(id) {
   if (entry.comingSoon) { fail(`${id} ${entry.name} is coming soon`); return; }
   setStatus(`loading ${id}…`, true);
   const appSrc = await (await fetch(entry.src, { cache: "no-cache" })).text();
-  // load numpy only when the app imports it; stdlib-only apps skip it (faster)
+  // Load whatever the module actually imports (numpy, scipy, ...) and nothing more, so
+  // stdlib-only apps stay fast. Pyodide scans the source itself: hard-coding the package
+  // list here silently breaks any app that later picks up a new dependency.
   const pkgs = [...(entry.packages || [])];
-  if (/import\s+numpy|from\s+numpy/.test(appSrc)) pkgs.push("numpy");
   if (pkgs.length) await py.loadPackage(pkgs);
+  await py.loadPackagesFromImports(appSrc);
   py.FS.writeFile("/chessqc_app.py", appSrc);
   py.runPython(`
 import sys, importlib.util
