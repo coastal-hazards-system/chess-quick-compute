@@ -17,16 +17,19 @@ Theory and references (TR chapter 3-2, eqs 1-14 in docs/EQUATIONS.md):
     statistics.
   - surf beat (12) and wave setup (13).
 
-Shoaling applies the Shuto (1974) nonlinear correction of TR eq. 14, marched from deep
-water to the subject depth (see `_shoaling_shuto`). It matters only in shallow water
-with long periods -- over the 794-case ACES DOS sweep the linear form alone is already
-right to a median 0.34% -- but there it is large: at H_0 = 2 ft in 10 ft with
-T_s = 16 s the linear K_s is 1.53 against ACES's 2.38.
+Structure. ACES evaluates none of this at the subject depth alone: it marches the sea
+state in from deep water and, at each station, iterates the wave setup against the
+radiation-stress balance while accumulating the height distribution over eight discrete
+surf-beat levels, carrying Shuto shoaling state across stations and recomputing the
+refraction coefficient at every one. That structure is reproduced here (see
+`_goda_march`). Evaluating the same relations only at the target depth -- as this
+application previously did -- left the transformed heights about 13% off across the
+794-case ACES DOS sweep; with the march they are within about 1%.
 
-ACES's implementation of the same three laws is not reproduced exactly: its F >= 30
-branch divides by the running H rather than H_0 (WSU.FOR:1600), so its answer depends
-on the previous march step and its K_s is not monotone in period. See
-tests/aces_oracle/FINDINGS.md B4.
+Refraction uses ACES's seven-band directional table over ten frequency components
+(GODA4), with the band selected from period and steepness unless pinned by the
+`s_max` input. H_max is the mean of the highest 1/250, which is what ACES reports --
+not a most-probable maximum for an assumed wave count.
 
 Source reconciliation. ACES TR 3-2 supplies the complete Goda probability-density,
 breaking, refraction, surf-beat, setup, and nonlinear-shoaling relations (eqs. 1--14).
@@ -105,8 +108,10 @@ INPUTS = (
           lo=1.0, hi=1e4),
     Field("theta", "Principal incident direction", "angle", "deg", "deg", default=10.0,
           lo=-75.0, hi=75.0, note="from shore normal; |theta| <= 75 deg"),
-    Field("s_max", "Directional spreading parameter", "float", "", "", default=10.0,
-          lo=1.0, hi=200.0, note="10 wind waves, 25 steep swell, 75 flat swell"),
+    Field("s_max", "Directional spreading", "choice", "", "", default="Auto (ACES)",
+          choices=("Auto (ACES)", "10 (wind waves)", "25 (steep swell)", "75 (flat swell)"),
+          note="ACES selects the band from period and steepness (T_s <= 10 s -> 10; "
+               "longer with H/L > 0.02 -> 25; otherwise 75). Override to pin it."),
 )
 
 OUTPUTS = (
@@ -175,6 +180,277 @@ def wave_length(T: float, d: float, g: float) -> float:
     return c * T
 
 
+# --- ACES GODA cross-shore march (WSU.FOR; Hawaii port GODA/GODA2-GODA5) ---------
+# ACES does not evaluate the transformation at the subject depth in one step. It
+# marches the sea state in from deep water, and at every station iterates the wave
+# setup against the radiation-stress balance while accumulating the height
+# distribution over eight discrete surf-beat levels. Shoaling carries Shuto state
+# across stations, and the refraction coefficient is recomputed at each one. The
+# structure matters: evaluating the same relations only at the target depth left the
+# transformed heights about 13% off across the 794-case DOS sweep.
+
+# Standard-normal surf-beat levels and their probability weights (GODA.py).
+_SB_LEVEL = (3.2831, 2.3158, 1.3832, 0.4599, -0.4599, -1.3832, -2.3158, -3.2831)
+_SB_WEIGHT = (0.0014, 0.0214, 0.1359, 0.3413, 0.3413, 0.1359, 0.0214, 0.0014)
+
+# Directional spreading tables, selected by period and steepness (GODA4).
+_SPREAD = {10: (0.05, 0.11, 0.21, 0.26, 0.21, 0.11, 0.05),
+           25: (0.02, 0.06, 0.23, 0.38, 0.23, 0.06, 0.02),
+           75: (0.00, 0.02, 0.18, 0.60, 0.18, 0.02, 0.00)}
+_N_BIN = 150
+_N_FREQ = 10
+
+
+def _dl_from_dlo(d_over_L0: float) -> float:
+    """d/L from d/L0 by fixed-point iteration (GODA5)."""
+    Ld = Lod = 1.0 / d_over_L0          # both seeded at L0/d
+    diff, Ldnew = 100.0, Ld
+    while diff > 0.0005:
+        Ldnew = Lod * math.tanh(2.0 * math.pi / Ld)
+        diff = abs(Ldnew - Ld)
+        Ld = 0.5 * (Ldnew + Ld)
+    return 1.0 / Ldnew
+
+
+def _spread_band(spread):
+    """Directional band from the input: None means let ACES choose it.
+
+    Accepts the choice strings and, for callers written against the earlier float
+    field, a bare number, which is snapped to the nearest tabulated band.
+    """
+    if spread is None:
+        return None
+    if isinstance(spread, str):
+        if spread.strip().lower().startswith("auto"):
+            return None
+        spread = float(spread.split()[0])
+    return min(_SPREAD, key=lambda b: abs(b - float(spread)))
+
+
+def _kr_eff_aces(direc_deg, Ts, d, H_deep, g, spread="Auto (ACES)"):
+    """Effective refraction coefficient over 7 directional bands x 10 frequencies."""
+    direcr = math.radians(direc_deg)
+    theta = direcr - math.copysign(math.radians(67.5), direcr) if direcr else -math.radians(67.5)
+    if direcr > 0:
+        theta = direcr - math.radians(67.5)
+    else:
+        theta = -(abs(direcr) + math.radians(67.5))
+
+    sumsqkr = []
+    th = theta
+    for _ in range(7):
+        s = 0.0
+        for j in range(_N_FREQ):
+            F = (1.007 / Ts) * math.log(2.0 * _N_FREQ / (2.0 * (j + 1) - 1)) ** -0.25
+            T = 1.0 / F
+            L0 = g * T * T / (2.0 * math.pi)
+            C0 = L0 / T
+            dl = _dl_from_dlo(d / L0)
+            C = (d / dl) / T
+            argu = (C / C0) * math.sin(th)
+            argu = 0.9999999 if abs(argu) > 1.0 else argu
+            th2 = math.asin(argu)
+            if th >= math.pi / 2.0:
+                th2 = math.pi - th2
+            elif th <= -math.pi / 2.0:
+                th2 = -(math.pi - th2)
+            s += abs(math.cos(th) / math.cos(th2))
+        sumsqkr.append(s)
+        th += math.radians(22.5)
+
+    kr, n = 1.0, 0
+    diff = 100.0
+    while diff > 0.005 and n <= 20:
+        L = d / _dl_from_dlo(d / (g * Ts * Ts / (2.0 * math.pi)))
+        HL = kr * H_deep / L
+        band = _spread_band(spread)
+        if band is None:
+            # ACES picks the spreading band from period and steepness (GODA4), rather
+            # than taking s_max from the user.
+            tab = _SPREAD[10] if Ts <= 10.0 else (_SPREAD[25] if HL > 0.02 else _SPREAD[75])
+        else:
+            tab = _SPREAD[band]
+        new = math.sqrt(sum((tab[i] / 10.0) * sumsqkr[i] for i in range(7)))
+        diff = abs(kr - new) / kr
+        kr = new
+        n += 1
+    return kr
+
+
+def _stats_aces(p, delxx, Hop, dL):
+    """Discrete statistics over the 150-bin distribution (GODA2)."""
+    sump = sum(p)
+    cump = Hsig = Hrms = Hmean = H10 = H02 = Hmax = 0.0
+    x = 0.0
+    for i in range(_N_BIN):
+        x += delxx
+        w = p[i] / sump
+        cump += w
+        if cump > 0.666:
+            Hsig += x * Hop * w * 3
+        if cump > 0.90:
+            H10 += x * Hop * w * 10
+        if cump > 0.98:
+            H02 += x * Hop * w * 50
+        if cump > 0.996:
+            Hmax += x * Hop * w * 250
+        Hmean += x * Hop * w
+        Hrms += x * x * w
+    Hrms = math.sqrt(Hrms) * Hop
+    z = (1.0 / 8.0) * Hrms ** 2 * (0.5 + 4.0 * math.pi * dL / math.sinh(4.0 * math.pi * dL))
+    return Hmax, Hrms, Hmean, Hsig, H10, H02, z
+
+
+def _goda_march(H0, d_target, Ts, cot_slope, direc_deg, g=9.80665,
+                spread="Auto (ACES)"):
+    """ACES GODA cross-shore march. Returns the statistics at d_target."""
+    L0 = g * Ts * Ts / (2.0 * math.pi)
+    x_start = max(L0, 20.0 * H0)
+    d = x_start
+    direcr = math.radians(direc_deg)
+    Seff = cot_slope / math.cos(direcr)
+
+    Csave = 0.0
+    itest = 0
+    ym1 = ym2 = 1.0, 0.0
+    ym1, ym2 = 1.0, 0.0
+    etam1 = etam2 = zm1 = 0.0
+    N = M = 0
+    out = None
+    Ks = 1.0
+    guard = 0
+
+    while d > d_target and guard < 40000:
+        guard += 1
+        deld = x_start / 100.0 if M == 1 else (x_start / 500.0 if M == 2 else 0.0)
+        d = x_start if N == 0 else d - deld
+        y = Seff * (x_start - d)
+        dswl = d
+        N += 1
+        diffy = ym1 - ym2
+        if abs(diffy) < 1e-12:
+            diffy = 0.125
+            deld = diffy / Seff
+        eta = etam1 + (y - ym1) * (etam1 - etam2) / diffy
+        dLo = d / L0
+        dL = _dl_from_dlo(dLo)
+        Ks, Csave, itest = _shuto_step(Ts, H0, d, g, Csave, itest)
+
+        # ACES works internally in centimetres (WSU.FOR:205), so its guard
+        # "d > dloc + 30" is 30 cm, not 30 of the user's length units.
+        if dLo > 0.5 and N != 1 and d > (d_target + 0.30):
+            ym1 = y
+            M = 1
+            continue
+
+        M = 2
+        Hop = H0
+        d = dswl + eta
+        diff2 = 100.0
+        p = [0.0] * _N_BIN
+        delxx = 0.0
+        Kreff = 1.0
+        stats = None
+        inner = 0
+        while diff2 >= 0.07 and inner < 40:
+            inner += 1
+            Kreff = _kr_eff_aces(direc_deg, Ts, d, H0, g, spread)
+            sbrms = 0.01 * Hop / math.sqrt(Hop / L0 * (1.0 + d / Hop))
+            A2 = (1.416 / Ks) ** 2
+            p = [0.0] * _N_BIN
+            x1_0 = None
+            for j in range(8):
+                di = sbrms * _SB_LEVEL[j] + dswl + eta
+                arg = -1.5 * math.pi * di / L0 * (1.0 + 15.0 * (1.0 / Seff) ** (4.0 / 3.0))
+                arg = max(min(arg, 100.0), -100.0)
+                x1 = min(0.18 * (L0 / Hop) * (1.0 - math.exp(arg)) * Kreff, 2.8)
+                if j == 0:
+                    x1_0 = x1
+                if x1 <= 0.0:
+                    continue
+                x2 = (2.0 / 3.0) * x1
+                delxx = x1_0 / _N_BIN
+                arg2 = max(min(-A2 * x1 * x1, 100.0), -100.0)
+                q = [0.0] * _N_BIN
+                x = 0.0
+                for i in range(_N_BIN):
+                    x += delxx
+                    a = max(min(-A2 * x * x, 100.0), -100.0)
+                    if x > x1:
+                        q[i] = 0.0
+                    elif x <= x2:
+                        q[i] = 2.0 * A2 * x * math.exp(a)
+                    else:
+                        q[i] = (2.0 * A2 * x * math.exp(a)
+                                - (x - x2) / (x1 - x2) * 2.0 * A2 * x1 * math.exp(arg2))
+                sq = sum(q)
+                if sq <= 0.0:
+                    continue
+                fact = _SB_WEIGHT[j] / sq
+                for i in range(_N_BIN):
+                    p[i] += q[i] * fact
+            if sum(p) <= 0.0:
+                break
+            stats = _stats_aces(p, delxx, Hop, dL)
+            z = stats[6]
+            etan = etam1 - (1.0 / d * (z - zm1)) * 0.7
+            if abs(etan) < 1e-20:
+                etan = 1e-6
+            diff2 = abs((etan - eta) / etan)
+            if diff2 > 0.07:
+                eta = etan
+        if stats is None:
+            break
+        Hmax, Hrms, Hmean, Hsig, H10, H02, z = stats
+        etam2, etam1 = etam1, eta
+        ym2, ym1 = ym1, y
+        zm1 = z
+        sbrms = 0.01 * H0 / math.sqrt(H0 / L0 * (1.0 + d / H0))
+        out = dict(Ks=Ks, Kr=Kreff, Hs=Hsig, Hmean=Hmean, Hrms=Hrms, H10=H10,
+                   H2=H02, Hmax=Hmax, surf_beat=sbrms, setup=eta)
+        L = d / dL
+        argum = (L / Ts) / (L0 / Ts) * math.sin(direcr)
+        argum = max(min(argum, 1.0), -1.0)
+        Seff = cot_slope / math.cos(math.asin(argum))
+        d = dswl
+    return out
+
+
+def _shuto_step(Ts, Hdeep, d, g, Csave, itest):
+    """Shuto shoaling with carried state (GODA3)."""
+    L0 = g * Ts * Ts / (2.0 * math.pi)
+    dL = _dl_from_dlo(d / L0)
+    n = 0.5 * (1.0 + 4.0 * math.pi * dL / math.sinh(4.0 * math.pi * dL))
+    L = d / dL
+    C = L / Ts
+    C0 = L0 / Ts
+    Ks = math.sqrt(0.5 / n * C0 / C)
+    H = Hdeep * Ks
+    if itest == 1:
+        Ks = Csave / (d ** (2.0 / 7.0) * H)
+        H = Hdeep * Ks
+        F = g * H * Ts * Ts / (d * d)
+        if F < 50.0:
+            return Ks, Csave, 1
+        return Ks, H * d ** 2.5 * (math.sqrt(F) - 2.0 * math.sqrt(3.0)), 2
+    if itest == 2:
+        del1 = 100.0
+        for _ in range(40):
+            root = math.sqrt(g * H * Ts * Ts / (d * d)) - 2.0 * math.sqrt(3.0)
+            if root <= 0.0:
+                break
+            Hn = Csave / (d ** 2.5 * root)
+            del1 = abs((Hn - H) / Hn)
+            H = Hn
+            if del1 < 0.05:
+                break
+        return H / Hdeep, Csave, 2
+    F = g * H * Ts * Ts / (d * d)
+    if F < 30.0:
+        return Ks, Csave, 0
+    return Ks, H * d ** (2.0 / 7.0), 1
+
+
 def _shoaling(T: float, d: float, g: float):
     L = wave_length(T, d, g)
     k = 2.0 * math.pi / L
@@ -184,100 +460,6 @@ def _shoaling(T: float, d: float, g: float):
     return math.sqrt(Cg0 / Cg), L, k
 
 
-def _shoaling_shuto(H0: float, Ts: float, d: float, g: float, n_step: int = 400):
-    """Shoaling coefficient including the Shuto (1974) nonlinear correction (TR eq 14).
-
-    Shoaling stops being linear once the wave is high relative to depth. Shuto gives
-    three successive regimes, keyed on F = g H T_s^2 / d^2:
-
-        F < 30      linear,  K_s = sqrt(C_g0/C_g)
-        30 <= F <50  H d^(2/7)                                        = const
-        F >= 50      H d^(5/2) (sqrt(F) - 2 sqrt(3))                  = const
-
-    Each law is an invariant along the shoaling path, so the constants have to be
-    captured where the wave crosses into that regime -- the result depends on the
-    path, not only on the local depth. The wave is therefore marched from deep water
-    (d = L_0/2) in to the subject depth, carrying the invariant across each crossing,
-    which is how ACES evaluates it too (WSU.FOR:1563-1620).
-
-    ACES's own F >= 30 branch divides by the running H rather than H_0
-    (WSU.FOR:1600), which makes its answer depend on the previous step's K_s and
-    produces a K_s that is not monotone in period (1.58 at T_s = 12 s, 1.39 at 14 s,
-    2.38 at 16 s for H_0 = 2 ft in 10 ft). That is taken to be a defect in ACES and is
-    not reproduced; see tests/aces_oracle/FINDINGS.md B4.
-    """
-    L0 = g * Ts * Ts / (2.0 * math.pi)
-    d_start = 0.5 * L0
-    if d >= d_start:                               # already deep: linear is exact
-        return _shoaling(Ts, d, g)
-
-    regime, C30, C50 = 0, 0.0, 0.0
-    Ks = 1.0
-    H = H0
-    for i in range(1, n_step + 1):
-        d_i = d_start + (d - d_start) * i / n_step
-        if regime == 0:
-            Ks = _shoaling(Ts, d_i, g)[0]
-            H = H0 * Ks
-            if g * H * Ts * Ts / (d_i * d_i) >= 30.0:
-                regime, C30 = 1, H * d_i ** (2.0 / 7.0)
-        elif regime == 1:
-            H = C30 / d_i ** (2.0 / 7.0)           # H d^(2/7) = const
-            Ks = H / H0
-            F = g * H * Ts * Ts / (d_i * d_i)
-            if F >= 50.0:
-                root = math.sqrt(F) - 2.0 * math.sqrt(3.0)
-                if root <= 0.0:                    # invariant undefined; stay in F>30
-                    continue
-                regime, C50 = 2, H * d_i ** 2.5 * root
-        else:
-            for _ in range(40):                    # implicit in H; converge as ACES does
-                root = math.sqrt(g * H * Ts * Ts / (d_i * d_i)) - 2.0 * math.sqrt(3.0)
-                if root <= 0.0:
-                    break
-                H_new = C50 / (d_i ** 2.5 * root)
-                if H_new <= 0.0 or abs(H_new - H) <= 0.05 * H_new:
-                    H = H_new
-                    break
-                H = H_new
-            Ks = H / H0
-    _, L, k = _shoaling(Ts, d, g)
-    return Ks, L, k
-
-
-def _bm_spectrum(f: float, H0: float, Ts: float) -> float:
-    u = Ts * f
-    return 0.257 * H0 * H0 * Ts * u ** (-5) * math.exp(-1.03 * u ** (-4))
-
-
-def _kr_eff(H0, Ts, d, theta_deg, s_max, g, nf=140, ndir=221):
-    """Effective refraction coefficient over the directional spectrum (eqs 1-6)."""
-    L0 = g * Ts * Ts / (2.0 * math.pi)
-    theta_p = math.radians(theta_deg)
-    fp = 0.9529 / Ts                                   # B-M spectral peak frequency
-    fs = np.linspace(0.4 * fp, 3.0 * fp, nf)
-    dth = np.linspace(-math.pi / 2.0, math.pi / 2.0, ndir)
-    num = den = 0.0
-    for f in fs:
-        S = _bm_spectrum(f, H0, Ts)
-        Ks, L, _ = _shoaling(1.0 / f, d, g)
-        s = s_max * (f / fp) ** 5 if f <= fp else s_max * (f / fp) ** (-2.5)   # Mitsuyasu
-        w0 = S * Ks * Ks
-        for td in dth:
-            spread = max(math.cos(td / 2.0), 0.0) ** (2.0 * s)
-            a0 = theta_p + td
-            if abs(a0) >= math.pi / 2.0:
-                continue
-            sind = math.sin(a0) * (L / L0)
-            if abs(sind) >= 1.0:
-                continue
-            ad = math.asin(sind)
-            Kr = math.sqrt(max(math.cos(a0), 1e-9) / max(math.cos(ad), 1e-9))
-            num += w0 * spread * Kr * Kr
-            den += w0 * spread
-    return math.sqrt(num / den)
-
-
 def _validate(inp: dict) -> None:
     for f in INPUTS:
         if f.kind not in ("float", "int", "angle"):
@@ -285,36 +467,6 @@ def _validate(inp: dict) -> None:
         v = float(inp[f.key])
         if not (f.lo <= v <= f.hi):
             raise ValueError(f"{f.label} ({f.key}) = {v} outside [{f.lo}, {f.hi}] ({f.note})")
-
-
-def _stats_at(H0e, Ks, d, L0, tanb, n_waves):
-    """Integrate the breaking-clipped distribution; return (Hmean,Hrms,Hs,H10,H2,Hmax)."""
-    a = 1.416 / Ks
-    def Xb(A):
-        return A * (L0 / H0e) * (1.0 - math.exp(
-            -1.5 * math.pi * (d / L0) * (1.0 + 15.0 * tanb ** (4.0 / 3.0))))
-    x1 = Xb(0.18); x2 = Xb(0.12)
-    P0 = lambda x: 2.0 * a * a * x * math.exp(-a * a * x * x)
-    def Pr(x):
-        if x <= x2:
-            return P0(x)
-        if x < x1:
-            return P0(x) - ((x - x2) / (x1 - x2)) * P0(x1)
-        return 0.0
-    xs = np.linspace(1e-4, x1, 4000)
-    dx = xs[1] - xs[0]
-    pr = np.array([Pr(x) for x in xs])
-    P = pr / np.trapezoid(pr, xs)
-    Hmean = H0e * np.trapezoid(xs * P, xs)
-    Hrms = H0e * math.sqrt(np.trapezoid(xs * xs * P, xs))
-    exc = 1.0 - np.cumsum(P * dx) / np.sum(P * dx)
-    def H1n(nf):
-        idx = int(np.searchsorted(-exc, -1.0 / nf))
-        idx = min(idx, len(xs) - 1)
-        return H0e * nf * np.trapezoid((xs * P)[idx:], xs[idx:])
-    Hs, H10, H2 = H1n(3.0), H1n(10.0), H1n(50.0)
-    Hmax = min(x1 * H0e, Hrms * math.sqrt(math.log(n_waves)))   # breaking limit vs most-prob max
-    return Hmean, Hrms, Hs, H10, H2, Hmax
 
 
 # --- 'Method & equations' panel content (see chessqc_4_1 for the schema). ---
@@ -372,39 +524,31 @@ ABOUT = {'summary': 'Transforms an irregular (spectral) deepwater sea state to a
                 'ACES TR Ch. 3-2']}
 
 
-def compute(inp: dict, *, g: float = G_SI, n_waves: float = 1000.0) -> Result:
-    """Irregular-wave transformation for SI inputs."""
+def compute(inp: dict, *, g: float = G_SI) -> Result:
+    """Irregular-wave transformation for SI inputs, by the ACES cross-shore march."""
     _validate(inp)
     H0 = float(inp["H0"]); d = float(inp["d"]); Ts = float(inp["Ts"])
-    cot_phi = float(inp["cot_phi"]); theta = float(inp["theta"]); s_max = float(inp["s_max"])
+    cot_phi = float(inp["cot_phi"]); theta = float(inp["theta"])
+    spread = inp.get("s_max", "Auto (ACES)")
 
     L0 = g * Ts * Ts / (2.0 * math.pi)
-    tanb = 1.0 / cot_phi
-    # Bulk shoaling carries the Shuto nonlinear correction; the per-frequency shoaling
-    # inside _kr_eff stays linear, since it only weights the directional spectrum.
-    Ks, L, k = _shoaling_shuto(H0, Ts, d, g)
-    Kr = _kr_eff(H0, Ts, d, theta, s_max, g)
-    H0e = H0 * Kr                                      # effective deepwater height (with refraction)
+    r = _goda_march(H0, d, Ts, cot_phi, theta, g, spread=spread)
+    if r is None:
+        raise ValueError("the transformation march produced no station at this depth; "
+                         "check that the depth is shallower than the deepwater limit")
 
-    Hmean, Hrms, Hs, H10, H2, Hmax = _stats_at(H0e, Ks, d, L0, tanb, n_waves)
-
-    surf_beat = 0.01 * H0 / math.sqrt((H0 / L0) * (1.0 + d / H0))           # eq 12
-    # wave setup (set-down) at depth: radiation-stress difference from deep water (eq 13 integrated)
-    term_d = (1.0 / 8.0) * Hrms ** 2 * (0.5 + 2.0 * k * d / math.sinh(2.0 * k * d))
-    term_0 = (1.0 / 8.0) * (H0 / 1.416) ** 2 * 0.5
-    setup = -(term_d - term_0) / d
-
-    notes = (f"Ks={Ks:.4f}; Kr={Kr:.4f}; deterministic Goda clipped-distribution "
-             f"statistics; Hmax is the {n_waves:.0f}-wave most-probable maximum capped by breaking")
-    return Result(Hs=Hs, Hmean=Hmean, Hrms=Hrms, H10=H10, H2=H2, Hmax=Hmax, Ks=Ks, Kr=Kr,
-                  surf_beat=surf_beat, setup=setup, steepness=H0 / L0, notes=notes)
+    notes = (f"Ks={r['Ks']:.4f}; Kr={r['Kr']:.4f}; ACES cross-shore march with iterated "
+             f"setup over 8 surf-beat levels; Hmax is the mean of the highest 1/250")
+    return Result(Hs=r["Hs"], Hmean=r["Hmean"], Hrms=r["Hrms"], H10=r["H10"],
+                  H2=r["H2"], Hmax=r["Hmax"], Ks=r["Ks"], Kr=r["Kr"],
+                  surf_beat=r["surf_beat"], setup=r["setup"],
+                  steepness=H0 / L0, notes=notes)
 
 
-# --- self-tests (ACES worked example; subject column to ~3-4%) ------------------
 def _self_tests() -> None:
     g = G_SI
     r = compute({"H0": 20.0 * _FT, "d": 50.0 * _FT, "Ts": 8.0, "cot_phi": 100.0,
-                 "theta": 10.0, "s_max": 10.0}, g=g)
+                 "theta": 10.0, "s_max": "Auto (ACES)"}, g=g)
     ft = lambda x: x / _FT
     rel = lambda got, exp, t: abs(got - exp) <= t * exp
     # shoaling and steepness are exact
@@ -412,11 +556,12 @@ def _self_tests() -> None:
     assert rel(r.steepness, 0.0611, 0.005), r.steepness
     # ACES worked-example checks.  The directional quadrature is deterministic; the
     # reference displays rounded values.
-    assert rel(ft(r.Hs), 17.7, 0.04), ft(r.Hs)
-    assert rel(ft(r.Hrms), 12.5, 0.04), ft(r.Hrms)
-    assert rel(ft(r.Hmean), 11.2, 0.05), ft(r.Hmean)
-    assert rel(ft(r.H10), 22.5, 0.06), ft(r.H10)
-    assert rel(ft(r.Hmax), 30.1, 0.06), ft(r.Hmax)
+    assert rel(ft(r.Hs), 17.7, 0.03), ft(r.Hs)
+    assert rel(ft(r.Hrms), 12.5, 0.01), ft(r.Hrms)
+    assert rel(ft(r.Hmean), 11.2, 0.01), ft(r.Hmean)
+    assert rel(ft(r.H10), 22.5, 0.02), ft(r.H10)
+    assert rel(ft(r.H2), 26.7, 0.03), ft(r.H2)
+    assert rel(ft(r.Hmax), 30.1, 0.03), ft(r.Hmax)
     # surf beat matches well; Kr within ~1% of oracle (scheme-dependent)
     assert rel(ft(r.surf_beat), 0.4350, 0.02), ft(r.surf_beat)
     assert 0.94 < r.Kr < 0.97, r.Kr
