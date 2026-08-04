@@ -33,8 +33,17 @@ application previously did -- left the transformed heights about 13% off across 
 
 Refraction uses ACES's seven-band directional table over ten frequency components
 (GODA4), with the band selected from period and steepness unless pinned by the
-`s_max` input. H_max is the mean of the highest 1/250, which is what ACES reports --
+`s_max` input. H_max is the mean of the highest 1/250, which is what ACES reports,
 not a most-probable maximum for an assumed wave count.
+
+Two places follow the Fortran rather than the Hawaii port, which mistranscribes them.
+The shoaling coefficient is carried between stations, because WSU3 takes it as an
+argument and reads the previous station's value at entry (WSU.FOR:1561); GODA3.py
+recomputes the linear form on every call, which gives 1.16 where the source gives 1.58
+for H_0 = 2 ft in 10 ft at T_s = 12 s. And the reported setup is ETAN, the value from
+the radiation-stress balance (WSU.FOR:1394), not the estimate ETA it was iterating
+against as in GODA.py. Both were established by compiling the ACES routines and running
+them; see tests/aces_oracle/FINDINGS.md section E.
 
 Source reconciliation. ACES TR 3-2 supplies the complete Goda probability-density,
 breaking, refraction, surf-beat, setup, and nonlinear-shoaling relations (eqs. 1--14).
@@ -303,7 +312,7 @@ def _goda_march(H0, d_target, Ts, cot_slope, direc_deg, g=9.80665,
         eta = etam1 + (y - ym1) * (etam1 - etam2) / diffy
         dLo = d / L0
         dL = _dl_from_dlo(dLo)
-        Ks, Csave, itest = _shuto_step(Ts, H0, d, g, Csave, itest)
+        Ks, Csave, itest = _shuto_step(Ts, H0, d, g, Csave, itest, Ks)
 
         # ACES works internally in centimetres (WSU.FOR:205), so its guard
         # "d > dloc + 30" is 30 cm, not 30 of the user's length units.
@@ -371,12 +380,17 @@ def _goda_march(H0, d_target, Ts, cot_slope, direc_deg, g=9.80665,
         if stats is None:
             break
         Hmax, Hrms, Hmean, Hsig, H10, H02, z = stats
-        etam2, etam1 = etam1, eta
+        # ACES carries the newly computed setup, not the estimate it was iterating
+        # against (WSU.FOR:1452, ETAM1 = ETAN).
+        etam2, etam1 = etam1, etan
         ym2, ym1 = ym1, y
         zm1 = z
         sbrms = 0.01 * H0 / math.sqrt(H0 / L0 * (1.0 + d / H0))
         out = dict(Ks=Ks, Kr=Kreff, Hs=Hsig, Hmean=Hmean, Hrms=Hrms, H10=H10,
-                   H2=H02, Hmax=Hmax, surf_beat=sbrms, setup=eta)
+                   # Reported setup is ETAN, the value from the radiation-stress
+                   # balance, not ETA, the extrapolated estimate the loop converged
+                   # against (WSU.FOR:1394, SCETAN = ETAN).
+                   H2=H02, Hmax=Hmax, surf_beat=sbrms, setup=etan)
         L = d / dL
         argum = (L / Ts) / (L0 / Ts) * math.sin(direcr)
         argum = max(min(argum, 1.0), -1.0)
@@ -385,35 +399,47 @@ def _goda_march(H0, d_target, Ts, cot_slope, direc_deg, g=9.80665,
     return out
 
 
-def _shuto_step(Ts, Hdeep, d, g, Csave, itest):
-    """Shuto shoaling with carried state (GODA3)."""
+def _shuto_step(Ts, Hdeep, d, g, Csave, itest, ks_prev):
+    """One station of ACES's Shuto shoaling march (WSU.FOR:1561, subroutine WSU3).
+
+    Returns (Ks, Csave, itest). `ks_prev` is the coefficient from the previous station
+    and must be carried by the caller: in the Fortran, KS is a subroutine *argument*, so
+    the entry line `H = HO*KS` reads the previous station's value, and the linear form is
+    evaluated only on the first branch. Hawaii's transcription (GODA3.py) recomputes the
+    linear Ks on every call instead, which suppresses it as the depth falls: for
+    H_0 = 2 ft in 10 ft at T_s = 12 s that gives 1.23 where the source gives 1.577 and
+    the executable printed 1.58. Verified by compiling WSU1-WSU5 and tracing the march.
+    """
     L0 = g * Ts * Ts / (2.0 * math.pi)
     dL = _dl_from_dlo(d / L0)
     n = 0.5 * (1.0 + 4.0 * math.pi * dL / math.sinh(4.0 * math.pi * dL))
-    L = d / dL
-    C = L / Ts
+    C = (d / dL) / Ts
     C0 = L0 / Ts
-    Ks = math.sqrt(0.5 / n * C0 / C)
-    H = Hdeep * Ks
-    if itest == 1:
+    H = Hdeep * ks_prev                       # entry: H = HO*KS, KS carried in
+    root3 = 2.0 * math.sqrt(3.0)
+
+    if itest == 2:                            # both flags set: the F >= 50 law, iterated
+        Hn = H
+        for _ in range(40):
+            root = math.sqrt(g * H * Ts * Ts / (d * d)) - root3
+            if root <= 0.0:
+                break
+            Hn = Csave / (d ** 2.5 * root)
+            if abs((Hn - H) / Hn) < 0.05:
+                break
+            H = Hn
+        return Hn / Hdeep, Csave, 2
+
+    if itest == 1:                            # H d^(2/7) = const, until F reaches 50
         Ks = Csave / (d ** (2.0 / 7.0) * H)
         H = Hdeep * Ks
         F = g * H * Ts * Ts / (d * d)
         if F < 50.0:
             return Ks, Csave, 1
-        return Ks, H * d ** 2.5 * (math.sqrt(F) - 2.0 * math.sqrt(3.0)), 2
-    if itest == 2:
-        del1 = 100.0
-        for _ in range(40):
-            root = math.sqrt(g * H * Ts * Ts / (d * d)) - 2.0 * math.sqrt(3.0)
-            if root <= 0.0:
-                break
-            Hn = Csave / (d ** 2.5 * root)
-            del1 = abs((Hn - H) / Hn)
-            H = Hn
-            if del1 < 0.05:
-                break
-        return H / Hdeep, Csave, 2
+        return Ks, H * d ** 2.5 * (math.sqrt(F) - root3), 2
+
+    Ks = math.sqrt(0.5 / n * C0 / C)          # linear, only while itest is 0
+    H = Hdeep * Ks
     F = g * H * Ts * Ts / (d * d)
     if F < 30.0:
         return Ks, Csave, 0
