@@ -174,7 +174,7 @@ Validated by the regression test above: Snell transformation matches User's Guid
 - **Source / references:** Goda (1975, 1985); Mitsuyasu (1975); Shuto (1974)
 - **Module:** `backend/applications/chessqc_3_2_goda_transformation.py`
 - **Regression test:** `test_3_2_goda_transformation`: PASS (User's Guide example; Ks/Hmean/Hrms exact, other heights within ~3%)
-- **ACES DOS oracle** (`GODA`): 794 swept cases over 1 sheet(s); 3/11 outputs within tolerance
+- **ACES DOS oracle** (`GODA`): 794 swept cases over 1 sheet(s); 4/11 outputs within tolerance
 
 Validated by the regression test above: User's Guide example; Ks/Hmean/Hrms exact, other heights within ~3%.
 
