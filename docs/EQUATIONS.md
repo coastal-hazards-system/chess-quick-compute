@@ -5,7 +5,14 @@
 Reference, read **visually from the rasterized page images** of the source document,
 never from the garbled PDF text layer. Each equation carries its TR chapter-page
 number (the footer printed on the page, e.g. `1-1-3`) and the rasterized PDF page
-file. This file is the source of truth for the `chessqc_*` application implementations.
+file. This file is the source of truth for the `chessqc_*` application implementations,
+with one qualification: where the ACES **FORTRAN source** and this transcription of the
+Technical Reference disagree, the source wins, because it is what the program actually
+computed and what the swept DOS output validates against. Those places are recorded in
+`tests/aces_oracle/FINDINGS.md`; the largest is 3-2, where ACES marches the
+transformation in from deep water rather than evaluating the transcribed relations at
+the subject depth, and 1-2, where the exceedance levels and quadrature are part of the
+defined method.
 
 **Source key.** `TR 1-1-3` = ACES TR, functional area 1, chapter 1, page 3
 (printed footer). `[p04]` = `tr_pages/a1_wave_prediction/p04.png`.
