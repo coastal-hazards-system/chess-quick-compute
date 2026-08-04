@@ -17,16 +17,16 @@ Theory and references (TR chapter 3-2, eqs 1-14 in docs/EQUATIONS.md):
     statistics.
   - surf beat (12) and wave setup (13).
 
-Shoaling is *linear* (K_s = sqrt(C_g0/C_g)); the Shuto (1974) nonlinear correction of
-TR eq. 14 is not applied. Against the 794-case ACES DOS sweep this is right to a
-median 0.34% and agrees with ACES at every depth except the shallow, long-period
-corner (d ~ 10 ft with T_s >= 8 s), where ACES marches a three-branch Shuto law
-inshore (WSU.FOR:1563-1620: linear, then H d^(2/7) = const once F = g H T_s^2/d^2
-reaches 30, then an iterated law once F reaches 50, carrying state between steps).
-Reproducing that march closes about half the residual but not all of it, and the ACES
-F>30 branch divides by the running H rather than H_0 (WSU.FOR:1600), which makes its
-result depend on the previous step's K_s. Matching ACES there would mean reproducing
-that; see tests/aces_oracle/FINDINGS.md B4.
+Shoaling applies the Shuto (1974) nonlinear correction of TR eq. 14, marched from deep
+water to the subject depth (see `_shoaling_shuto`). It matters only in shallow water
+with long periods -- over the 794-case ACES DOS sweep the linear form alone is already
+right to a median 0.34% -- but there it is large: at H_0 = 2 ft in 10 ft with
+T_s = 16 s the linear K_s is 1.53 against ACES's 2.38.
+
+ACES's implementation of the same three laws is not reproduced exactly: its F >= 30
+branch divides by the running H rather than H_0 (WSU.FOR:1600), so its answer depends
+on the previous march step and its K_s is not monotone in period. See
+tests/aces_oracle/FINDINGS.md B4.
 
 Source reconciliation. ACES TR 3-2 supplies the complete Goda probability-density,
 breaking, refraction, surf-beat, setup, and nonlinear-shoaling relations (eqs. 1--14).
@@ -184,6 +184,67 @@ def _shoaling(T: float, d: float, g: float):
     return math.sqrt(Cg0 / Cg), L, k
 
 
+def _shoaling_shuto(H0: float, Ts: float, d: float, g: float, n_step: int = 400):
+    """Shoaling coefficient including the Shuto (1974) nonlinear correction (TR eq 14).
+
+    Shoaling stops being linear once the wave is high relative to depth. Shuto gives
+    three successive regimes, keyed on F = g H T_s^2 / d^2:
+
+        F < 30      linear,  K_s = sqrt(C_g0/C_g)
+        30 <= F <50  H d^(2/7)                                        = const
+        F >= 50      H d^(5/2) (sqrt(F) - 2 sqrt(3))                  = const
+
+    Each law is an invariant along the shoaling path, so the constants have to be
+    captured where the wave crosses into that regime -- the result depends on the
+    path, not only on the local depth. The wave is therefore marched from deep water
+    (d = L_0/2) in to the subject depth, carrying the invariant across each crossing,
+    which is how ACES evaluates it too (WSU.FOR:1563-1620).
+
+    ACES's own F >= 30 branch divides by the running H rather than H_0
+    (WSU.FOR:1600), which makes its answer depend on the previous step's K_s and
+    produces a K_s that is not monotone in period (1.58 at T_s = 12 s, 1.39 at 14 s,
+    2.38 at 16 s for H_0 = 2 ft in 10 ft). That is taken to be a defect in ACES and is
+    not reproduced; see tests/aces_oracle/FINDINGS.md B4.
+    """
+    L0 = g * Ts * Ts / (2.0 * math.pi)
+    d_start = 0.5 * L0
+    if d >= d_start:                               # already deep: linear is exact
+        return _shoaling(Ts, d, g)
+
+    regime, C30, C50 = 0, 0.0, 0.0
+    Ks = 1.0
+    H = H0
+    for i in range(1, n_step + 1):
+        d_i = d_start + (d - d_start) * i / n_step
+        if regime == 0:
+            Ks = _shoaling(Ts, d_i, g)[0]
+            H = H0 * Ks
+            if g * H * Ts * Ts / (d_i * d_i) >= 30.0:
+                regime, C30 = 1, H * d_i ** (2.0 / 7.0)
+        elif regime == 1:
+            H = C30 / d_i ** (2.0 / 7.0)           # H d^(2/7) = const
+            Ks = H / H0
+            F = g * H * Ts * Ts / (d_i * d_i)
+            if F >= 50.0:
+                root = math.sqrt(F) - 2.0 * math.sqrt(3.0)
+                if root <= 0.0:                    # invariant undefined; stay in F>30
+                    continue
+                regime, C50 = 2, H * d_i ** 2.5 * root
+        else:
+            for _ in range(40):                    # implicit in H; converge as ACES does
+                root = math.sqrt(g * H * Ts * Ts / (d_i * d_i)) - 2.0 * math.sqrt(3.0)
+                if root <= 0.0:
+                    break
+                H_new = C50 / (d_i ** 2.5 * root)
+                if H_new <= 0.0 or abs(H_new - H) <= 0.05 * H_new:
+                    H = H_new
+                    break
+                H = H_new
+            Ks = H / H0
+    _, L, k = _shoaling(Ts, d, g)
+    return Ks, L, k
+
+
 def _bm_spectrum(f: float, H0: float, Ts: float) -> float:
     u = Ts * f
     return 0.257 * H0 * H0 * Ts * u ** (-5) * math.exp(-1.03 * u ** (-4))
@@ -319,7 +380,9 @@ def compute(inp: dict, *, g: float = G_SI, n_waves: float = 1000.0) -> Result:
 
     L0 = g * Ts * Ts / (2.0 * math.pi)
     tanb = 1.0 / cot_phi
-    Ks, L, k = _shoaling(Ts, d, g)
+    # Bulk shoaling carries the Shuto nonlinear correction; the per-frequency shoaling
+    # inside _kr_eff stays linear, since it only weights the directional spectrum.
+    Ks, L, k = _shoaling_shuto(H0, Ts, d, g)
     Kr = _kr_eff(H0, Ts, d, theta, s_max, g)
     H0e = H0 * Kr                                      # effective deepwater height (with refraction)
 
