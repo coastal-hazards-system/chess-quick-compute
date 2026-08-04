@@ -20,8 +20,8 @@ ACES routine). Theory and references (TR chapter 5-4, eqs 1-64 in docs/EQUATIONS
     R_up = Ahrens & McCartney runup (a = 0.692, b = 0.504); F = h_s - d_s freeboard.
   - total (eq 2): K_T = sqrt(K_Tt^2 + K_To^2), H_T = K_T * H_i.
 
-Self-containment: zero sibling imports; embeds the contract dataclasses, the Hunt (1979)
-dispersion celerity, and hand-coded complex-argument Bessel J0/J1 (series; the convention
+Self-containment: zero sibling imports; embeds the contract dataclasses, a Newton
+dispersion solver, and hand-coded complex-argument Bessel J0/J1 (series; the convention
 is numpy + stdlib, special functions implemented in-app, as in the cnoidal app). Runnable:
     python chessqc_5_4_transmission_permeable.py
 

@@ -215,6 +215,14 @@ def compute(inp: dict) -> Result:
         F2arg = _ncdf((th2 - delta) / sig)
         inv = 1.0 - F2arg + F1 + ((_ncdf(th2) - _ncdf(th1)) / sig) * expf
     R_A = 1.0 / inv if inv > 0 else float("inf")
+    # ACES rejects the case rather than reporting an overfill ratio below unity
+    # (BEACH.FOR:556, "ERROR: Overfill Ratio (RA) < 1.0  Respecify Data"). R_A is the
+    # borrow volume needed per unit of design fill, so it cannot be less than one; a
+    # value below it means the borrow/native pair is outside the James (1975) model.
+    if R_A < 1.0:
+        raise ValueError(
+            f"overfill ratio R_A = {R_A:.3f} is below 1.0, which the James (1975) "
+            "model cannot produce; respecify the borrow and native grain statistics")
 
     R_J = math.exp(W * delta - 0.5 * W * W * (sig * sig - 1.0))
     VOL_D = VOL_I * R_A

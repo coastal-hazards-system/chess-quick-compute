@@ -175,12 +175,34 @@ _HUNT_D = (0.66667, 0.35550, 0.16084, 0.06320, 0.02174,
            0.00654, 0.00171, 0.00039, 0.00011)
 
 
+def _refine_celerity(c_seed: float, omega: float, d: float, g: float) -> float:
+    """Newton-refine Hunt's explicit celerity onto the exact root of the linear
+    dispersion relation, omega^2 = g k tanh(k d).
+
+    Hunt (1979) is quoted at ~0.1% in c, but the group velocity amplifies that error
+    and it then propagates through K_s = sqrt(C_g0/C_g) into height, energy and power.
+    ACES solves the relation iteratively (WAVLEN), so refining removes a systematic
+    offset against the ACES DOS oracle as well as an unnecessary approximation.
+    """
+    k = omega / c_seed
+    for _ in range(60):
+        th = math.tanh(k * d)
+        f = g * k * th - omega * omega
+        df = g * th + g * k * d * (1.0 - th * th)
+        step = f / df
+        k -= step
+        if abs(step) <= 1e-15 * k:
+            break
+    return omega / k
+
+
 def wave_celerity(T: float, d: float, g: float = G_SI) -> float:
     """Explicit linear celerity c (m/s) via Hunt (1979), accuracy < 0.01%."""
     omega = 2.0 * math.pi / T
     y = omega * omega * d / g
     denom = 1.0 + sum(dn * y ** (n + 1) for n, dn in enumerate(_HUNT_D))
-    return math.sqrt(g * d / (y + 1.0 / denom))
+    c = _refine_celerity(math.sqrt(g * d / (y + 1.0 / denom)), omega, d, g)
+    return c
 
 
 def _wave_at(T: float, d: float, g: float):
