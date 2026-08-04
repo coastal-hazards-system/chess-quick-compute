@@ -7,7 +7,16 @@ specified return periods, with confidence intervals.
 
 Classification: exact (standard extremal-analysis procedure -- known Gringorten plotting
 positions and the FT-I / Weibull candidate set, nothing guessed; reproduces the User's
-Guide Example 1-3 correlations, return-period values and confidence intervals).
+Guide Example 1-3 correlations, return-period values and confidence intervals, and two
+further datasets recorded as ACES DOS listings).
+
+Additional validation. Two runs of the original executable are reproduced exactly, from
+validationResults/module 1/ext_Hs_analysis: the "MACE Data" set (22 storms in feet,
+K = 20 yr, 80% interval) and "tests2MS" (14 storms retained of 30, so nu = 0.47, in
+metres over K = 30 yr, 95% interval). Both match on the scale and location parameters
+and the correlation of every candidate distribution, and on every return-period height
+and confidence bound, to the precision the listings print. The second is the only case
+available that exercises a censored sample.
 Theory and references: Goda (1988); plotting positions Gringorten (1963) / Petrauskas
   & Aagaard (1970). Equations transcribed in docs/EQUATIONS.md, TR chapter 1-3
   (eqs 1-12 + Tables 1-3-1/2): FT-I (1) and Weibull (2) distributions, Goda plotting

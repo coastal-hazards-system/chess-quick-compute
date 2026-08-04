@@ -85,9 +85,9 @@ Validation note. All five characteristic heights of Example 1-2 now reproduce (H
 
 - **Source / references:** Goda (1988); Gringorten (1963); EM 1110-2-1414; TR 1-3
 - **Module:** `backend/applications/chessqc_1_3_extremal_hs.py`
-- **Regression test:** `test_1_3_extremal_hs`: PASS (matches User's Guide Example 1-3)
+- **Regression test:** `test_1_3_extremal_hs`: PASS (User's Guide Example 1-3 + two ACES DOS listings)
 
-Validated by the regression test above: matches User's Guide Example 1-3.
+Validated by the regression test above: User's Guide Example 1-3 + two ACES DOS listings.
 
 ### 1-4 — Constituent Tide Record Generation  (I — exact)
 
