@@ -162,7 +162,31 @@ _DEFAULT_GEOM = dict(
 )
 
 _N_R = 0.435               # reference porosity (Madsen & White)
+_N_R_BASE = 0.45           # ACES MADSN1 scales the porosity to this reference
 _BETA_O = 2.7
+
+
+def _wavenumber(T: float, d: float, g: float) -> float:
+    """Linear-dispersion wavenumber k = 2 pi / L, by Newton iteration on
+    omega^2 = g k tanh(k d).
+
+    ACES calls WAVLEN(T, d_s) here (MADTRANS.FOR: KO = 2*PI/L) rather than the
+    long-wave form omega/sqrt(g d). At the periods this application is exercised over
+    -- 2 s in ~10 ft of water is close to deep -- the two differ by more than 70%,
+    and k enters the friction factor, the internal phase, and the slope solution.
+    """
+    omega = 2.0 * math.pi / T
+    k = omega * omega / g                      # deepwater start
+    k = max(k, omega / math.sqrt(g * d) * 0.5)
+    for _ in range(100):
+        th = math.tanh(k * d)
+        fk = g * k * th - omega * omega
+        dfk = g * th + g * k * d * (1.0 - th * th)
+        step = fk / dfk
+        k -= step
+        if abs(step) < 1e-14 * max(k, 1.0):
+            break
+    return k
 
 
 # --- complex-argument Bessel J0, J1 via power series (args are small here) -------
@@ -219,26 +243,23 @@ def _equiv_width_base(d50, poros, TH, LL, ds, d_r):
 
 
 def _slope_correction(tanb: float) -> float:
-    """Madsen & White (1976), Table 2, full eq.-127 measured/predicted R correction.
+    """Model slope-effect correction on the seaward reflection (Madsen & White Table 2).
 
-    The source recommends this interpolation only over its tested 1:3--1:1.5 slopes;
-    elsewhere no unsupported empirical extrapolation is applied.
+    ACES applies it as a single clamped linear law (MADTRANS.FOR:655-659):
+        CF = 1.28 - 0.578 tan(beta),  CF = 1.02 below tan(beta) = 0.4,
+                                      CF = 0.89 above tan(beta) = 0.68.
     """
-    points = ((1.0 / 3.0, 1.02), (1.0 / 2.5, 1.05),
-              (1.0 / 2.0, 0.99), (1.0 / 1.5, 0.89))
-    if not (points[0][0] <= tanb <= points[-1][0]):
-        return 1.0
-    for (x0, y0), (x1, y1) in zip(points, points[1:]):
-        if x0 <= tanb <= x1:
-            return y0 + (y1 - y0) * (tanb - x0) / (x1 - x0)
-    return points[-1][1]
+    if tanb < 0.4:
+        return 1.02
+    if tanb > 0.68:
+        return 0.89
+    return 1.28 - 0.578 * tanb
 
 
 def _internal(le, b_r, d_r, ds, T, a1, g):
     """Internal energy dissipation through the equivalent rectangle (eqs 16-27).
     Returns (R_ti, T_ti). Friction f found by iterating lambda."""
-    omega = 2.0 * math.pi / T
-    kx = omega / math.sqrt(g * ds)
+    kx = _wavenumber(T, ds, g)          # ACES: KO = 2*PI/WAVLEN(T, d_s)
     lam = 0.5
     f = 0.0
     for _ in range(300):
@@ -252,9 +273,13 @@ def _internal(le, b_r, d_r, ds, T, a1, g):
             lam = new_lam
             break
         lam = new_lam
-    eps = _N_R / cmath.sqrt(1.0 - 1j * f)
-    k = kx * cmath.sqrt(1.0 - 1j * f)
-    e1 = cmath.exp(1j * k * le); e2 = cmath.exp(-1j * k * le)
+    # ACES MADSN1 scales the porosity and the friction factor to a 0.45 reference
+    # before forming eps:  ss = (n/0.45)^2,  n_s = n/sqrt(ss) = 0.45,  f_s = f/ss.
+    ss = (_N_R / _N_R_BASE) ** 2
+    eps = (_N_R / math.sqrt(ss)) / cmath.sqrt(1.0 - 1j * (f / ss))
+    # theta = i (k n l_e)/eps, which is i k l_e sqrt(1 - i f_s) when n_s = n
+    theta = 1j * (kx * _N_R * le) / eps
+    e1 = cmath.exp(theta); e2 = cmath.exp(-theta)
     denom = (1.0 + eps) ** 2 * e1 - (1.0 - eps) ** 2 * e2
     a_t = 4.0 * eps / denom
     a_r = (1.0 - eps ** 2) * (e1 - e2) / denom
@@ -264,13 +289,24 @@ def _internal(le, b_r, d_r, ds, T, a1, g):
 def _slope_reflection(Hi, T, ds, cot_theta, d_armor, g):
     """Seaward rough-slope reflection R_si (Madsen & White Bessel solution, eqs 28-50).
     Iterates the slope friction angle phi."""
-    omega = 2.0 * math.pi / T
-    kx = omega / math.sqrt(g * ds)
+    kx = _wavenumber(T, ds, g)          # ACES: KO = 2*PI/WAVLEN(T, d_s)
     tanb = 1.0 / cot_theta
     ls = ds / tanb
+    # ACES refuses outside the tested range of Madsen & White figures 15-17 and
+    # reports the minimum admissible period instead (MADTRANS.FOR:620-626). Beyond it
+    # the Bessel arguments also grow without bound, so this is a real domain limit,
+    # not a formality.
+    lsl = ls * kx / (2.0 * math.pi)                     # relative slope length l_s/L
+    if lsl > 0.8:
+        t_min = math.sqrt((2.0 * math.pi * 1.25 * ls)
+                          / (g * math.tanh(2.0 * math.pi * ds / (1.25 * ls))))
+        raise ValueError(
+            f"relative slope length l_s/L = {lsl:.2f} exceeds the 0.8 limit of the "
+            f"Madsen & White slope-reflection solution; minimum wave period for this "
+            f"geometry is about {t_min:.1f} s")
     a1 = Hi / 2.0
     yv = np.linspace(1e-6, 1.0, 400)
-    phi = 0.2
+    phi = math.radians(5.0)          # ACES seed (MADTRANS.FOR:631)
     for _ in range(200):
         f_b = math.tan(2.0 * phi)
         sq = (1.0 + f_b * f_b) ** 0.25 * cmath.exp(-1j * phi)   # sqrt(1 - i f_b)  (eq 45)
@@ -436,11 +472,11 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
         Hi_w, ds_w, hs_w, B_w = Hi, ds, hs, B
         unit_back = 1.0
 
-    # ACES eq. 61 defines d_r as the mean diameter of the representative material.
-    # Its earlier phrase "1/2 mean diameter" denotes (d_max+d_min)/2 (Madsen & White
-    # Table 1), not one half of an already supplied mean diameter. Example 1 uses the
-    # median/underlayer material as the representative material.
-    d_r = statistics.median(d50)
+    # ACES sets the reference-material diameter to half the armor diameter:
+    #   MADTRANS.FOR:600  "DR = D(1)*0.5"   (and MADSEELG: diamref = diam[0]*0.5).
+    # It is not the median material -- reading "1/2 mean diameter" as (d_max+d_min)/2
+    # left d_r a factor of two high, and d_r sets beta_r, hence the friction factor.
+    d_r = 0.5 * d50[0]
     a1 = Hi_w / 2.0
     le_base, b_r = _equiv_width_base(d50, poros, TH, LL, ds_w, d_r)
     R_si_raw, R_u = _slope_reflection(Hi_w, T, ds_w, cot_theta, d50[0], gg)
@@ -451,10 +487,15 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
     # mutually dependent. Equation 59 multiplies the geometric width by
     # Delta-H_e/Delta-H_T;
     # equation 64 supplies that ratio. It is not the reciprocal ratio.
+    # ACES eq. 146 (MADTRANS.FOR:664): the wave driving the equivalent homogeneous
+    # breakwater is the seaward-reflection-reduced amplitude A_I = R_II * a, not the
+    # raw incident amplitude. A_I sets the friction factor, so using `a1` here
+    # over-damped the internal transmission.
+    a_I = R_si * a1
     head_ratio = 1.0                         # Delta-H_e / Delta-H_T
     for _ in range(200):
         le = le_base * head_ratio
-        R_ti, T_ti = _internal(le, b_r, d_r, ds_w, T, a1, gg)
+        R_ti, T_ti = _internal(le, b_r, d_r, ds_w, T, a_I, gg)
         # Madsen & White eq. 161 / ACES eq. 64:
         # Delta-H_e/Delta-H_T = (1+R_I) R_II/(2 R_u). R_I is internal
         # reflection, R_II external reflection, and R_u is runup/wave-height.
@@ -462,7 +503,7 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
         if abs(next_ratio - head_ratio) < 1e-10:
             head_ratio = next_ratio
             le = le_base * head_ratio
-            R_ti, T_ti = _internal(le, b_r, d_r, ds_w, T, a1, gg)
+            R_ti, T_ti = _internal(le, b_r, d_r, ds_w, T, a_I, gg)
             break
         head_ratio = 0.5 * (head_ratio + next_ratio)
     else:

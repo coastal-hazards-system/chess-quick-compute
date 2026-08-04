@@ -15,7 +15,18 @@ Theory and references (TR chapter 3-2, eqs 1-14 in docs/EQUATIONS.md):
   - Goda (1975) irregular-wave height distribution with depth-limited breaking: a Rayleigh
     pdf in H/H0' clipped between the breaking-band edges (7-11), integrated for the
     statistics.
-  - surf beat (12) and wave setup (13); nonlinear shoaling by Shuto (1974) (14).
+  - surf beat (12) and wave setup (13).
+
+Shoaling is *linear* (K_s = sqrt(C_g0/C_g)); the Shuto (1974) nonlinear correction of
+TR eq. 14 is not applied. Against the 794-case ACES DOS sweep this is right to a
+median 0.34% and agrees with ACES at every depth except the shallow, long-period
+corner (d ~ 10 ft with T_s >= 8 s), where ACES marches a three-branch Shuto law
+inshore (WSU.FOR:1563-1620: linear, then H d^(2/7) = const once F = g H T_s^2/d^2
+reaches 30, then an iterated law once F reaches 50, carrying state between steps).
+Reproducing that march closes about half the residual but not all of it, and the ACES
+F>30 branch divides by the running H rather than H_0 (WSU.FOR:1600), which makes its
+result depend on the previous step's K_s. Matching ACES there would mean reproducing
+that; see tests/aces_oracle/FINDINGS.md B4.
 
 Source reconciliation. ACES TR 3-2 supplies the complete Goda probability-density,
 breaking, refraction, surf-beat, setup, and nonlinear-shoaling relations (eqs. 1--14).

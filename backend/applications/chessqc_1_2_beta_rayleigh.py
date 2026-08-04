@@ -6,28 +6,35 @@ it returns the characteristic individual wave heights of the sea state (root-mea
 median, and the means of the highest third, tenth, and hundredth) together with the
 probability-density curve.
 
-Classification: standard (the Beta-Rayleigh coefficients are known and four of the five
-characteristic heights validate, but H1/10 does not reproduce (6.30 vs the manual's 6.55)
-and is attributed -- by inference -- to a manual artifact; that one unresolved output keeps
-it from exact).
+Classification: exact (every coefficient, exceedance level, and quadrature step is known
+from the ACES source, and all five characteristic heights reproduce the User's Guide
+example and the 315-case ACES DOS sweep).
 Theory and references: depth-limited Beta-Rayleigh distribution of Hughes and Borgman
 (1987); deepwater Rayleigh base from Longuet-Higgins (1952); rms / root-mean-quad
 depth fits from Thompson and Vincent (1985) and Hughes and Ebersole (1987). Equations
 transcribed in docs/EQUATIONS.md, TR chapter 1-2 (eqs 1-21).
 
-Transcription correction. The relative-depth fits eq (16)/(19) in docs/EQUATIONS.md
-were transcribed with the relative depth inverted. Reproducing the ACES User's Guide
-Example 1-2 (H_mo = 5 ft, T_p = 6.30 s, d = 10.2 ft -> H_rms = 3.72 ft) requires the
-argument g*T_p^2/d, not d/(g*T_p^2). This module uses the corrected form (and the
-revert-to-Rayleigh threshold is the equivalent d/(g*T_p^2) >= 0.01, i.e. g*T_p^2/d <= 100).
+Transcription correction (source-verified). The relative-depth fits eq (16)/(19) in
+docs/EQUATIONS.md were transcribed with the relative depth inverted; this module uses
+g*T_p^2/d. ACES writes the same thing as (d/(g*T_p^2))**B with B1 = -0.834 and
+B2 = -1.208 (BETAR.FOR:806-811, 862, 870) -- algebraically identical to the positive
+exponents on the reciprocal used here, with A1 = 0.00089 and A2 = 0.000098 matching.
+The revert-to-Rayleigh threshold d/(g*T_p^2) >= 0.01 is BETAR.FOR:840 verbatim.
 
-Validation note. Of the five characteristic heights in Example 1-2, four reproduce to
-within ~1.5% (H_rms 3.72, H_med 3.26, H_1/3 5.18, H_1/100 7.48 ft). The fifth, H_1/10,
-is reported as 6.55 ft in the User's Guide but computes to 6.30 ft from the documented
-Beta-Rayleigh method (confirmed grid-independent and across discrete and interpolated
-quadrature). The manual value sits closer to the pure-Rayleigh value than its neighbours,
-which is physically inconsistent with a depth-truncated tail, so it is taken to be a
-documentation or legacy-code artifact and 6.30 ft is reported.
+Validation note. All five characteristic heights of Example 1-2 now reproduce
+(H_rms 3.72, H_med 3.26, H_1/3 5.18, H_1/10 6.55, H_1/100 7.48 ft), because the
+*procedure* -- not only the distribution -- is taken from the source: the upper bound is
+the depth itself (BETAR.FOR:859, "Per Bob Jensen ... HB equals DEPTH for these
+calculations"), the exceedance levels are 0.66/0.90/0.99 rather than exactly 1/3, 1/10,
+1/100 (BETAR.FOR:816-819), and the integration is ACES's 100-bin running sum with a
+20-step centroid (BETAR.FOR:860, 1000-1064).
+
+H_1/10 was previously reported as 6.30 ft and the manual's 6.55 ft was attributed to a
+documentation artifact. That was wrong: 6.55 is what ACES computes, and the difference
+is its coarse quadrature, which is part of the defined method. Across the 315-case ACES
+DOS sweep the ACES form matches to a median 0.02%, against 3.9% (H_1/10) and 8.1%
+(H_1/100) for the finer-grid form. Selecting a different Hb/d in the input reverts to a
+non-ACES truncation and will not reproduce the manual.
 
 Self-containment: zero sibling imports; embeds its own contract dataclasses. Uses
 math.gamma (stdlib) for the Beta normalization and numpy for the quadrature. Runnable
@@ -110,8 +117,9 @@ INPUTS = (
     Field("d", "Water depth", "float", "m", "ft", default=10.20 * _FT, lo=1e-4, hi=1e4,
           note="> 0; the distribution reverts to Rayleigh when d/(g Tp^2) >= 0.01"),
     Field("Hb_coef", "Breaking-height coefficient Hb/d", "choice", "", "",
-          default="0.9 (ACES)", choices=("0.9 (ACES)", "0.78 (SPM)"),
-          note="upper-bound breaking height as a fraction of depth"),
+          default="1.0 (ACES)", choices=("1.0 (ACES)", "0.9", "0.78 (SPM)"),
+          note="upper bound that truncates the distribution, as a fraction of depth; "
+               "ACES BETAR uses the depth itself"),
 )
 
 OUTPUTS = (
@@ -126,7 +134,7 @@ OUTPUTS = (
     Out("H1100",  "Mean of highest 1/100 (H1/100)", "m", "ft", "scalar",
         note="Mean of the highest one-hundredth of waves in the sea state."),
     Out("Hb",     "Breaking (upper-bound) height",  "m", "ft", "scalar",
-        note="Maximum (breaking) wave height that truncates the distribution, taken as 0.9 d (ACES) or 0.78 d (SPM)."),
+        note="Maximum (breaking) wave height that truncates the distribution; ACES BETAR takes it as the depth itself."),
     Out("Hrmq",   "Root-mean-quad height (length^2)","m^2","ft^2","scalar",
         note="Root-mean-quad (fourth-moment) wave height from the depth-dependent fit, carrying units of length squared."),
     Out("alpha",  "Beta-Rayleigh shape alpha",      "",  "",   "scalar",
@@ -245,7 +253,8 @@ def compute(inp: dict, *, g: float = G_SI, n_grid: int = 4001) -> Result:
     """Beta-Rayleigh characteristic heights for SI inputs {Hmo, Tp, d, Hb_coef}."""
     _validate(inp)
     Hmo = float(inp["Hmo"]); Tp = float(inp["Tp"]); d = float(inp["d"])
-    hb_coef = 0.78 if str(inp.get("Hb_coef", "0.9 (ACES)")).startswith("0.78") else 0.9
+    _hb = str(inp.get("Hb_coef", "1.0 (ACES)"))
+    hb_coef = 0.78 if _hb.startswith("0.78") else (0.9 if _hb.startswith("0.9") else 1.0)
     Hb = hb_coef * d
 
     rel_depth = d / (g * Tp * Tp)          # d/(g Tp^2); revert to Rayleigh if >= 0.01
@@ -278,27 +287,39 @@ def compute(inp: dict, *, g: float = G_SI, n_grid: int = 4001) -> Result:
     if not (alpha > 0.0 and beta > 0.0):
         raise ValueError(f"non-physical Beta-Rayleigh shape (alpha={alpha:.3f}, beta={beta:.3f})")
 
-    # numerically integrate the fitted density for the characteristic heights
-    H = np.linspace(0.0, Hb, n_grid)
+    # Integrate the fitted density exactly as ACES BETAR does. The procedure -- not
+    # just the distribution -- defines the published numbers, so the grid and the
+    # exceedance levels are part of the method:
+    #   * a 100-bin running sum over [0, Hb]              (BETAR.FOR:860 HINC = HB/100)
+    #   * cumulative levels 0.50 / 0.66 / 0.90 / 0.99     (BETAR.FOR:816-819)
+    #   * a 20-step trapezoid centroid above each level, divided by (1 - level)
+    #                                                      (BETAR.FOR:1000-1064)
+    # A finer grid gives a differently-converged answer: H1/10 comes out 6.30 ft on a
+    # 4001-point grid against the User's Guide's 6.55 ft. The coarse form reproduces
+    # the manual exactly and matches the 315-case ACES DOS sweep to a median 0.02%.
+    n_bin, n_cent = 100, 20
+    H = np.linspace(0.0, Hb, n_bin + 1)
     pdf = _beta_rayleigh_pdf(H, Hb, alpha, beta)
-    cdf = np.concatenate(([0.0], np.cumsum(0.5 * (pdf[1:] + pdf[:-1]) * np.diff(H))))
-    cdf /= cdf[-1]                          # renormalize (guards quadrature error)
+    inc = Hb / n_bin
+    cum = np.cumsum(pdf * inc)              # ACES: SUM = SUM + BETA(I)*HINC
 
-    Hmed = float(np.interp(0.5, cdf, H))    # median
+    def _level_height(level: float) -> float:
+        idx = int(np.searchsorted(cum, level))
+        return float(H[min(idx, len(H) - 1)])
 
-    def _mean_highest(frac: float) -> float:
-        """Mean of the highest `frac` fraction of waves (e.g. 1/3 -> significant height)."""
-        Hstar = float(np.interp(1.0 - frac, cdf, H))    # threshold at exceedance = frac
-        mask = H >= Hstar
-        Hm = np.concatenate(([Hstar], H[mask]))
-        pm = np.concatenate(([float(np.interp(Hstar, H, pdf))], pdf[mask]))
-        num = _trapz(Hm * pm, Hm)
-        den = _trapz(pm, Hm)
-        return float(num / den)
+    def _centroid_above(level: float) -> float:
+        """Mean height above the given cumulative level (ACES 20-step trapezoid)."""
+        h0 = _level_height(level)
+        step = (Hb - h0) / n_cent
+        hs = h0 + step * np.arange(n_cent + 1)
+        ps = _beta_rayleigh_pdf(hs, Hb, alpha, beta)
+        d_area = 0.5 * (ps[:-1] + ps[1:]) * step
+        return float(np.sum((step / 2.0 + hs[:-1]) * d_area) / (1.0 - level))
 
-    H13 = _mean_highest(1.0 / 3.0)
-    H110 = _mean_highest(1.0 / 10.0)
-    H1100 = _mean_highest(1.0 / 100.0)
+    Hmed = _level_height(0.50)
+    H13 = _centroid_above(0.66)
+    H110 = _centroid_above(0.90)
+    H1100 = _centroid_above(0.99)
 
     notes.append(f"Beta-Rayleigh (alpha={alpha:.3f}, beta={beta:.3f}); Hb = {Hb / _FT:.2f} ft")
     return Result(Hrms=Hrms, Hmed=Hmed, H13=H13, H110=H110, H1100=H1100, Hb=Hb,
@@ -314,23 +335,21 @@ def _close(a: float, b: float, tol: float) -> bool:
 def _self_tests() -> None:
     g = G_SI
     # ACES User's Guide Example 1-2 (US units): Hmo=5 ft, Tp=6.30 s, d=10.2 ft.
-    # Four of the five characteristic heights reproduce to < 1.5%. H_1/10 (manual 6.55 ft)
-    # is an outlier: the principled Beta-Rayleigh value is 6.30 ft, and the manual figure
-    # is physically inconsistent with its neighbours (closer to the Rayleigh value than the
-    # more-truncated H_1/3 and H_1/100), so it is treated as a documentation artifact.
-    r = compute({"Hmo": 5.0 * _FT, "Tp": 6.30, "d": 10.20 * _FT, "Hb_coef": "0.9 (ACES)"}, g=g)
+    # All five characteristic heights reproduce once ACES's own upper bound, exceedance
+    # levels, and quadrature are used (see the module docstring).
+    r = compute({"Hmo": 5.0 * _FT, "Tp": 6.30, "d": 10.20 * _FT, "Hb_coef": "1.0 (ACES)"}, g=g)
     for name, got, exp in (("Hrms", r.Hrms / _FT, 3.72), ("Hmed", r.Hmed / _FT, 3.26),
-                           ("H13", r.H13 / _FT, 5.18), ("H1100", r.H1100 / _FT, 7.48)):
-        assert _close(got, exp, 0.05), f"{name}: got {got:.3f} ft, manual {exp:.2f} ft"
+                           ("H13", r.H13 / _FT, 5.18), ("H110", r.H110 / _FT, 6.55),
+                           ("H1100", r.H1100 / _FT, 7.48)):
+        assert _close(got, exp, 0.01), f"{name}: got {got:.3f} ft, manual {exp:.2f} ft"
     assert r.regime == "Beta-Rayleigh"
-    assert _close(r.H110 / _FT, 6.30, 0.06), f"H110: got {r.H110 / _FT:.3f} ft (Beta-Rayleigh)"
 
     # ordering and bound
     assert r.Hrms < r.H13 < r.H110 < r.H1100 <= r.Hb
     assert r.Hmed < r.H13
 
     # deepwater limit: pure Rayleigh ratios off H_rms = Hmo/sqrt(2)
-    rd = compute({"Hmo": 3.0, "Tp": 6.0, "d": 200.0, "Hb_coef": "0.9 (ACES)"}, g=g)
+    rd = compute({"Hmo": 3.0, "Tp": 6.0, "d": 200.0, "Hb_coef": "1.0 (ACES)"}, g=g)
     assert rd.regime == "Rayleigh"
     assert _close(rd.Hrms, 3.0 / _SQRT2, 1e-9)
     assert _close(rd.H13 / rd.Hrms, 1.416, 1e-6)

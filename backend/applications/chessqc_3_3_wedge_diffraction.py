@@ -131,10 +131,24 @@ def _dispersion_L(T: float, d: float, g: float) -> float:
     return L
 
 
-def bessel_jp(p: float, x: float, nterm: int = 100) -> float:
-    """Bessel function J_p(x) of real order p >= 0, real x > 0, by power series."""
-    if x == 0.0:
-        return 1.0 if p == 0.0 else 0.0
+# Above this argument the ascending power series for J_p loses all significance to
+# cancellation (its largest term grows like (x/2)^x / x! while the sum decays like
+# x^-1/2), so the integral representation is used instead.
+_BESSEL_SERIES_MAX_X = 18.0
+
+
+def _simpson(y: np.ndarray, h: float) -> float:
+    """Composite Simpson's rule over an even number of equal panels of width h.
+
+    Trapezoid is not enough here: the first Bessel integrand oscillates at frequency
+    ~x and is not periodic on [0, pi], so the endpoints leave an O(h^2) error that
+    shows up as ~1e-4 in J_p at x ~ 100.
+    """
+    return float(h / 3.0 * (y[0] + y[-1] + 4.0 * y[1:-1:2].sum() + 2.0 * y[2:-1:2].sum()))
+
+
+def _bessel_jp_series(p: float, x: float, nterm: int = 100) -> float:
+    """J_p(x) by the ascending power series. Accurate only for modest x."""
     s = 0.0
     for m in range(nterm):
         term = (-1.0) ** m * math.exp((2 * m + p) * math.log(x / 2.0)
@@ -145,19 +159,115 @@ def bessel_jp(p: float, x: float, nterm: int = 100) -> float:
     return s
 
 
+def _bessel_jp_integral(p: float, x: float) -> float:
+    """J_p(x) by the integral representation (Abramowitz & Stegun 9.1.24):
+
+        J_p(x) = (1/pi) int_0^pi cos(p t - x sin t) dt
+                 - (sin(p pi)/pi) int_0^inf exp(-x sinh t - p t) dt
+
+    Stable for every x > 0: no cancellation, since neither integrand grows with x.
+    The first integrand oscillates at frequency ~x, so the panel count is scaled by x;
+    the second decays like exp(-x sinh t) and is cut where it reaches ~1e-18.
+    """
+    n1 = max(2048, 2 * int(64 * x))
+    t = np.linspace(0.0, math.pi, n1 + 1)
+    j = _simpson(np.cos(p * t - x * np.sin(t)), math.pi / n1) / math.pi
+
+    frac = p - math.floor(p)
+    if frac == 0.0:                       # sin(p*pi) = 0: the second integral drops out
+        return j
+    # exp(-x sinh t - p t) has already fallen below ~1e-18 where x sinh(t) = 42; the
+    # -p t term only steepens that, so this bound is safe for every p >= 0. It must
+    # stay tight: the integrand collapses over a scale of 1/x, and a cutoff chosen for
+    # small x leaves the spike unresolved at large x.
+    t_max = math.asinh(42.0 / x)
+    n2 = 4096
+    u = np.linspace(0.0, t_max, n2 + 1)
+    tail = _simpson(np.exp(-x * np.sinh(u) - p * u), t_max / n2)
+    return j - math.sin(p * math.pi) / math.pi * tail
+
+
+def _bessel_j_low(sigma: float, x: float) -> float:
+    """J_sigma(x) for 0 <= sigma < 1. Both branches are accurate at this order."""
+    if x <= _BESSEL_SERIES_MAX_X:
+        return _bessel_jp_series(sigma, x)
+    return _bessel_jp_integral(sigma, x)
+
+
+def bessel_jp(p: float, x: float) -> float:
+    """Bessel function J_p(x) of real order p >= 0, real x > 0.
+
+    Neither elementary form is usable across the whole range the wedge series needs
+    (orders to ~200, arguments to ~150): the ascending power series loses everything
+    to cancellation once x is large, and the integral representation degenerates for
+    p >> x, where J_p(x) underflows and the two integrals cancel to round-off.
+
+    So the order is reduced to its fractional part -- where both forms are reliable --
+    and carried back up by backward (Miller) recurrence,
+
+        J_{v-1}(x) = (2v/x) J_v(x) - J_{v+1}(x),
+
+    which is the stable direction for J. The recurrence is seeded arbitrarily well
+    above the order needed, then rescaled by the accurately known J_sigma(x). This is
+    the same construction as the SLATEC BESJ routine ACES itself calls (DFRAC.FOR).
+    """
+    if x == 0.0:
+        return 1.0 if p == 0.0 else 0.0
+    sigma = p - math.floor(p)
+    order = int(math.floor(p))
+    if order == 0:
+        return _bessel_j_low(sigma, x)
+
+    # Seed high enough above both the requested order and the argument that the
+    # downward recurrence has forgotten the arbitrary starting value by the time it
+    # reaches sigma.
+    n_top = order + 40 + int(2.0 * math.sqrt(60.0 * max(x, 1.0)))
+    f_next, f = 0.0, 1.0e-290
+    target = None
+    for k in range(n_top, 0, -1):
+        f_prev = (2.0 * (sigma + k) / x) * f - f_next
+        f_next, f = f, f_prev
+        if k - 1 == order:
+            target = f
+        if abs(f) > 1.0e250:                 # renormalise before overflow
+            f *= 1.0e-250
+            f_next *= 1.0e-250
+            if target is not None:
+                target *= 1.0e-250
+    if f == 0.0 or target is None:
+        return 0.0
+    return target * (_bessel_j_low(sigma, x) / f)
+
+
+# ACES DFRAC caps the eigenfunction series at 200 terms and reports
+# "ERROR: NEED MORE TERMS FOR SUMMATION" rather than returning a partial sum
+# (DFRAC.FOR PARAMETER(NN=200), line ~1181).
+_MAX_TERMS = 200
+_TERM_TOL = 1e-8        # DFRAC.FOR: DATA TOLR / 1.E-8 /
+_TERM_RUN = 8           # DFRAC.FOR: DATA ITER / 8 /
+
+
 def _wedge_potential(kr: float, theta: float, alpha: float, nu: float) -> complex:
-    """Horizontal-plane potential phi(r,theta) for the wedge (eq 7). Series truncated when
-    8 successive terms fall below 1e-6 (Chen 1987)."""
+    """Horizontal-plane potential phi(r,theta) for the wedge (eq 7).
+
+    Truncation follows ACES exactly: stop once `_TERM_RUN` successive *Bessel factors*
+    fall to `_TERM_TOL`, and refuse rather than truncate if that has not happened
+    within `_MAX_TERMS`. Testing the Bessel factor rather than the whole term matters
+    -- cos(n alpha/nu) or cos(n theta/nu) can pass through zero while the series is
+    still far from converged.
+    """
     s = complex(bessel_jp(0.0, kr), 0.0)
     small = 0
-    for n in range(1, 400):
+    for n in range(1, _MAX_TERMS + 1):
+        bj = bessel_jp(n / nu, kr)
         ph = cmath.exp(1j * n * math.pi / (2.0 * nu))
-        term = 2.0 * ph * bessel_jp(n / nu, kr) * math.cos(n * alpha / nu) * math.cos(n * theta / nu)
-        s += term
-        small = small + 1 if abs(term) < 1e-6 else 0
-        if small >= 8:
-            break
-    return (2.0 / nu) * s
+        s += 2.0 * ph * bj * math.cos(n * alpha / nu) * math.cos(n * theta / nu)
+        small = small + 1 if abs(bj) <= _TERM_TOL else 0
+        if small >= _TERM_RUN:
+            return (2.0 / nu) * s
+    raise ValueError(
+        f"wedge series did not converge within {_MAX_TERMS} terms (kr = {kr:.1f}); "
+        "the point is too many wavelengths from the wedge for this expansion")
 
 
 def _validate(inp: dict) -> None:
@@ -242,11 +352,18 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
 
     phi = _wedge_potential(k * r, theta, alpha, nu)
     mod = abs(phi)
+    # Wave approaching along the wedge face. ACES halves the modulus in this case
+    # (DFRAC.FOR: "IF(WA .LE. TOLR) FABS = FABS/2"): at alpha = 0 the incident and
+    # reflected trains coincide, and the eigenfunction sum counts them both.
+    if abs(alpha) <= _TERM_TOL:
+        mod *= 0.5
     beta = math.atan2(phi.imag, phi.real)
     H = mod * Hi
 
     notes = (f"nu={nu:.3f}, kr={k * r:.3f}; |phi| is the diffraction/reflection coefficient; "
              f"phase to ~0.1 rad (PCDFRAC phase-reference convention)")
+    if abs(alpha) <= _TERM_TOL:
+        notes += "; wave along the wedge face (alpha=0): modulus halved, per ACES"
     return Result(L=L, mod_factor=mod, phase=beta, H=H, notes=notes)
 
 

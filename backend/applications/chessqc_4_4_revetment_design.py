@@ -100,6 +100,8 @@ INPUTS = (
     Field("cot_theta", "Cotangent of structure slope", "float", "", "", default=2.0, lo=1.0, hi=10.0),
     Field("wr", "Unit weight of rock", "float", "N/m^3", "lb/ft^3", default=165.0 * _LBFT3,
           lo=1e3, hi=5e4),
+    Field("w_w", "Water unit weight", "float", "N/m^3", "lb/ft^3", default=64.0 * _LBFT3,
+          lo=1e3, hi=5e4, note="64 lb/ft^3 seawater, 62.4 lb/ft^3 fresh (ACES RUBBLE.FOR:949)"),
     Field("P", "Permeability coefficient", "float", "", "", default=0.1, lo=0.1, hi=0.6,
           note="0.1 impermeable core, 0.4-0.5 permeable, 0.6 homogeneous (Fig 4-4-2)"),
     Field("S", "Damage level", "float", "", "", default=2.0, lo=1.0, hi=20.0,
@@ -309,7 +311,11 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
     cot_theta = float(inp["cot_theta"]); wr = float(inp["wr"])
     P = float(inp["P"]); S = float(inp["S"])
 
-    Sr = wr / _W_WATER
+    # ACES RUBBLE selects the water unit weight from the water type (RUBBLE.FOR:949,
+    # 64.0 lb/ft^3 sea / 62.4 fresh). Hard-coding seawater made every armor weight
+    # 22.9% high against the fresh-water DOS sweep, since W goes as 1/(S_r-1)^3.
+    w_water = float(inp.get("w_w", _W_WATER))
+    Sr = wr / w_water
     N_s, N_cerc, N_vdm, xi_z = _stability_number(Hs, Ts, cot_theta, P, S, g)
 
     W50 = wr * Hs ** 3 / (N_s ** 3 * (Sr - 1.0) ** 3)   # eq 1 (Hudson form), in N

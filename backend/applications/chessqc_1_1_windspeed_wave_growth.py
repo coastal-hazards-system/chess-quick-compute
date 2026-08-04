@@ -21,7 +21,18 @@ difference = 0). Wind observation types via the constant-stress log profile: Ove
 (shipboard) applies the ship-bias correction (1) first; Overwater (not shipboard) and
 Shore (windward/leeward) use the profile directly.
 
-Air-sea temperature (stability) correction, default Neutral; physical correction opt-in:
+Air-sea temperature (stability) correction, default Neutral; but see the conflict below.
+
+  Oracle conflict (unresolved). Over the 1,017-case ACES DOS sweep from the Hawaii
+  ACES2017 deliverable -- which walks deltaT from -20 to +25 -- the Businger-Dyer branch
+  reproduces the executable's U_e / U_a to a median 1.93% / 2.24%, against 10.24% /
+  11.96% for the Neutral branch, and the other three obs_type settings are worse again
+  (25-37%). So the ACES *program* evidently applies a stability correction close to the
+  canonical form, even though its TR eq 9 transcription is corrupted (below) and the
+  published Example 3 is reproduced by the Neutral path. The default is left at Neutral
+  because that is what the worked examples validate; the disagreement is recorded in
+  tests/aces_oracle/FINDINGS.md A5 and is a live question, not a settled choice.
+
   The default path treats deltaT as neutral (validated against Example 1). An opt-in
   "Businger-Dyer" stability model applies the literature-standard surface-layer correction
   (`_psi_m` + the bulk Obukhov length, TR eq 8 with 1.79 = theta_bar/(k^2 g)).
@@ -126,10 +137,12 @@ INPUTS = (
           lo=0.1 * _MPH, hi=200.0, note="> 0"),
     Field("deltaT", "Air-sea temperature difference", "float", "C", "C", default=0.0,
           lo=-50.0, hi=50.0, note="T_air - T_sea; 0 = neutral. <0 unstable, >0 stable"),
-    Field("stability", "Stability model", "choice", "", "", default="Neutral (validated)",
-          choices=("Neutral (validated)", "Businger-Dyer (physical)"),
-          note="Neutral: validated default. Businger-Dyer: physical correction when deltaT!=0 "
-               "(opt-in; does not reproduce ACES Example 3, see docstring)"),
+    Field("stability", "Stability model", "choice", "", "", default="Neutral",
+          choices=("Neutral", "Businger-Dyer (ACES)"),
+          note="Neutral reproduces the User's Guide worked examples. Businger-Dyer is "
+               "what the ACES executable's own output prefers by a wide margin over the "
+               "1,017-case DOS sweep (median error 1.9% vs 10.2% in U_e) -- the two "
+               "oracles disagree; see the docstring."),
     Field("dur_obs", "Duration of observed wind", "float", "hr", "hr", default=3.0 * 3600.0,
           lo=1.0, hi=36000.0, note=">= 0.1 (stored internally in seconds)"),
     Field("dur_final", "Duration of final wind", "float", "hr", "hr", default=3.0 * 3600.0,
@@ -477,7 +490,7 @@ def compute(inp: dict, *, g: float = G_SI) -> Result:
     notes = []
 
     # 1) observed wind -> 10-m equivalent-neutral wind
-    stability = str(inp.get("stability", "Neutral (validated)"))
+    stability = str(inp.get("stability", "Neutral"))
     if deltaT != 0.0 and stability.startswith("Businger"):
         U_10 = _stability_10m(U_obs, z_obs, obs_type, deltaT)
         notes.append("Businger-Dyer stability correction applied (physical, opt-in). "
@@ -569,8 +582,8 @@ def _self_tests() -> None:
                 lat=47.0, obs_type="Overwater (not shipboard)", fetch_type="Open Water",
                 wave_eq="Deep", F=26.6 * _MI, d=100.0)
     u_neu = compute(dict(base, deltaT=0.0)).U_e
-    u_uns = compute(dict(base, deltaT=-3.0, stability="Businger-Dyer (physical)")).U_e
-    u_stb = compute(dict(base, deltaT=3.0, stability="Businger-Dyer (physical)")).U_e
+    u_uns = compute(dict(base, deltaT=-3.0, stability="Businger-Dyer (ACES)")).U_e
+    u_stb = compute(dict(base, deltaT=3.0, stability="Businger-Dyer (ACES)")).U_e
     assert u_uns > u_neu > u_stb, (u_uns / _MPH, u_neu / _MPH, u_stb / _MPH)
     assert abs(u_uns - u_neu) / u_neu < 0.03    # standard surface-layer effect is small
     # default (Neutral) ignores deltaT -> same as neutral
