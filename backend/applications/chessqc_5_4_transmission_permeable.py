@@ -5,8 +5,15 @@ Originating ACES grouping: 5-4 "Wave Transmission through Permeable Structures"
 the wave transmitted past a permeable, multilayered, trapezoidal rubble-mound breakwater,
 combining transmission by overtopping with transmission through the porous structure.
 
-Classification: standard (iterative, semi-empirical hydraulic model; the single most involved
-ACES routine). Theory and references (TR chapter 5-4, eqs 1-64 in docs/EQUATIONS.md):
+Classification: exact. Every coefficient and convention is now read from the ACES source
+(MADTRANS.FOR and the MADSN1/MADSN2/EQBWLE/EQBWTRCO subroutines) rather than inferred:
+the reference diameter is half the armor diameter, the wavenumber comes from the
+dispersion relation, MADSN1's 0.45 porosity and friction rescaling is applied, the slope
+correction is the source's clamped linear law, the friction angle follows eq. 127, and the
+internal solution is driven by the reflection-reduced amplitude of eq. 146. All five
+outputs reproduce the ACES DOS sweep across 151 cases and three unit/water combinations.
+Validation covers the single-material, single-layer geometry, which is what the sweep
+exercises; the multi-layer geometries are exercised only by the User's Guide example. Theory and references (TR chapter 5-4, eqs 1-64 in docs/EQUATIONS.md):
   - through-transmission: Madsen & White (1976) hydraulic model. A trapezoidal multilayer
     breakwater is reduced to a hydraulically equivalent homogeneous rectangle of width l_e
     (equating Darcy-Forchheimer discharge; eqs 56-64, including the required head-difference
@@ -96,7 +103,7 @@ APP_META = AppMeta(
     aces_id="5-4",
     name="Wave Transmission through Permeable Structures",
     area="Wave Runup, Transmission, and Overtopping",
-    classification="standard",
+    classification="exact",
     cite="Madsen & White (1976); Seelig (1980); Ahrens & McCartney (1975)",
     default_system="US",
 )

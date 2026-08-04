@@ -110,12 +110,16 @@ by numerically integrating the fitted density.
 > the worked example requires `g T_p² / d`, not `d / (g T_p²)`.
 
 **Validation.** Reproduces ACES *User's Guide* Example 1-2 (`H_mo = 5 ft, T_p = 6.30 s,
-d = 10.2 ft`): `H_rms = 3.72 ft`, `H_med = 3.26 ft`, `H_1/3 = 5.18 ft`, `H_1/100 = 7.48 ft`,
-plus the Rayleigh-limit ratios in deep water. The manual's `H_1/10 = 6.55 ft` is not reproduced:
-the documented Beta-Rayleigh method gives `6.30 ft` (grid-independent and stable across
-quadrature schemes), and the manual figure is physically inconsistent with the more strongly
-truncated `H_1/3` and `H_1/100`, so it is taken to be a documentation or legacy-code artifact and
-the computed value is reported.
+d = 10.2 ft`) on all five characteristic heights — `H_rms = 3.72 ft`, `H_med = 3.26 ft`,
+`H_1/3 = 5.18 ft`, `H_1/10 = 6.55 ft`, `H_1/100 = 7.48 ft` — plus the Rayleigh-limit ratios
+in deep water, and matches the ACES DOS sweep across 315 cases.
+
+`H_1/10 = 6.55 ft` was previously not reproduced, and the manual was assumed to be in error.
+It was not: the *procedure*, not only the distribution, defines the published numbers. ACES
+truncates at the depth itself rather than a fraction of it, takes its exceedance levels as
+0.66 / 0.90 / 0.99 rather than exactly one third, one tenth and one hundredth, and integrates
+on a 100-bin grid with a 20-step centroid. Following that reproduces the manual exactly; the
+earlier `6.30 ft` was the same integral on a finer grid.
 
 **References.** Hughes and Borgman (1987); Longuet-Higgins (1952); Thompson and Vincent (1985);
 Hughes and Ebersole (1987); SPM (1984).
@@ -523,20 +527,22 @@ The output statistics come from numerically integrating the transformed height d
 > **Status and Caveats:** Current (Built), with a documented accuracy limitation. The method
 > assumes straight, parallel contours and a narrow-band spectrum, and the ACES procedure restricts
 > it to peak period below about 16 s, depth above about 10 ft, and principal incidence within 75° of
-> the shore normal. The directional integral uses the Mitsuyasu spreading parameter s_max (default
-> 10, wind waves).
+> the shore normal. Directional spreading is selected from period and steepness as ACES does,
+> and can be pinned to one of its three bands.
 >
-> The transformation physics is implemented in full, but it does not reproduce the worked example to
-> the digit. The shoaling coefficient (0.9133) is exact, and the at-depth significant, mean, and
-> root-mean-square heights match to about four percent (significant 17.0 versus 17.7 ft) with surf
-> beat to about one percent. Two pieces need source-level detail absent from the public Technical
-> Reference: the high quantiles (the highest tenth, highest two percent, and maximum) and a small
-> bias on the significant height follow Goda finite-N order-statistic relations (an effective wave
-> count, roughly 1200 here) rather than the asymptotic Rayleigh ratios the distribution integration
-> yields; and the effective refraction coefficient (computed 0.950 versus the published 0.964)
-> depends on the exact directional-integration scheme and the default spreading parameter. The
-> deepwater reference column and the high quantiles therefore carry larger residuals (up to about six
-> percent). This is the same class of empirical-coefficient gap documented for application 5-4.
+> ACES does not evaluate the transformation at the subject depth in one step: it marches the sea
+> state in from deep water, iterating the wave setup against the radiation-stress balance at each
+> station while accumulating the height distribution over eight discrete surf-beat levels, carrying
+> shoaling state across stations and recomputing refraction at every one. That structure is now
+> reproduced, and it was the substance of the earlier disagreement — evaluating the same relations
+> only at the target depth left the transformed heights about thirteen percent off across the
+> 794-case DOS sweep. With the march they are within about one percent, and refraction and surf
+> beat reproduce outright.
+>
+> One residual remains, in the shoaling coefficient in shallow water with long periods (84 of 738
+> rows). Neither available reading of the source reproduces the printed values there, and the
+> printed shoaling coefficient is not monotone in period, which no smooth shoaling law produces.
+> The heights that still differ are all downstream of it. See `tests/aces_oracle/FINDINGS.md`.
 
 **References.** Goda (1975, 1984); Mitsuyasu (1975) for directional spread; Shuto (1974) for
 nonlinear shoaling.

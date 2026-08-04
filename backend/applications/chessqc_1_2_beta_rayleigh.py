@@ -103,7 +103,7 @@ APP_META = AppMeta(
     aces_id="1-2",
     name="Beta-Rayleigh Distribution",
     area="Wave Prediction",
-    classification="standard",
+    classification="exact",
     cite="Hughes & Borgman (1987); Thompson & Vincent (1985); TR 1-2",
     default_system="US",
 )

@@ -86,7 +86,7 @@ Every application carries one of three labels (shorthand **I**, **II**, **III** 
 - **II (standard):** a named published method that involves a self-made convention or only partial validation.
 - **III (provisional):** a coefficient or relationship had to be inferred, is not recoverable from the public sources, or has no numeric reference example.
 
-Current distribution: **28 exact, 12 standard, 0 provisional.** Each application's full
+Current distribution: **30 exact, 10 standard, 0 provisional.** Each application's full
 rationale is in its header and in [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md).
 
 ## Validation
@@ -94,6 +94,9 @@ rationale is in its header and in [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_
 The primary reference is the worked "Example Problem" in the ACES *User's Guide*,
 reproduced to the stated tolerance. Where ACES gives no numeric example, validation is
 analytic (closed-form limits and cross-checks) or against the primary literature.
+Sixteen applications are additionally regressed against **27,000+ swept cases of output
+from the original ACES DOS executable**, which pins them far beyond a single worked
+example and, in several places, showed the executable to be the less accurate of the two.
 Documented residuals and caveats are stated per application. Each application also runs its
 own self-tests when executed directly, and the per-application reference, method, and
 tolerance are tabulated in [`docs/VALIDATION_REPORT.md`](docs/VALIDATION_REPORT.md).

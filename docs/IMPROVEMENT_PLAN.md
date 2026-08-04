@@ -34,7 +34,7 @@ add a better standalone app; `[needs-data]` = blocked on a dataset or source doc
 - **10-4 Probabilistic Simulation** — replaced method-of-moments fitting and perturbed-value pseudo-bootstrap with maximum-likelihood GPD fitting and a nonparametric bootstrap.
 
 **Tier 2 — standard (class II) / known residuals at physical inputs**
-- **1-2 Beta-Rayleigh** — H_1/10 6.30 vs manual 6.55 ft, unresolved (suspected source-doc artifact).
+- ~~**1-2 Beta-Rayleigh** — H_1/10 6.30 vs manual 6.55 ft~~ — **resolved**: ACES's own upper bound, exceedance levels and quadrature reproduce the manual exactly.
 - **6-1 Longshore** & **6-3 CEDRS** — only match the ACES examples with a non-physical effective sediment density (~2320 vs 2650); self-chosen binning conventions in 6-3.
 - **M-1 breaker routines** — TR eq-5 non-physical as printed; replaced by a self-made substitute; analytic checks only.
 
@@ -69,7 +69,7 @@ add a better standalone app; `[needs-data]` = blocked on a dataset or source doc
 - **Superior / replacement method:** CEM (EM 1110-2-1100, Part II-2) growth formulas + a COARE 3.5 bulk-flux algorithm (Fairall et al. 2003) for a correctly-signed, validated stability/drag treatment. `[drop-in]` growth coefficients; `[new-calculator]`/`[needs-data]` for the COARE module.
 
 ### 1-2 Beta-Rayleigh Distribution  [class II]
-- **Validation shortcomings:** Four of five characteristic heights match Example 1-2 to ~1.5%, but **H_1/10 = 6.30 vs manual 6.55 ft** is unreconcilable (grid-independent), argued to be a source-document artifact. Relative-depth fits eq (16)/(19) were transcribed with depth inverted; module silently uses the corrected argument. Single-example validation.
+- **Validation:** all five characteristic heights of Example 1-2 reproduce, and the application matches the ACES DOS sweep across 315 cases. The relative-depth fit argument (documented inverted) is confirmed against BETAR.FOR.
 - **Missing data:** None unrecoverable.
 - **Superior / replacement method:** Battjes-Groenendijk (2000) composite Weibull depth-limited distribution — modern standard, gives H_1/10/H_2%/H_1% directly, resolves the ambiguity. `[drop-in]`.
 

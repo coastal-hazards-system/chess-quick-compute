@@ -78,7 +78,7 @@ Originating ACES application: 1-1 "Windspeed Adjustment and Wave Growth" (functi
 | Elevation of observed wind | z_obs | ft / m | 1 to 32808.4 | 25 | >= 1 ft |
 | Observed wind speed | U_obs | mph / km/h | 0.1 to 447.387 | 45 | > 0 |
 | Air-sea temperature difference | deltaT | C | -50 to 50 | 0 | T_air - T_sea; 0 = neutral. <0 unstable, >0 stable |
-| Stability model | stability | (none) | choices: Neutral (validated), Businger-Dyer (physical) | Neutral (validated) | Neutral: validated default. Businger-Dyer: physical correction when deltaT!=0 (opt-in; does not reproduce ACES Example 3, see docstring) |
+| Stability model | stability | (none) | choices: Neutral, Businger-Dyer (ACES) | Neutral | Neutral reproduces the User's Guide worked examples. Businger-Dyer is what the ACES executable's own output prefers by a wide margin over the 1,017-case DOS sweep (median error 1.9% vs 10.2% in U_e) -- the two oracles disagree; see the docstring. |
 | Duration of observed wind | dur_obs | hr | 0.000277778 to 10 | 3 | >= 0.1 (stored internally in seconds) |
 | Duration of final wind | dur_final | hr | 0.000277778 to 10 | 3 | >= 0.1 (stored internally in seconds) |
 | Latitude of observation | lat | deg | 0 to 180 | 30 | 0 to 180 deg |
@@ -107,7 +107,7 @@ Originating ACES application: 1-1 "Windspeed Adjustment and Wave Growth" (functi
 
 *Module:* `backend/applications/chessqc_1_1_windspeed_wave_growth.py`
 
-### 1-2 — Beta-Rayleigh Distribution  `[II]`
+### 1-2 — Beta-Rayleigh Distribution  `[I]`
 
 **Status:** Current.
 
@@ -120,7 +120,7 @@ Originating ACES application: 1-2 "Beta-Rayleigh Distribution" (functional area:
 | Energy-based wave height (Hmo) | Hmo | ft / m | 0.000328084 to 3280.84 | 5 | > 0 (zero-moment / significant height of the sea state) |
 | Peak spectral period (Tp) | Tp | s | 0.01 to 1000 | 6.3 | > 0 |
 | Water depth | d | ft / m | 0.000328084 to 32808.4 | 10.2 | > 0; the distribution reverts to Rayleigh when d/(g Tp^2) >= 0.01 |
-| Breaking-height coefficient Hb/d | Hb_coef | (none) | choices: 0.9 (ACES), 0.78 (SPM) | 0.9 (ACES) | upper-bound breaking height as a fraction of depth |
+| Breaking-height coefficient Hb/d | Hb_coef | (none) | choices: 1.0 (ACES), 0.9, 0.78 (SPM) | 1.0 (ACES) | upper bound that truncates the distribution, as a fraction of depth; ACES BETAR uses the depth itself |
 
 **Outputs**
 
@@ -619,7 +619,7 @@ Originating ACES grouping: 3-2 "Irregular Wave Transformation (Goda's method)" (
 | Significant wave period | Ts | s | 1 to 16 | 8 | <= 16 s |
 | Cotangent of nearshore slope | cot_phi | (none) | 1 to 10000 | 100 |  |
 | Principal incident direction | theta | deg | -75 to 75 | 10 | from shore normal; \|theta\| <= 75 deg |
-| Directional spreading parameter | s_max | (none) | 1 to 200 | 10 | 10 wind waves, 25 steep swell, 75 flat swell |
+| Directional spreading | s_max | (none) | choices: Auto (ACES), 10 (wind waves), 25 (steep swell), 75 (flat swell) | Auto (ACES) | ACES selects the band from period and steepness (T_s <= 10 s -> 10; longer with H/L > 0.02 -> 25; otherwise 75). Override to pin it. |
 
 **Outputs**
 
@@ -837,6 +837,7 @@ Originating ACES grouping: 4-4 "Rubble-Mound Revetment Design" (functional area:
 | Water depth at toe of revetment | ds | ft / m | 0.00328084 to 32808.4 | 9 |  |
 | Cotangent of structure slope | cot_theta | (none) | 1 to 10 | 2 |  |
 | Unit weight of rock | wr | lb/ft^3 / N/m^3 | 6.36588 to 318.294 | 165 |  |
+| Water unit weight | w_w | lb/ft^3 / N/m^3 | 6.36588 to 318.294 | 64 | 64 lb/ft^3 seawater, 62.4 lb/ft^3 fresh (ACES RUBBLE.FOR:949) |
 | Permeability coefficient | P | (none) | 0.1 to 0.6 | 0.1 | 0.1 impermeable core, 0.4-0.5 permeable, 0.6 homogeneous (Fig 4-4-2) |
 | Damage level | S | (none) | 1 to 20 | 2 | van der Meer damage S (Table 4-4-1) |
 | Runup method | runup_method | (none) | choices: Ahrens-Heimbaugh, EurOtop | Ahrens-Heimbaugh | Ahrens & Heimbaugh 1988 (ACES) or EurOtop 2018 Ru2% (modern standard) |
@@ -979,7 +980,7 @@ Originating ACES grouping: 5-3 "Wave Transmission on Impermeable Structures" (fu
 
 *Module:* `backend/applications/chessqc_5_3_transmission_impermeable.py`
 
-### 5-4 — Wave Transmission through Permeable Structures  `[II]`
+### 5-4 — Wave Transmission through Permeable Structures  `[I]`
 
 **Status:** Current.
 

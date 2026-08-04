@@ -9,6 +9,7 @@ each app's oracle test in tests/test_manual_oracle.py.
 Run:  python common/gen_validation_report.py   ->  docs/VALIDATION_REPORT.md
 """
 import importlib.util
+import json
 import os
 import re
 import sys
@@ -72,6 +73,31 @@ def _tests_index() -> dict:
     return idx
 
 
+def _dos_oracle_index() -> dict:
+    """Per-application ACES DOS oracle coverage, if the corpus has been run.
+
+    Written by `python tests/test_aces_dos_oracle.py --update-baseline`. Absent when the
+    private Hawaii workbooks are not present, in which case the report simply omits it.
+    """
+    path = os.path.join(ROOT, "tests", "aces_oracle", "corpus", "SUMMARY.json")
+    if not os.path.exists(path):
+        return {}
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def _dos_line(entry) -> str:
+    if not entry or not entry["cases"]:
+        return ""
+    clean = "all" if entry["clean_fields"] == entry["fields"] else         f"{entry['clean_fields']}/{entry['fields']}"
+    txt = (f"- **ACES DOS oracle** (`{entry['aces']}`): {entry['cases']:,} swept cases "
+           f"over {entry['usable_sheets']} sheet(s); {clean} outputs within tolerance")
+    if entry["usable_sheets"] < entry["sheets"]:
+        txt += (f" ({entry['sheets'] - entry['usable_sheets']} further sheet(s) excluded "
+                "as an unusable source)")
+    return txt
+
+
 def main():
     apps = []
     for fn in sorted(os.listdir(APP_DIR)):
@@ -84,6 +110,7 @@ def main():
         apps.append((meta, mod.__doc__ or "", fn))
 
     tests = _tests_index()
+    dos = _dos_oracle_index()
     apps.sort(key=lambda a: (AREA_ORDER.index(a[0].area) if a[0].area in AREA_ORDER else 99,
                              a[0].aces_id))
 
@@ -97,11 +124,17 @@ def main():
     def _kind(meta, vt):
         _, summ = _test_for(meta)
         blob = (vt or "") + " " + (summ or "")
+        base = None
         if "User's Guide" in blob or "Users Guide" in blob:
-            return "User's Guide oracle"
-        if vt or summ:
-            return "analytic / literature"
-        return "see notes"
+            base = "User's Guide oracle"
+        elif vt or summ:
+            base = "analytic / literature"
+        else:
+            base = "see notes"
+        e = dos.get(meta.aces_id)
+        if e and e["cases"]:
+            base += f" + {e['cases']:,} DOS cases"
+        return base
 
     out = ["# CHESS-QC — Validation Report",
            "*Coastal Hazards, Engineering, and Structures System (CHESS) — Quick Compute (QC)*", "",
@@ -113,6 +146,13 @@ def main():
            "where ACES provides no numeric example, validation is analytic (closed-form relations, "
            "limits, and cross-checks) or against the primary literature. Documented residuals/caveats "
            "are stated honestly per app.", "",
+           "A second, much broader oracle now applies to the applications ACES shipped a "
+           "multi-case sweep for: the output of the original ACES DOS executable itself, "
+           "recovered from the 2016-17 University of Hawai'i deliverable. Where it exists it is "
+           "listed per application below, with the count of swept cases and how many outputs "
+           "reproduce within tolerance. Its extraction, tolerances, and the residuals that "
+           "remain (including the places where ACES is demonstrably the less accurate of the "
+           "two) are documented in `tests/aces_oracle/FINDINGS.md`.", "",
            "**Fidelity classes:**", "",
            "- **(I) exact** — every coefficient and variable-relationship is known from the "
            "source (nothing guessed) and the results are validated.",
@@ -143,6 +183,9 @@ def main():
         tname, test_summ = _test_for(meta)
         if tname:
             out.append(f"- **Regression test:** `test_{tname}`: PASS ({test_summ})")
+        dl = _dos_line(dos.get(meta.aces_id))
+        if dl:
+            out.append(dl)
         vt = _validation_text(doc)
         if not vt and test_summ:
             vt = f"Validated by the regression test above: {test_summ}."

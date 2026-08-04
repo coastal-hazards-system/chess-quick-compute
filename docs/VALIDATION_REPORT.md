@@ -5,6 +5,8 @@ Validation evidence for every built CHESS-QC application, compiled from each app
 
 **40 applications** built and validated. The validation *oracle* is, for most apps, the worked example in the ACES *User's Guide* (reproduced to the stated tolerance); where ACES provides no numeric example, validation is analytic (closed-form relations, limits, and cross-checks) or against the primary literature. Documented residuals/caveats are stated honestly per app.
 
+A second, much broader oracle now applies to the applications ACES shipped a multi-case sweep for: the output of the original ACES DOS executable itself, recovered from the 2016-17 University of Hawai'i deliverable. Where it exists it is listed per application below, with the count of swept cases and how many outputs reproduce within tolerance. Its extraction, tolerances, and the residuals that remain (including the places where ACES is demonstrably the less accurate of the two) are documented in `tests/aces_oracle/FINDINGS.md`.
+
 **Fidelity classes:**
 
 - **(I) exact** — every coefficient and variable-relationship is known from the source (nothing guessed) and the results are validated.
@@ -17,34 +19,34 @@ Empirical formulations are exact when their coefficients are known and the resul
 
 | App | Name | Class | Status | Oracle / method |
 |---|---|---|---|---|
-| 1-1 | Windspeed Adjustment and Wave Growth | I | Current | analytic / literature |
-| 1-2 | Beta-Rayleigh Distribution | II | Current | User's Guide oracle |
+| 1-1 | Windspeed Adjustment and Wave Growth | I | Current | analytic / literature + 1,017 DOS cases |
+| 1-2 | Beta-Rayleigh Distribution | I | Current | User's Guide oracle + 315 DOS cases |
 | 1-3 | Extremal Significant Wave Height Analysis | I | Current | User's Guide oracle |
 | 1-4 | Constituent Tide Record Generation | I | Current | User's Guide oracle |
 | 1-5 | Near-surface Wind Speeds | II | Current | analytic / literature |
 | 1-6 | Holland Hurricane Wind Model | I | Current | see notes |
-| 2-1 | Linear Wave Theory | I | Current | User's Guide oracle |
-| 2-2 | Cnoidal Wave Theory | I | Current | User's Guide oracle |
+| 2-1 | Linear Wave Theory | I | Current | User's Guide oracle + 516 DOS cases |
+| 2-2 | Cnoidal Wave Theory | I | Current | User's Guide oracle + 236 DOS cases |
 | 2-3 | Fourier Series Wave Theory | I | Current | User's Guide oracle |
 | 2-4 | Wave Parameters | I | Current | User's Guide oracle |
 | 2-5 | Solitary Wave Theory | I | Current | analytic / literature |
-| 3-1 | Linear Wave Theory with Snell's Law | I | Current | User's Guide oracle |
-| 3-2 | Irregular Wave Transformation (Goda's Method) | II | Current | analytic / literature |
-| 3-3 | Combined Diffraction and Reflection by a Vertical Wedge | I | Current | User's Guide oracle |
+| 3-1 | Linear Wave Theory with Snell's Law | I | Current | User's Guide oracle + 4,579 DOS cases |
+| 3-2 | Irregular Wave Transformation (Goda's Method) | II | Current | User's Guide oracle + 794 DOS cases |
+| 3-3 | Combined Diffraction and Reflection by a Vertical Wedge | I | Current | User's Guide oracle + 214 DOS cases |
 | 3-4 | Vertical-Wedge Diffraction/Reflection on a Uniform Grid | I | Current | User's Guide oracle |
-| 4-1 | Breakwater Design (Hudson) | I | Current | User's Guide oracle |
-| 4-2 | Toe Protection Design | I | Current | User's Guide oracle |
-| 4-3 | Nonbreaking Wave Forces at Vertical Walls | I | Current | User's Guide oracle |
-| 4-4 | Rubble-Mound Revetment Design | I | Current | User's Guide oracle |
-| 5-1 | Irregular Wave Runup on Beaches | I | Current | User's Guide oracle |
-| 5-2 | Wave Runup and Overtopping on Impermeable Structures | I | Current | User's Guide oracle |
-| 5-3 | Wave Transmission on Impermeable Structures | I | Current | User's Guide oracle |
-| 5-4 | Wave Transmission through Permeable Structures | II | Current | analytic / literature |
+| 4-1 | Breakwater Design (Hudson) | I | Current | User's Guide oracle + 1,530 DOS cases |
+| 4-2 | Toe Protection Design | I | Current | User's Guide oracle + 676 DOS cases |
+| 4-3 | Nonbreaking Wave Forces at Vertical Walls | I | Current | User's Guide oracle + 2,512 DOS cases |
+| 4-4 | Rubble-Mound Revetment Design | I | Current | User's Guide oracle + 312 DOS cases |
+| 5-1 | Irregular Wave Runup on Beaches | I | Current | User's Guide oracle + 2,146 DOS cases |
+| 5-2 | Wave Runup and Overtopping on Impermeable Structures | I | Current | User's Guide oracle + 3,200 DOS cases |
+| 5-3 | Wave Transmission on Impermeable Structures | I | Current | User's Guide oracle + 8,982 DOS cases |
+| 5-4 | Wave Transmission through Permeable Structures | I | Current | User's Guide oracle + 151 DOS cases |
 | 5-5 | Wave Setup | I | Current | User's Guide oracle |
 | 6-1 | Longshore Sediment Transport | I | Current | analytic / literature |
 | 6-2 | Time-Dependent Beach and Dune Erosion | I | Current | analytic / literature |
 | 6-3 | Longshore Transport using CEDRS Statistics | II | Current | see notes |
-| 6-4 | Beach Nourishment Overfill Ratio and Volume | I | Current | User's Guide oracle |
+| 6-4 | Beach Nourishment Overfill Ratio and Volume | I | Current | User's Guide oracle + 13 DOS cases |
 | 6-5 | Composite Grain-Size Distribution | I | Current | User's Guide oracle |
 | 7-1 | Spatially Integrated Numerical Model for Inlet Hydraulics | II | Current | User's Guide oracle |
 | 7-2 | Wave-Current Interaction in Channels | I | Current | see notes |
@@ -66,16 +68,18 @@ Empirical formulations are exact when their coefficients are known and the resul
 - **Source / references:** SPM (1984) Ch.3; Resio & Vincent (1977); Smith (1991); TR 1-1
 - **Module:** `backend/applications/chessqc_1_1_windspeed_wave_growth.py`
 - **Regression test:** `test_1_1_windspeed_wave_growth`: PASS (Example 1-1 open + Example 3 restricted geometry)
+- **ACES DOS oracle** (`WAWG`): 1,017 swept cases over 1 sheet(s); 2/4 outputs within tolerance (1 further sheet(s) excluded as an unusable source)
 
 Validated by the regression test above: Example 1-1 open + Example 3 restricted geometry.
 
-### 1-2 — Beta-Rayleigh Distribution  (II — standard)
+### 1-2 — Beta-Rayleigh Distribution  (I — exact)
 
 - **Source / references:** Hughes & Borgman (1987); Thompson & Vincent (1985); TR 1-2
 - **Module:** `backend/applications/chessqc_1_2_beta_rayleigh.py`
-- **Regression test:** `test_1_2_beta_rayleigh`: PASS (4/5 manual heights; H1/10 documented artifact)
+- **Regression test:** `test_1_2_beta_rayleigh`: PASS (all 5 User's Guide heights, H1/10 included)
+- **ACES DOS oracle** (`BETAR`): 315 swept cases over 2 sheet(s); all outputs within tolerance
 
-Validation note. Of the five characteristic heights in Example 1-2, four reproduce to within ~1.5% (H_rms 3.72, H_med 3.26, H_1/3 5.18, H_1/100 7.48 ft). The fifth, H_1/10, is reported as 6.55 ft in the User's Guide but computes to 6.30 ft from the documented Beta-Rayleigh method (confirmed grid-independent and across discrete and interpolated quadrature). The manual value sits closer to the pure-Rayleigh value than its neighbours, which is physically inconsistent with a depth-truncated tail, so it is taken to be a documentation or legacy-code artifact and 6.30 ft is reported.
+Validation note. All five characteristic heights of Example 1-2 now reproduce (H_rms 3.72, H_med 3.26, H_1/3 5.18, H_1/10 6.55, H_1/100 7.48 ft), because the *procedure* -- not only the distribution -- is taken from the source: the upper bound is the depth itself (BETAR.FOR:859, "Per Bob Jensen ... HB equals DEPTH for these calculations"), the exceedance levels are 0.66/0.90/0.99 rather than exactly 1/3, 1/10, 1/100 (BETAR.FOR:816-819), and the integration is ACES's 100-bin running sum with a 20-step centroid (BETAR.FOR:860, 1000-1064).  H_1/10 was previously reported as 6.30 ft and the manual's 6.55 ft was attributed to a documentation artifact. That was wrong: 6.55 is what ACES computes, and the difference is its coarse quadrature, which is part of the defined method. Across the 315-case ACES DOS sweep the ACES form matches to a median 0.02%, against 3.9% (H_1/10) and 8.1% (H_1/100) for the finer-grid form. Selecting a different Hb/d in the input reverts to a non-ACES truncation and will not reproduce the manual.
 
 ### 1-3 — Extremal Significant Wave Height Analysis  (I — exact)
 
@@ -116,6 +120,7 @@ _Validation note in the app docstring / build notes._
 - **Source / references:** Airy (1845); Hunt (1979); TR 2-1
 - **Module:** `backend/applications/chessqc_2_1_linear_wave_theory.py`
 - **Regression test:** `test_2_1_linear_wave_theory`: PASS (matches User's Guide Example 2-1)
+- **ACES DOS oracle** (`LWT`): 516 swept cases over 4 sheet(s); 48/56 outputs within tolerance
 
 Validated by the regression test above: matches User's Guide Example 2-1.
 
@@ -124,6 +129,7 @@ Validated by the regression test above: matches User's Guide Example 2-1.
 - **Source / references:** Isobe (1985); Hardy & Kraus (1987); TR 2-2
 - **Module:** `backend/applications/chessqc_2_2_cnoidal_wave_theory.py`
 - **Regression test:** `test_2_2_cnoidal_wave_theory`: PASS (matches User's Guide Example 2-2, 1st order)
+- **ACES DOS oracle** (`CWT`): 236 swept cases over 2 sheet(s); 21/22 outputs within tolerance
 
 Validated by the regression test above: matches User's Guide Example 2-2, 1st order.
 
@@ -159,6 +165,7 @@ Validated by the regression test above: analytic; celerity/crest/breaking/M-N/en
 - **Source / references:** O'Brien (1942); Hunt (1979); Weggel (1972); TR 3-1
 - **Module:** `backend/applications/chessqc_3_1_snell.py`
 - **Regression test:** `test_3_1_snell`: PASS (Snell transformation matches User's Guide Example 3-1)
+- **ACES DOS oracle** (`LWTS`): 4,579 swept cases over 4 sheet(s); all outputs within tolerance
 
 Validated by the regression test above: Snell transformation matches User's Guide Example 3-1.
 
@@ -166,15 +173,17 @@ Validated by the regression test above: Snell transformation matches User's Guid
 
 - **Source / references:** Goda (1975, 1985); Mitsuyasu (1975); Shuto (1974)
 - **Module:** `backend/applications/chessqc_3_2_goda_transformation.py`
-- **Regression test:** `test_3_2_goda_transformation`: PASS (Ks exact; headline Hs/Hrms ~4%; high quantiles approx)
+- **Regression test:** `test_3_2_goda_transformation`: PASS (User's Guide example; Ks/Hmean/Hrms exact, other heights within ~3%)
+- **ACES DOS oracle** (`GODA`): 794 swept cases over 1 sheet(s); 3/11 outputs within tolerance
 
-Validated by the regression test above: Ks exact; headline Hs/Hrms ~4%; high quantiles approx.
+Validated by the regression test above: User's Guide example; Ks/Hmean/Hrms exact, other heights within ~3%.
 
 ### 3-3 — Combined Diffraction and Reflection by a Vertical Wedge  (I — exact)
 
 - **Source / references:** Chen (1987); Stoker (1957); Penny & Price (1952)
 - **Module:** `backend/applications/chessqc_3_3_wedge_diffraction.py`
 - **Regression test:** `test_3_3_wedge_diffraction`: PASS (L, modification factor, height; phase ~0.1 rad conv.)
+- **ACES DOS oracle** (`DFRAC`): 214 swept cases over 2 sheet(s); 6/8 outputs within tolerance
 
 Validation: reproduces the ACES User's Guide Example 1 (semi-infinite breakwater, wedge angle 0 so nu=2; incident H 2 ft, T 6 s, depth 12 ft, wave angle 133 deg, point at (33, -17) ft): wavelength 109.82 ft and modification factor 0.58 (modified height 1.16 ft). The phase comes out -2.48 rad versus the published -2.58; the ~0.1 rad offset is a phase-reference convention in PCDFRAC and does not affect the modification factor or height.
 
@@ -194,6 +203,7 @@ Validation: reproduces the ACES User's Guide Example 3 (semi-infinite breakwater
 - **Source / references:** Hudson (1953-61); SPM (1984) Ch.7; EM 1110-2-2904; TR 4-1
 - **Module:** `backend/applications/chessqc_4_1_breakwater_hudson.py`
 - **Regression test:** `test_4_1_breakwater_hudson`: PASS (matches User's Guide Example 4-1)
+- **ACES DOS oracle** (`HUDSON`): 1,530 swept cases over 2 sheet(s); all outputs within tolerance
 
 Validated by the regression test above: matches User's Guide Example 4-1.
 
@@ -202,6 +212,7 @@ Validated by the regression test above: matches User's Guide Example 4-1.
 - **Source / references:** EM 1110-2-1614; Tanimoto, Yagyu & Goda (1982); Hunt (1979); TR 4-2
 - **Module:** `backend/applications/chessqc_4_2_toe_protection.py`
 - **Regression test:** `test_4_2_toe_protection`: PASS (matches User's Guide Example 4-2 #1)
+- **ACES DOS oracle** (`TOEPRO`): 676 swept cases over 3 sheet(s); all outputs within tolerance
 
 Validated by the regression test above: matches User's Guide Example 4-2 #1.
 
@@ -210,6 +221,7 @@ Validated by the regression test above: matches User's Guide Example 4-2 #1.
 - **Source / references:** Sainflou (1928); Miche (1944); Rundgren (1958); Hunt (1979); TR 4-3
 - **Module:** `backend/applications/chessqc_4_3_vertical_wall_forces.py`
 - **Regression test:** `test_4_3_vertical_wall_forces`: PASS (matches User's Guide Example 4-3)
+- **ACES DOS oracle** (`WFVW`): 2,512 swept cases over 2 sheet(s); all outputs within tolerance
 
 Validated by the regression test above: matches User's Guide Example 4-3.
 
@@ -218,6 +230,7 @@ Validated by the regression test above: matches User's Guide Example 4-3.
 - **Source / references:** Ahrens (1981); van der Meer (1988); Hudson (1958); Ahrens & Heimbaugh (1988)
 - **Module:** `backend/applications/chessqc_4_4_revetment_design.py`
 - **Regression test:** `test_4_4_revetment_design`: PASS (matches User's Guide Example; runup exact)
+- **ACES DOS oracle** (`RUBBLE`): 312 swept cases over 2 sheet(s); all outputs within tolerance
 
 Validation: reproduces the ACES User's Guide Example (H_s = 5 ft, T_s = 10 s, d_s = 9 ft, cot(theta) = 2, w_r = 165 lb/ft^3, P = 0.1, S = 2): W_50 = 2504.6 lb, armor layer 4.95 ft, filter layer 1.24 ft, gradation W_15/W_85/W_max/W_min, and runup 10.96 ft (expected) / 13.79 ft (conservative).
 
@@ -229,6 +242,7 @@ Validation: reproduces the ACES User's Guide Example (H_s = 5 ft, T_s = 10 s, d_
 - **Source / references:** Mase (1989); Hunt (1959); Walton & Ahrens (1989)
 - **Module:** `backend/applications/chessqc_5_1_irregular_runup_beaches.py`
 - **Regression test:** `test_5_1_irregular_runup_beaches`: PASS (matches User's Guide Example 5-1-4)
+- **ACES DOS oracle** (`RUBCH`): 2,146 swept cases over 2 sheet(s); all outputs within tolerance
 
 Validation strategy: the five statistics reproduce the ACES User's Guide worked example (H_s0 = 4.60 ft, T_p = 9.50 s, cot theta = 13.0 -> R_max = 8.74, R_2% = 7.11, R_1/10 = 6.50, R_1/3 = 5.29, R_bar = 3.38 ft) to 0.01 ft; ordering and the linear scaling in H_s0 are checked as closed-form consistency tests.
 
@@ -237,6 +251,7 @@ Validation strategy: the five statistics reproduce the ACES User's Guide worked 
 - **Source / references:** Ahrens & McCartney (1975); Ahrens & Titus (1985); Weggel (1976); SPM (1984)
 - **Module:** `backend/applications/chessqc_5_2_runup_overtopping_impermeable.py`
 - **Regression test:** `test_5_2_runup_overtopping_impermeable`: PASS (User's Guide Examples 1-7)
+- **ACES DOS oracle** (`RUNOVT`): 3,200 swept cases over 4 sheet(s); 12/16 outputs within tolerance
 
 Validated by the regression test above: User's Guide Examples 1-7.
 
@@ -245,16 +260,18 @@ Validated by the regression test above: User's Guide Examples 1-7.
 - **Source / references:** Seelig (1980); Seelig (1976); Ahrens & McCartney (1975); Ahrens & Titus (1985)
 - **Module:** `backend/applications/chessqc_5_3_transmission_impermeable.py`
 - **Regression test:** `test_5_3_transmission_impermeable`: PASS (User's Guide Examples 1-4)
+- **ACES DOS oracle** (`RUNTRN`): 8,982 swept cases over 2 sheet(s); all outputs within tolerance (2 further sheet(s) excluded as an unusable source)
 
 Validated by the regression test above: User's Guide Examples 1-4.
 
-### 5-4 — Wave Transmission through Permeable Structures  (II — standard)
+### 5-4 — Wave Transmission through Permeable Structures  (I — exact)
 
 - **Source / references:** Madsen & White (1976); Seelig (1980); Ahrens & McCartney (1975)
 - **Module:** `backend/applications/chessqc_5_4_transmission_permeable.py`
 - **Regression test:** `test_5_4_transmission_permeable`: PASS (Example 1 complete source closure)
+- **ACES DOS oracle** (`MADTRANS`): 151 swept cases over 3 sheet(s); all outputs within tolerance
 
-Validated by the regression test above: Example 1 complete source closure.
+Validation covers the single-material, single-layer geometry, which is what the sweep exercises; the multi-layer geometries are exercised only by the User's Guide example. Theory and references (TR chapter 5-4, eqs 1-64 in docs/EQUATIONS.md): - through-transmission: Madsen & White (1976) hydraulic model. A trapezoidal multilayer breakwater is reduced to a hydraulically equivalent homogeneous rectangle of width l_e (equating Darcy-Forchheimer discharge; eqs 56-64, including the required head-difference closure). Internal energy dissipation through that rectangle gives the internal reflection/transmission R_ti, T_ti via a complex wavenumber and a friction factor solved by iteration (eqs 16-27). The seaward armor slope is treated as a rough impermeable slope; its reflection R_si follows from a Bessel-function long-wave solution with an iterated linearized friction (eqs 28-50). - synthesis (eqs 51-55): R = R_ti * R_si,  K_Tt = T_ti * R_si. - overtopping (eqs 3-5, Seelig 1980): K_To = C (1 - F/R_up), C = 0.51 - 0.11 (B/h_s), R_up = Ahrens & McCartney runup (a = 0.692, b = 0.504); F = h_s - d_s freeboard. - total (eq 2): K_T = sqrt(K_Tt^2 + K_To^2), H_T = K_T * H_i.
 
 ### 5-5 — Wave Setup  (I — exact)
 
@@ -295,6 +312,7 @@ _Validation note in the app docstring / build notes._
 - **Source / references:** James (1975) TM-60; SPM (1984); TR 6-4
 - **Module:** `backend/applications/chessqc_6_4_beach_nourishment.py`
 - **Regression test:** `test_6_4_beach_nourishment`: PASS (matches User's Guide Example 6-4)
+- **ACES DOS oracle** (`BEACH`): 13 swept cases over 2 sheet(s); all outputs within tolerance
 
 Validated by the regression test above: matches User's Guide Example 6-4.
 
