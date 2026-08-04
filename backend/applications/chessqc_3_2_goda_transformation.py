@@ -8,14 +8,19 @@ plus shoaling and effective-refraction coefficients, surf beat, and wave setup.
 
 Classification: standard (source-verified spectral integral and deterministic distribution
 integration).
-Theory and references (TR chapter 3-2, eqs 1-14 in docs/EQUATIONS.md):
-  - Bretschneider-Mitsuyasu frequency spectrum (1) and Mitsuyasu (1975) directional
-    spread (2-3); the effective refraction coefficient (Kr)_eff is the shoaling-weighted
-    rms of the per-component Snell refraction over the directional spectrum (4-6).
+Theory and references (TR chapter 3-2; ACES source WSU.FOR / GODA-GODA5):
   - Goda (1975) irregular-wave height distribution with depth-limited breaking: a Rayleigh
-    pdf in H/H0' clipped between the breaking-band edges (7-11), integrated for the
-    statistics.
-  - surf beat (12) and wave setup (13).
+    density in H/H0 with alpha = 1.416/K_s, clipped linearly between x_2 = (2/3) x_1 and
+    the breaking edge x_1 = 0.18 (L_0/H_0)(1 - exp(...)) K_r capped at 2.8, summed on a
+    150-bin grid.
+  - the density is accumulated over eight discrete surf-beat levels (standard-normal
+    offsets weighted 0.0014, 0.0214, 0.1359, 0.3413 either side), each displacing the
+    local depth by that level of surf beat plus the current setup.
+  - effective refraction from ACES's seven-band directional table over ten frequency
+    components, iterated with the local wave height; the band follows period and
+    steepness.
+  - Shuto (1974) nonlinear shoaling, carried as state along the march.
+  - surf beat, and wave setup iterated against the radiation-stress balance.
 
 Structure. ACES evaluates none of this at the subject depth alone: it marches the sea
 state in from deep water and, at each station, iterates the wave setup against the
@@ -44,9 +49,6 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from math import gamma
-
-import numpy as np
 
 G_SI = 9.80665
 _FT = 0.3048
@@ -130,7 +132,7 @@ OUTPUTS = (
     Out("Ks",    "Shoaling coefficient",                 "",  "",   "scalar",
         note="Shoaling coefficient, the ratio of local to deepwater wave height from change in group velocity."),
     Out("Kr",    "Effective refraction coefficient",     "",  "",   "scalar",
-        note="Effective refraction coefficient: shoaling-weighted rms of per-component Snell refraction over the directional spectrum."),
+        note="Effective refraction coefficient: rms of the per-component Snell refraction over seven directional bands and ten frequency components, iterated with the local wave height."),
     Out("surf_beat", "RMS surf beat",                    "m", "ft", "scalar",
         note="RMS amplitude of the low-frequency surf beat (long-wave oscillation) at the subject depth."),
     Out("setup", "Wave setup at depth",                  "m", "ft", "scalar",
@@ -145,39 +147,6 @@ class Result:
     Hs: float; Hmean: float; Hrms: float; H10: float; H2: float; Hmax: float
     Ks: float; Kr: float; surf_beat: float; setup: float; steepness: float
     notes: str = ""
-
-
-_HUNT_D = (0.66667, 0.35550, 0.16084, 0.06320, 0.02174,
-           0.00654, 0.00171, 0.00039, 0.00011)
-
-
-def _refine_celerity(c_seed: float, omega: float, d: float, g: float) -> float:
-    """Newton-refine Hunt's explicit celerity onto the exact root of the linear
-    dispersion relation, omega^2 = g k tanh(k d).
-
-    Hunt (1979) is quoted at ~0.1% in c, but the group velocity amplifies that error
-    and it then propagates through K_s = sqrt(C_g0/C_g) into height, energy and power.
-    ACES solves the relation iteratively (WAVLEN), so refining removes a systematic
-    offset against the ACES DOS oracle as well as an unnecessary approximation.
-    """
-    k = omega / c_seed
-    for _ in range(60):
-        th = math.tanh(k * d)
-        f = g * k * th - omega * omega
-        df = g * th + g * k * d * (1.0 - th * th)
-        step = f / df
-        k -= step
-        if abs(step) <= 1e-15 * k:
-            break
-    return omega / k
-
-
-def wave_length(T: float, d: float, g: float) -> float:
-    omega = 2.0 * math.pi / T
-    y = omega * omega * d / g
-    denom = 1.0 + sum(dn * y ** (n + 1) for n, dn in enumerate(_HUNT_D))
-    c = _refine_celerity(math.sqrt(g * d / (y + 1.0 / denom)), omega, d, g)
-    return c * T
 
 
 # --- ACES GODA cross-shore march (WSU.FOR; Hawaii port GODA/GODA2-GODA5) ---------
@@ -451,15 +420,6 @@ def _shuto_step(Ts, Hdeep, d, g, Csave, itest):
     return Ks, H * d ** (2.0 / 7.0), 1
 
 
-def _shoaling(T: float, d: float, g: float):
-    L = wave_length(T, d, g)
-    k = 2.0 * math.pi / L
-    n = 0.5 * (1.0 + 2.0 * k * d / math.sinh(2.0 * k * d))
-    Cg = n * L / T
-    Cg0 = 0.5 * g * T / (2.0 * math.pi)
-    return math.sqrt(Cg0 / Cg), L, k
-
-
 def _validate(inp: dict) -> None:
     for f in INPUTS:
         if f.kind not in ("float", "int", "angle"):
@@ -479,49 +439,54 @@ ABOUT = {'summary': 'Transforms an irregular (spectral) deepwater sea state to a
               'when': None,
               'tag': '',
               'note': None,
-              'equations': [{'tex': 'S(f) = '
-                                    '0.257\\,H_{1/3}^{2}\\,T_{1/3}\\,(T_{1/3}\\,f)^{-5}\\,\\exp(-1.03\\,(T_{1/3}\\,f)^{-4})',
-                             'desc': 'Bretschneider-Mitsuyasu frequency spectrum from the '
-                                     'significant height and period (eq 1).'},
-                            {'tex': '(K_r)_{eff} = \\sqrt{\\frac{\\sum '
-                                    'S(f)\\,K_s^{2}(f)\\,K_r^{2}(f,\\theta)}{\\sum '
-                                    'S(f)\\,K_s^{2}(f)}}',
-                             'desc': 'Effective refraction coefficient: shoaling-weighted '
-                                     'rms of per-component Snell refraction over the '
-                                     'directional spectrum (eqs 5-6).'},
-                            {'tex': 'P_0(x) = '
-                                    '2\\,\\alpha^{2}\\,x\\,\\exp(-\\alpha^{2}\\,x^{2})',
-                             'desc': 'Goda (1975) Rayleigh pdf of normalized height x = '
-                                     "H/H_0', with alpha = 1.416/K_s; clipped between the "
-                                     'breaking-band edges and integrated for the '
-                                     'statistics (eqs 7-10).'},
-                            {'tex': "X_b = 0.17\\,\\frac{L_0}{H_0'}\\,\\left(1 - "
-                                    '\\exp\\left(-1.5\\,\\pi\\,\\frac{d}{L_0}\\,(1 + '
-                                    '15\\,\\tan^{4/3}\\beta)\\right)\\right)',
-                             'desc': 'Incipient depth-limited breaking height; band edges '
-                                     'x_1, x_2 use coefficients A = 0.18 and 0.12 (eq '
-                                     '11).'},
-                            {'tex': '\\xi_{rms} = '
-                                    "\\frac{0.01\\,H_0'}{\\sqrt{(H_0'/L_0)\\,(1 + "
-                                    "h/H_0')}}",
-                             'desc': 'RMS surf beat at the subject depth (eq 12).'}]}],
- 'symbols': [['S(f)', 'spectral density (m^2 s)'],
-             ['H_{1/3}', 'significant deepwater wave height'],
-             ['T_{1/3}', 'significant wave period'],
-             ['s_max',
-              'directional energy-concentration (spreading) parameter: 10 wind waves, 25 '
-              'steep swell, 75 flat swell'],
-             ['K_s', 'shoaling coefficient'],
-             ['(K_r)_{eff}', 'effective refraction coefficient over the spectrum'],
-             ['x', "normalized wave height H/H_0'"],
+              'equations': [{'tex': r'P(x) = 2\alpha^{2}x\,e^{-\alpha^{2}x^{2}}, \quad \alpha = 1.416/K_s',
+                             'desc': 'Goda (1975) Rayleigh density of the normalised '
+                                     'height x = H/H_0, clipped linearly to zero between '
+                                     'x_2 = (2/3) x_1 and the breaking edge x_1.'},
+                            {'tex': r'x_1 = \min\left[0.18\,\frac{L_0}{H_0}\left(1 - '
+                                    r'e^{-1.5\pi\frac{d_j}{L_0}\left(1 + 15 s^{4/3}\right)}'
+                                    r'\right)K_r,\ 2.8\right]',
+                             'desc': 'Breaking edge at surf-beat level j, capped at 2.8. '
+                                     'Refraction enters here, and d_j carries that level '
+                                     'of surf beat plus the current setup.'},
+                            {'tex': r'p(x) = \sum_{j=1}^{8} w_j \frac{q_j(x)}'
+                                    r'{\sum_i q_j(x_i)}',
+                             'desc': 'The distribution is accumulated over eight discrete '
+                                     'surf-beat levels with standard-normal weights w_j, '
+                                     'on a 150-bin grid.'},
+                            {'tex': r'H_{1/n} = n\sum_{x > x_{(n)}} x\,H_0\,p(x)',
+                             'desc': 'Characteristic heights as running sums above the '
+                                     'cumulative levels 0.666, 0.90, 0.98 and 0.996, '
+                                     'giving H_s, H_1/10, H_2% and H_max = H_1/250.'},
+                            {'tex': r'\eta_n = \eta_{-1} - \frac{0.7}{d}(z - z_{-1}), '
+                                    r'\quad z = \tfrac{1}{8}H_{rms}^{2}\left(\tfrac{1}{2} '
+                                    r'+ \frac{4\pi d/L}{\sinh(4\pi d/L)}\right)',
+                             'desc': 'Wave setup from the radiation-stress gradient, '
+                                     'iterated at each station until it settles to 7%.'},
+                            {'tex': r'(K_r)_{eff} = \sqrt{\sum_{i=1}^{7}\frac{D_i}{10}'
+                                    r'\sum_{j=1}^{10} K_r^{2}(\theta_i, f_j)}',
+                             'desc': 'Effective refraction over seven directional bands '
+                                     'and ten frequency components. The band weights D_i '
+                                     'follow period and steepness, and the result is '
+                                     'iterated with the local wave height.'},
+                            {'tex': r'\xi_{rms} = \frac{0.01 H_0}'
+                                    r'{\sqrt{(H_0/L_0)(1 + d/H_0)}}',
+                             'desc': 'RMS surf beat at the subject depth.'}]}],
+ 'symbols': [['x', 'normalised wave height H/H_0'],
              ['alpha', 'Rayleigh scale parameter, 1.416/K_s'],
-             ["H_0'", 'equivalent (refracted) deepwater significant height'],
-             ['L_0', 'deepwater wavelength; beta = beach slope, h/d = depth']],
+             ['x_1, x_2', 'breaking-band edges of the clipped density'],
+             ['w_j, d_j', 'weight and displaced depth of surf-beat level j'],
+             ['D_i', 'directional band weight, chosen by period and steepness'],
+             ['K_s', 'shoaling coefficient (Shuto, carried along the march)'],
+             ['(K_r)_{eff}', 'effective refraction coefficient'],
+             ['eta', 'wave setup; z is the radiation-stress term'],
+             ['H_0, L_0', 'deepwater significant height and wavelength'],
+             ['s', 'bottom slope along the propagation direction, cos(theta)/cot(phi)']],
  'references': ['Goda (1975, 1985)',
                 'Goda (1984)',
-                'Mitsuyasu (1975)',
                 'Shuto (1974)',
-                'ACES TR Ch. 3-2']}
+                'ACES TR Ch. 3-2',
+                'ACES source WSU.FOR (GODA-GODA5)']}
 
 
 def compute(inp: dict, *, g: float = G_SI) -> Result:

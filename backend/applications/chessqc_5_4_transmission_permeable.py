@@ -52,7 +52,6 @@ from __future__ import annotations
 
 import cmath
 import math
-import statistics
 from dataclasses import dataclass
 
 import numpy as np
