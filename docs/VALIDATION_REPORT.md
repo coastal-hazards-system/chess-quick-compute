@@ -320,7 +320,7 @@ Validated by the regression test above: matches User's Guide Example 6-4.
 
 - **Source / references:** Folk (1974); Krumbein (1934, 1938); SPM (1984); TR 6-3
 - **Module:** `backend/applications/chessqc_6_5_composite_grain_size.py`
-- **Regression test:** `test_6_5_composite_grain_size`: PASS (moment mean verified; Folk in composite range)
+- **Regression test:** `test_6_5_composite_grain_size`: PASS (all 9 statistics match the ACES source)
 
 Validation note. The dataset ships only CoreSample1 (Panama City); the ACES User's Guide worked example is the COMPOSITE of two samples (CoreSample2 is not in the repo), so that exact composite output cannot be reproduced here. The method of moments is validated analytically on CoreSample1 (mean = 2.652 phi, verified independently), and the Folk graphic measures are checked for ordering and consistency.
 

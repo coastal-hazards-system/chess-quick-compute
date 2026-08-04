@@ -5,7 +5,17 @@ Processes; TR chapter 6-3). Computes grain-size statistics for a sediment sample
 composite of samples) from sieve data, by both the Folk graphic method and the method of
 moments.
 
-Classification: exact (closed-form sediment statistics).
+Classification: exact (closed-form sediment statistics; all nine statistics reproduce
+the ACES source, compiled from CGSANL.FOR and run on the same sieve data).
+
+Method of moments. The moments are taken on class MIDPOINTS, not on the sieve sizes:
+a class weight is what the sieve retained, so it represents material between the
+previous (coarser) sieve and this one. ACES forms the same midpoint,
+smid(i) = (stdphi(i) + stdphi(back))/2 with `back` the nearest coarser populated sieve.
+Using the sieve size instead biases the mean by half a class, which is what this
+application did until it was checked against the compiled source: 2.652 phi against the
+correct 2.527 on the bundled sample. The central moments are unaffected when classes
+are uniform, which is why only the mean was wrong.
 Theory and references: phi scale (Krumbein 1934, 1938); Folk (1974) graphic method and the
 method of moments; SPM (1984) Ch. 5. Equations transcribed in docs/EQUATIONS.md, TR
 chapter 6-3.
@@ -207,12 +217,27 @@ def compute(inp: dict) -> Result:
     if W <= 0:
         raise ValueError("total sieve weight must be positive")
 
-    # method of moments (weight as frequency)
-    mean = float((w * phi).sum() / W)
-    var = float((w * (phi - mean) ** 2).sum() / W)
+    # Method of moments on class MIDPOINTS, not the sieve sizes themselves. The
+    # weight of a class is what the sieve retained, so it represents material between
+    # the previous (coarser) sieve and this one, whose midpoint is half a class coarser.
+    # ACES forms exactly this: smid(i) = (stdphi(i) + stdphi(back))/2 with `back` the
+    # nearest populated coarser sieve (CGSANL.FOR, "mid point of phi size + previous
+    # phi"). Using the sieve size instead biases the mean by half a class: 1.875 phi
+    # against ACES's 1.750 on a uniform 0.25-phi sieve. The central moments are
+    # unaffected by the shift when classes are uniform, which is why only the mean
+    # moved. The first class has no coarser neighbour in the table, so its interval is
+    # taken from the first spacing, which reproduces what ACES reads off its fixed
+    # 56-size grid.
+    if len(phi) > 1:
+        first = phi[0] - 0.5 * (phi[1] - phi[0])
+        mid = np.concatenate(([0.5 * (phi[0] + first)], 0.5 * (phi[1:] + phi[:-1])))
+    else:
+        mid = phi.copy()
+    mean = float((w * mid).sum() / W)
+    var = float((w * (mid - mean) ** 2).sum() / W)
     sigma = math.sqrt(var)
-    skew = float((w * (phi - mean) ** 3).sum() / (W * sigma ** 3)) if sigma > 0 else 0.0
-    kurt = float((w * (phi - mean) ** 4).sum() / (W * sigma ** 4)) if sigma > 0 else 0.0
+    skew = float((w * (mid - mean) ** 3).sum() / (W * sigma ** 3)) if sigma > 0 else 0.0
+    kurt = float((w * (mid - mean) ** 4).sum() / (W * sigma ** 4)) if sigma > 0 else 0.0
 
     # cumulative-weight percent (coarse-to-fine, i.e. ascending phi)
     cum = np.cumsum(w) / W * 100.0
@@ -242,11 +267,15 @@ def _approx(a: float, b: float, tol: float) -> bool:
 
 def _self_tests() -> None:
     r = compute({"sieve": _SAMPLE1})
-    # method of moments mean, verified independently: sum(w*phi)/sum(w) = 192.292/72.519
-    assert _approx(r.mom_mean, 2.652, 2e-3), r.mom_mean
-    # an explicit second computation of the moment mean (no shared code path)
-    sw = sum(p * wt for p, wt in _SAMPLE1); tw = sum(wt for _, wt in _SAMPLE1)
-    assert _approx(r.mom_mean, sw / tw, 1e-9)
+    # Every statistic against the ACES source, compiled and run on this same sample
+    # (CGSANL). The earlier check asserted sum(w*phi)/sum(w), which is the formula the
+    # code itself used, so it could not have caught the class-midpoint error it missed.
+    for key, exp in (("mom_mean", 2.52662), ("mom_sigma", 0.55094),
+                     ("mom_skew", -0.97182), ("mom_kurt", 4.43336),
+                     ("folk_median", 2.61374), ("folk_mean", 2.55284),
+                     ("folk_sigma", 0.51714), ("folk_skew", -0.24269),
+                     ("folk_kurt", 1.28906)):
+        assert _approx(getattr(r, key), exp, 5e-4), (key, getattr(r, key))
     # Folk percentiles must be ordered and the median sensible
     assert 2.5 < r.folk_median < 2.7, r.folk_median
     assert r.mom_sigma > 0 and r.folk_sigma > 0
