@@ -41,7 +41,7 @@ Empirical formulations are exact when their coefficients are known and the resul
 | 5-1 | Irregular Wave Runup on Beaches | I | Current | User's Guide oracle + 2,146 DOS cases |
 | 5-2 | Wave Runup and Overtopping on Impermeable Structures | I | Current | User's Guide oracle + 3,200 DOS cases |
 | 5-3 | Wave Transmission on Impermeable Structures | I | Current | User's Guide oracle + 8,982 DOS cases |
-| 5-4 | Wave Transmission through Permeable Structures | I | Current | User's Guide oracle + 151 DOS cases |
+| 5-4 | Wave Transmission through Permeable Structures | I | Current | analytic / literature + 510 DOS cases |
 | 5-5 | Wave Setup | I | Current | User's Guide oracle |
 | 6-1 | Longshore Sediment Transport | I | Current | analytic / literature |
 | 6-2 | Time-Dependent Beach and Dune Erosion | I | Current | analytic / literature |
@@ -269,9 +269,9 @@ Validated by the regression test above: User's Guide Examples 1-4.
 - **Source / references:** Madsen & White (1976); Seelig (1980); Ahrens & McCartney (1975)
 - **Module:** `backend/applications/chessqc_5_4_transmission_permeable.py`
 - **Regression test:** `test_5_4_transmission_permeable`: PASS (Example 1 complete source closure)
-- **ACES DOS oracle** (`MADTRANS`): 151 swept cases over 3 sheet(s); all outputs within tolerance
+- **ACES DOS oracle** (`MADTRANS`): 510 swept cases over 8 sheet(s); 28/36 outputs within tolerance
 
-Validation covers the single-material, single-layer geometry, which is what the sweep exercises; the multi-layer geometries are exercised only by the User's Guide example. Theory and references (TR chapter 5-4, eqs 1-64 in docs/EQUATIONS.md): - through-transmission: Madsen & White (1976) hydraulic model. A trapezoidal multilayer breakwater is reduced to a hydraulically equivalent homogeneous rectangle of width l_e (equating Darcy-Forchheimer discharge; eqs 56-64, including the required head-difference closure). Internal energy dissipation through that rectangle gives the internal reflection/transmission R_ti, T_ti via a complex wavenumber and a friction factor solved by iteration (eqs 16-27). The seaward armor slope is treated as a rough impermeable slope; its reflection R_si follows from a Bessel-function long-wave solution with an iterated linearized friction (eqs 28-50). - synthesis (eqs 51-55): R = R_ti * R_si,  K_Tt = T_ti * R_si. - overtopping (eqs 3-5, Seelig 1980): K_To = C (1 - F/R_up), C = 0.51 - 0.11 (B/h_s), R_up = Ahrens & McCartney runup (a = 0.692, b = 0.504); F = h_s - d_s freeboard. - total (eq 2): K_T = sqrt(K_Tt^2 + K_To^2), H_T = K_T * H_i.
+Validated by the regression test above: Example 1 complete source closure.
 
 ### 5-5 — Wave Setup  (I — exact)
 

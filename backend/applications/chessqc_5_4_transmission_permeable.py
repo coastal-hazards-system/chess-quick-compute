@@ -11,9 +11,12 @@ the reference diameter is half the armor diameter, the wavenumber comes from the
 dispersion relation, MADSN1's 0.45 porosity and friction rescaling is applied, the slope
 correction is the source's clamped linear law, the friction angle follows eq. 127, and the
 internal solution is driven by the reflection-reduced amplitude of eq. 146. All five
-outputs reproduce the ACES DOS sweep across 151 cases and three unit/water combinations.
-Validation covers the single-material, single-layer geometry, which is what the sweep
-exercises; the multi-layer geometries are exercised only by the User's Guide example. Theory and references (TR chapter 5-4, eqs 1-64 in docs/EQUATIONS.md):
+outputs reproduce the ACES DOS sweep across 510 cases and three breakwater geometries:
+one material in one layer, three materials in three layers, and three materials in four
+layers, over both unit systems and both water types. Five of the eight sheets are clean
+outright; the other three each miss on one or two isolated rows where the equivalent-width
+iteration settles on a different branch, which ACES itself resolves only to a 0.005 ft
+head difference within a ten-pass cap. Theory and references (TR chapter 5-4, eqs 1-64 in docs/EQUATIONS.md):
   - through-transmission: Madsen & White (1976) hydraulic model. A trapezoidal multilayer
     breakwater is reduced to a hydraulically equivalent homogeneous rectangle of width l_e
     (equating Darcy-Forchheimer discharge; eqs 56-64, including the required head-difference
