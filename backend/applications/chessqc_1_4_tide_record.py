@@ -7,6 +7,16 @@ constituents (amplitude and epoch per constituent) by the classical harmonic met
 Classification: exact (closed-form harmonic synthesis with exact Schureman astronomical
 node factors and equilibrium arguments -- no empirical fitting; reproduces the User's Guide
 Table 1-4-1 to the stated tolerance).
+
+Known limitation. Against the full 481-point record the ACES executable printed for this
+same deck (validationResults/module 1/Tide generation/dos results/test2IS.txt, which
+agrees with Table 1-4-1 wherever the manual tabulates it), the root-mean-square
+difference is about 0.08 ft and the largest about 0.16 ft, on a 4.8 ft range, with 461
+of the 481 points beyond the 0.01 ft the listing prints. The phase is right and the mean
+difference is near zero, so this is not a timing or datum error. The likely cause is the
+node factors and equilibrium arguments for the 1989 epoch, which ACES builds in
+ORBIT/NFACS/GAGINI. The tabulated spot checks pass because their tolerance is 0.06 ft.
+Recorded in tests/aces_oracle/FINDINGS.md B9 and measured by the regression test.
 Theory and references: Schureman (1971) [reprint of C&GS Special Pub. 98, 1940]; harmonic
 method after Lord Kelvin. Equations transcribed in docs/EQUATIONS.md, TR chapter 1-4
 (eqs 1-2); constituent speeds from ACES Appendix Table A-5.
