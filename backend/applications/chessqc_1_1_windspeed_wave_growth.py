@@ -223,15 +223,28 @@ def _equiv_neutral_10m(U_obs: float, z_obs: float, obs_type: str) -> float:
     return U_10 / 100.0                               # m/s
 
 
+# Stable-branch coefficient in psi_m = C zeta. ACES uses -1.5 in the surface layer
+# (WASBL.py:43); the canonical Businger-Dyer value is -5.
+_PSI_STABLE_C = -1.5
+
+
 def _psi_m(zeta: float) -> float:
     """Integrated momentum stability function (Businger-Dyer / Paulson 1970).
 
     Unstable (zeta < 0): psi_m = 2 ln[(1+x)/2] + ln[(1+x^2)/2] - 2 atan(x) + pi/2,
-    x = (1 - 16 zeta)^(1/4). Stable (zeta > 0): psi_m = -5 zeta. This is the canonical
-    surface-layer form verified against the boundary-layer literature; it is NOT the
-    (corrupted, sign-inconsistent) function transcribed in ACES TR eq 9."""
+    x = (1 - 16 zeta)^(1/4) -- the canonical surface-layer form verified against the
+    boundary-layer literature, NOT the (corrupted, sign-inconsistent) function
+    transcribed in ACES TR eq 9.
+
+    Stable (zeta > 0): psi_m = C zeta. The canonical Businger-Dyer C is -5, but ACES
+    passes its own coefficient into WAPSI and uses **-1.5** in the surface layer
+    (WASBL.py:43, `WAPSI(zobs/L, -1.5)`; -7.0 in the planetary layer, WAPBL.py:74).
+    The DOS sweep is decisive: the stable branch is the whole of the residual error
+    (median 28.7% at deltaT = +25 with -5, against 0.28% on the unstable branch), and
+    -1.5 takes the median error in U_e from 1.86% to 0.47% and in U_a from 2.33% to
+    0.60% over all 1,017 cases."""
     if zeta >= 0.0:
-        return -5.0 * zeta
+        return _PSI_STABLE_C * zeta
     x = (1.0 - 16.0 * zeta) ** 0.25
     return 2.0 * math.log((1.0 + x) / 2.0) + math.log((1.0 + x * x) / 2.0) \
         - 2.0 * math.atan(x) + math.pi / 2.0
