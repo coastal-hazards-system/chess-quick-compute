@@ -293,11 +293,10 @@ _Validation note in the app docstring / build notes._
 
 ### 6-2 — Time-Dependent Beach and Dune Erosion  (I — exact)
 
-- **Source / references:** Kriebel & Dean (1985, 1993); Dean (1977); Bruun (1954); Moore (1982)
+- **Source / references:** Kriebel (1984b, EBEACH); Kriebel & Dean (1985); Moore (1982); Dean (1977); ACES Technical Reference Ch. 6-2
 - **Module:** `backend/applications/chessqc_6_2_dune_erosion.py`
-- **Regression test:** `test_6_2_dune_erosion`: PASS (Kriebel-Dean Fig-5: R_inf~79m, T_s~19hr, linear, no-surge->0)
 
-Validation (no ACES numeric oracle for the surge problem; analytic against the Kriebel-Dean 1985 paper and the Bruun sand balance): for the paper's Fig-5 case (D50=0.5 mm so A=0.118, S=2 m, H_b=4.6 m, berm 3 m, slope 1:10) the equilibrium recession is ~79 m (matching the paper's tens-of-metres and the Bruun balance) and the time scale ~19 hr (the paper's stated 10-100 hr storm range); recession is linear in surge (paper Fig 5) and the response is exponential. The legacy no-surge ACES Example 2 returns ~0 here by construction: with no surge there is no equilibrium shift, so this surge-driven model does not represent that (wave-only profile-readjustment) case -- that 12 ft figure is XSHORE-scheme-specific.
+Validation, against the recompiled source on the decks ACES ships:  - `XSHORE2.IN`, generic profile, one wave record, no water-level forcing; - `XSHORE3.IN`, generic profile with a six-point surge on a 4 h interval and four wave records on a 5 h one, which ACES steps onto the shorter interval first; - `XSHORE4.IN`, a 53-point surveyed profile, resampled by cubic spline; - `XSHORE6.IN`, a 200-point surveyed profile.  The tabulated volume change and all four contour changes agree on every one of them to better than half of the source's printed digit (0.005). The first three are asserted in the self-tests, which carry the source's tables; the fourth is checked by the harness in tests/aces_oracle.  `XSHORE1.IN` is the one deck not reproduced. It drives its water level from a 37-constituent tidal synthesis, which this application does not carry - the water level is a supplied series here - so that deck is out of scope rather than wrong. It is recorded in FINDINGS.md.
 
 ### 6-3 — Longshore Transport using CEDRS Statistics  (II — standard)
 

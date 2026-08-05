@@ -1078,7 +1078,8 @@ Originating ACES application: 6-1 "Longshore Sediment Transport" (functional are
 | Wave angle to shoreline | angle | deg | 0 to 90 | 15 | deepwater crest angle alpha_0, or breaker angle alpha_b |
 | Empirical coefficient K | K | (none) | 0 to 2 | 0.39 | CERC coefficient; 0.39 for field data with significant wave height |
 | Water density | rho_water | kg/m^3 | 900 to 1100 | 1025.18 | seawater ~1025, fresh ~1000 |
-| Sediment density | rho_sand | kg/m^3 | 1500 to 3500 | 2650 | quartz sand ~2650; ~2320 reproduces the ACES examples |
+| Sediment density | rho_sand | kg/m^3 | 1500 to 3500 | 2650 | quartz sand ~2650, which is what ACES uses: its 5.14 slug/ft^3 is 2649 kg/m^3 |
+| Energy-flux wave theory | wave_theory | (none) | choices: Linear (2/98 revision, SMS/Genesis consistent), Solitary (original ACES, reproduces the User's Guide examples) | Linear (2/98 revision, SMS/Genesis consistent) | ACES shipped both. The solitary coefficients are 1.25x the linear ones and are what the published User's Guide examples were computed with; the 2/98 revision replaced them with the linear ones |
 | Sediment porosity | porosity | (none) | 0 to 0.7 | 0.4 | pore fraction; solids fraction a' = 1 - porosity (TR uses a' = 0.6) |
 
 **Outputs**
@@ -1098,33 +1099,48 @@ Originating ACES application: 6-1 "Longshore Sediment Transport" (functional are
 
 **Status:** Current.
 
-Originating ACES grouping: 6-2 "Time-Dependent Beach and Dune Erosion" (functional area: Littoral Processes). CHESS-QC implements this with the Kriebel & Dean (1985) equilibrium- profile erosion model in its analytical, closed-form limit, which is physically grounded, magnitude-correct, and has zero free parameters. (The legacy ACES 6-2 used the XSHORE explicit finite-difference scheme whose exact subaerial bookkeeping and breaking-line migration live only in its source / the Kriebel 1984b EBEACH theory manual, neither available; its no-surge generic-profile worked example, 12 ft, is specific to that scheme. This build deliberately uses the equilibrium-response formulation instead.)
+Originating ACES application: 6-2 "Numerical Simulation of Time-Dependent Beach and Dune Erosion" (functional area: Littoral Processes). A transcription of the XSHORE explicit finite-difference scheme ACES runs (`KDMAIN.FOR` subroutine `KD1`, with `KD2`-`KD5B`), after Kriebel (1984b, EBEACH) and Kriebel & Dean (1985).
 
-**Inputs** (values in SI units)
+**Inputs** (values in US units)
 
 | Input | key | units (US/SI) | range | default | notes |
 | --- | --- | --- | --- | --- | --- |
-| Median grain size | D50 | mm | 0.05 to 2 | 0.5 |  |
-| Breaking wave height | Hb | ft / m | 0.1 to 20 | 4.6 |  |
-| Peak storm surge above berm datum | surge | ft / m | 0 to 10 | 2 |  |
-| Berm/dune height above surge | berm_height | ft / m | 0.1 to 50 | 3 |  |
-| Beach-face slope (tan) | beach_slope | (none) | 0.001 to 1 | 0.1 |  |
-| Storm surge duration | duration | hr | 0.1 to 10000 | 200 |  |
+| Profile definition | profile_type | (none) | choices: Generic (dune, berm and slopes), Surveyed profile | Generic (dune, berm and slopes) | build a generic profile from dune, berm and slope descriptors, or supply a surveyed one |
+| Dune crest elevation | dune_elev | ft / m | 0 to 200 | 20 | elevation of the dune top above the datum |
+| Dune base elevation | dune_base_elev | ft / m | 0 to 200 | 6 | elevation at the foot of the dune face; must be at least 5 ft below the crest |
+| Dune crest width | dune_width | ft / m | 0 to 1000 | 50 |  |
+| Berm elevation | berm_elev | ft / m | 0 to 200 | 6 |  |
+| Berm width | berm_width | ft / m | 0 to 2000 | 100 |  |
+| Dune face slope (run per rise) | slope_dune | (none) | 0.1 to 1000 | 2 | 1 on this many; 2 means 1:2 |
+| Beach face slope (run per rise) | slope_beach | (none) | 0.1 to 1000 | 10 |  |
+| Nearshore slope (run per rise) | slope_nearshore | (none) | 0.1 to 1000 | 20 |  |
+| Surveyed profile | survey | m | any | ((0.0, 4.29768), (1.2192, 4.08432), (3.41376, 3.99288), (7.65048, 3.23088), (13.716, 4.572), (16.58112, 4.29768), (23.07336, 3.81), (32.06496, 3.93192), (42.55008, 4.1148), (49.95672, 3.81), (57.72912, 3.2004), (62.6364, 2.62128), (73.914, 1.31064), (85.83168, 0.70104), (97.71888, 0.33528), (114.20856, 0.12192), (119.99976, 0.06096), (128.41224, -0.1524), (138.25728, -0.94488), (151.57704, -2.10312), (164.34816, -2.1336), (175.99152, -2.01168), (191.01816, -2.31648), (194.67576, -2.65176), (205.00848, -2.98704), (220.03512, -2.95656), (224.24136, -2.68224), (235.57992, -2.7432), (250.48464, -2.31648), (269.41272, -2.286), (291.6936, -3.048), (297.36288, -3.44424), (304.1904, -3.6576), (313.3344, -4.08432), (327.9648, -4.90728), (341.376, -5.51688), (351.4344, -5.85216), (362.712, -6.2484), (373.6848, -6.5532), (391.668, -6.97992), (401.1168, -7.0104), (418.1856, -7.43712), (433.1208, -7.7724), (452.628, -8.0772), (466.9536, -8.29056), (483.108, -8.62584), (495.3, -8.90016), (512.6736, -9.17448), (525.1704, -9.26592), (541.6296, -9.47928), (555.0408, -9.6012), (569.976, -9.81456), (583.9968, -9.87552)) | rows of (distance seaward from the baseline, bed elevation above datum); resampled onto the 4 ft grid by natural cubic spline |
+| Mean grain size | grain_size | mm | 0.01 to 10 | 0.22 | sets the equilibrium profile shape factor A (Moore 1982) |
+| Depth of the wave records | gauge_depth | ft / m | 5 to 9999 | 60 | still-water depth at which the wave conditions below were measured |
+| Wave records | waves | m | any | ((2.4384, 8.0, 10.0),) | rows of (height, period s, crest angle to the shoreline deg), one per wave interval; heights are SI on the contract |
+| Wave record interval | wave_dt_hr | h | 1 to 1000 | 20 |  |
+| Length of simulation | length_hr | h | 1 to 1000 | 20 |  |
+| Tabular output interval | out_interval_hr | h | 1 to 1000 | 2 | ignored when explicit output times are given below |
+| Explicit output times | out_times | h | any | () | report at these hours instead of at a fixed interval; empty to use the interval. ACES takes one or the other, never both |
+| Still-water level series | water_level | ft / m | any | () | surge or tide elevation above the datum, at the interval below; empty for none. ACES applies it as a uniform shift of the whole profile |
+| Water-level interval | wl_dt_hr | h | 1 to 1000 | 1 |  |
 
 **Outputs**
 
 | Output | key | units (US/SI) | kind |
 | --- | --- | --- | --- |
-| Equilibrium profile factor A | A | m^(1/3) | scalar |
-| Breaking depth | hb | ft / m | scalar |
-| Surf-zone width | Wb | ft / m | scalar |
-| Equilibrium (max) recession | R_inf | ft / m | scalar |
-| Response time scale | T_s | hr | scalar |
-| Recession over the storm | R_storm | ft / m | scalar |
-| Equilibrium eroded volume | V_inf | yd^3 / m^3 | scalar |
-| Eroded volume over the storm | V_storm | yd^3 / m^3 | scalar |
+| Distance seaward from baseline | profile_X | ft / m | profile |
+| Initial bed elevation | z_initial | ft / m | profile |
+| Final bed elevation | z_final | ft / m | profile |
+| Change in subaerial volume | vol_total | yd^3/ft / m^3/m | scalar |
+| Shoreline recession | recession | ft / m | scalar |
+| Contour change, +5 ft | contour_5_final | ft / m | scalar |
+| Contour change, +10 ft | contour_10_final | ft / m | scalar |
+| Contour change, +15 ft | contour_15_final | ft / m | scalar |
+| Equilibrium profile shape factor | A_shape | ft^(1/3) / m^(1/3) | scalar |
+| Equilibrium energy dissipation | D_eq | (none) | scalar |
 
-*Reference:* Kriebel & Dean (1985, 1993); Dean (1977); Bruun (1954); Moore (1982)
+*Reference:* Kriebel (1984b, EBEACH); Kriebel & Dean (1985); Moore (1982); Dean (1977); ACES Technical Reference Ch. 6-2
 
 *Module:* `backend/applications/chessqc_6_2_dune_erosion.py`
 
@@ -1141,7 +1157,7 @@ Originating ACES application: 6-3 "Longshore Sediment Transport using CEDRS perc
 | Shore-normal azimuth | shore_azimuth | deg | 0 to 360 | 40 | seaward shore normal, measured clockwise from true north |
 | Empirical coefficient K | K | (none) | 0 to 1 | 0.39 | CERC coefficient; 0.39 for field data with significant wave height |
 | Water density | rho_water | kg/m^3 | 900 to 1100 | 1025.18 | seawater ~1025 |
-| Sediment density | rho_sand | kg/m^3 | 1500 to 3500 | 2650 | quartz ~2650; ~2319 reproduces the ACES example |
+| Sediment density | rho_sand | kg/m^3 | 1500 to 3500 | 2650 | quartz ~2650, which is ACES's own value; ~2319 reproduces the published example, standing in for its pre-1998 energy-flux coefficient |
 | Sediment porosity | porosity | (none) | 0 to 0.7 | 0.4 | pore fraction; solids fraction a' = 1 - porosity |
 | CEDRS percent-occurrence (x1000) by band x height | occ | (none) | table: 0.00-0.49, 0.50-0.99, 1.00-1.49, 1.50-1.99, 2.00-2.49, 2.50-2.99, 3.00-3.49, 3.50-3.99, 4.00-4.49, 4.50-4.99, 5.00+ | 16 default rows | 16 rows (band azimuths 0,22.5,...,337.5 deg) x 11 height bins; default G1033 |
 
@@ -1229,7 +1245,7 @@ Originating ACES application: 6-5 "Composite Grain Size" (functional area: Litto
 
 ## Inlet Processes
 
-### 7-1 — Spatially Integrated Numerical Model for Inlet Hydraulics  `[II]`
+### 7-1 — Spatially Integrated Numerical Model for Inlet Hydraulics  `[I]`
 
 **Status:** Current.
 
@@ -1251,13 +1267,14 @@ Originating ACES grouping: 7-1 "A Spatially Integrated Numerical Model for Inlet
 | Tabular output interval | out_interval_min | min | 1 to 240 | 15 |  |
 | Flood loss coefficient | flood_loss | (none) | 0 to 100 | 4 |  |
 | Ebb loss coefficient | ebb_loss | (none) | 0 to 100 | 1 |  |
+| Equal-discharge channels per cross-section | n_channels | (none) | 1 to 7 | 4 | each surveyed cross-section is divided into this many channels of equal discharge before the friction is summed (ACES allows up to 7) |
 | Manning coefficient C1 | manning_C1 | (none) | 0 to 1 | 0.05 |  |
 | Manning coefficient C2 | manning_C2 | (none) | 0 to 1 | 0.0007 |  |
 | Bay surface area | bay_area | ft^2 / m^2 | 1 to 1e+15 | 1.8e+09 |  |
 | Bay area variation parameter | bay_beta | (none) | 0 to 10 | 0 |  |
 | River inflow tabulation interval | river_dt_min | min | 1 to 10000 | 260 |  |
 | River / non-inlet inflow series | river | ft^3/s / m^3/s | any | (113.267386, 107.604017, 101.940648, 90.613909, 99.108963, 107.604017, 118.930756, 121.76244, 127.42581) | tabulated discharge (m^3/s) at the river interval; linearly interpolated |
-| Inlet cross-sections (bathymetry) | sections | m | any | ((31.6992, 533.4, [0.0, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -5.4864, -3.9624, -3.9624, -3.9624, -3.9624, -3.9624, -3.9624, -3.9624, -5.4864, -7.3152, -9.144, -9.7536, -10.3632, -10.3632, -10.3632, -10.3632, -9.7536, -9.7536, -9.7536, -9.7536, -7.3152, -7.3152, -7.3152, -7.3152, -7.62, -7.62, -5.4864, -5.4864, -5.4864, -5.4864, 0.0]), (31.6992, 495.3, [0.0, -9.144, -10.0584, -10.0584, -10.0584, -10.3632, -10.3632, -10.3632, -10.3632, -10.3632, -9.144, -9.144, -6.096, -3.048, 0.0]), (31.6992, 584.3016, [0.0, -3.6576, -5.4864, -6.096, -7.62, -9.144, -10.0584, -10.3632, -10.3632, -10.3632, -10.3632, -10.3632, -10.3632, -9.144, -5.4864, -3.6576, -2.4384, -2.4384, -2.4384, -1.8288, -1.8288, -1.8288, -1.8288, 0.0]), (31.6992, 381.0, [0.0, -5.4864, -11.2776, -11.2776, -15.24, -15.24, -15.24, -10.3632, -10.3632, -10.3632, -10.3632, -7.3152, -3.048, 0.0]), (31.6992, 0.0, [0.0, -3.3528, -3.3528, -3.3528, -3.6576, -3.6576, -5.1816, -5.1816, -5.1816, -4.572, -4.572, -4.572, -5.4864, -7.62, -7.62, -6.096, -6.096, -6.096, -10.3632, -10.3632, -10.3632, -10.3632, -7.0104, -5.4864, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, 0.0])) | one row per cross-section: (dX m, along-inlet length dY m, [bed elevations m]); area and width are integrated from the elevation profile relative to datum 0 |
+| Inlet cross-sections (bathymetry) | sections | m | any | ((31.6992, 533.4, [0.0, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -8.2296, -5.4864, -3.9624, -3.9624, -3.9624, -3.9624, -3.9624, -3.9624, -3.9624, -5.4864, -7.3152, -9.144, -9.7536, -10.3632, -10.3632, -10.3632, -10.3632, -9.7536, -9.7536, -9.7536, -9.7536, -7.3152, -7.3152, -7.3152, -7.3152, -7.62, -7.62, -5.4864, -5.4864, -5.4864, -5.4864, 0.0]), (31.6992, 495.3, [0.0, -9.144, -10.0584, -10.0584, -10.0584, -10.3632, -10.3632, -10.3632, -10.3632, -10.3632, -9.144, -9.144, -6.096, -3.048, 0.0]), (31.6992, 584.3016, [0.0, -3.6576, -5.4864, -6.096, -7.62, -9.144, -10.0584, -10.3632, -10.3632, -10.3632, -10.3632, -10.3632, -10.3632, -9.144, -5.4864, -3.6576, -2.4384, -2.4384, -2.4384, -1.8288, -1.8288, -1.8288, -1.8288, 0.0]), (31.6992, 381.0, [0.0, -5.4864, -11.2776, -11.2776, -15.24, -15.24, -15.24, -10.3632, -10.3632, -10.3632, -10.3632, -7.3152, -5.4864, 0.0]), (31.6992, 0.0, [0.0, -3.3528, -3.3528, -3.3528, -3.6576, -3.6576, -5.1816, -5.1816, -5.1816, -4.572, -4.572, -4.572, -5.4864, -7.62, -7.62, -6.096, -6.096, -6.096, -10.3632, -10.3632, -10.3632, -10.3632, -7.0104, -5.4864, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, -3.048, 0.0])) | one row per cross-section: (dX m, along-inlet length dY m, [bed elevations m]); area and width are integrated from the elevation profile relative to datum 0 |
 
 **Outputs**
 
