@@ -48,7 +48,7 @@ Empirical formulations are exact when their coefficients are known and the resul
 | 6-3 | Longshore Transport using CEDRS Statistics | II | Current | see notes |
 | 6-4 | Beach Nourishment Overfill Ratio and Volume | I | Current | User's Guide oracle + 13 DOS cases |
 | 6-5 | Composite Grain-Size Distribution | I | Current | User's Guide oracle |
-| 7-1 | Spatially Integrated Numerical Model for Inlet Hydraulics | II | Current | User's Guide oracle |
+| 7-1 | Spatially Integrated Numerical Model for Inlet Hydraulics | I | Current | User's Guide oracle |
 | 7-2 | Wave-Current Interaction in Channels | I | Current | see notes |
 | 8-1 | Properties of Rectangular Basins | I | Current | analytic / literature |
 | 8-2 | Vessel-Generated Waves | I | Current | analytic / literature |
@@ -327,12 +327,12 @@ Validation note. The dataset ships only CoreSample1 (Panama City); the ACES User
 
 ## Inlet Processes
 
-### 7-1 — Spatially Integrated Numerical Model for Inlet Hydraulics  (II — standard)
+### 7-1 — Spatially Integrated Numerical Model for Inlet Hydraulics  (I — exact)
 
 - **Source / references:** Seelig (1977); Seelig, Harris & Herchenroder (1977); Harris & Bodine (1977); Keulegan (1967); Schureman (1971)
 - **Module:** `backend/applications/chessqc_7_1_inlet_hydraulics.py`
 
-Validation: reproduces the ACES User's Guide Example 1 (one sea / one inlet / one bay; 4-channel, 5-cross-section inlet; pure M2 tide of 2.0 ft amplitude, 90 deg epoch at 75 deg W, start 1988-07-06 00:00; flood/ebb loss 4.0/1.0; Manning C1=0.05, C2=0.0007; bay area 1.80e9 ft^2; tabulated river inflow). The cross-section area integrator reproduces the echoed flow-net areas exactly (CS1 = 100,360 ft^2, CS5 = 60,112 ft^2). The 30-hour RK4 march reproduces Table 7-1-3: peak ebb discharge -207,260 cfs is matched to 0.2 percent, the bay elevation hydrograph to <0.02 ft throughout, the controlling-section velocity (-5.05 ft/s) to ~1 percent, and the dominant first-ebb volume (-2.55e9 ft^3) to 0.3 percent. Mid-record flood/ebb exchange volumes run ~6 percent low, the residual of the section-mean friction versus the full per-channel flow net (only cross-sections 1 and 5 have their channel division published); the headline discharge, velocity, and bay-range metrics meet the project bar.
+Validation, against the recompiled source on the deck ACES ships (INLET.IN = User's Guide Example 1: one sea / one inlet / one bay; 4 channels, 5 cross-sections; pure M2 tide of 2.0 ft amplitude, 90 deg epoch at 75 deg W, start 1988-07-06 00:00; flood/ebb loss 4.0/1.0; Manning C1=0.05, C2=0.0007; bay area 1.80e9 ft^2; tabulated river inflow):  - flow net: all five cross-sections' channel areas, widths and weights reproduce the source's own grid table to its printed resolution, and the section totals exactly (CS1 100,360 / CS2 40,456 / CS3 46,800 / CS4 43,680 / CS5 60,112 ft^2); - hydrograph over the 138 tabulated rows: sea and bay elevation to 0.008 ft, velocity to 0.03 ft/s, discharge to 0.5 percent -- which is the resolution of the source's own table, whose time column carries two decimals; - peak ebb and flood discharge to 0.01 percent, peak velocity to 0.09 percent; - the six flood/ebb exchange volumes to 0.04 percent, except the final 26-minute partial flood at 0.28 percent.  Differences from the source, both deliberate and both documented in tests/aces_oracle/FINDINGS.md section E: the march is classical RK4 at a fixed step rather than the source's Runge-Kutta-Gill with step halving (same order, and the difference is far below the agreement above), and the reported throat area is the still-water controlling area rather than the tide-adjusted one the march uses.
 
 ### 7-2 — Wave-Current Interaction in Channels  (I — exact)
 
