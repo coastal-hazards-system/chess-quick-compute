@@ -43,7 +43,7 @@ Empirical formulations are exact when their coefficients are known and the resul
 | 5-3 | Wave Transmission on Impermeable Structures | I | Current | User's Guide oracle + 8,982 DOS cases |
 | 5-4 | Wave Transmission through Permeable Structures | I | Current | analytic / literature + 510 DOS cases |
 | 5-5 | Wave Setup | I | Current | User's Guide oracle |
-| 6-1 | Longshore Sediment Transport | I | Current | analytic / literature |
+| 6-1 | Longshore Sediment Transport | I | Current | see notes |
 | 6-2 | Time-Dependent Beach and Dune Erosion | I | Current | analytic / literature |
 | 6-3 | Longshore Transport using CEDRS Statistics | II | Current | see notes |
 | 6-4 | Beach Nourishment Overfill Ratio and Volume | I | Current | User's Guide oracle + 13 DOS cases |
@@ -288,9 +288,8 @@ Validation strategy (no dedicated User's Guide section for this app, and no TR c
 
 - **Source / references:** SPM (1984) Ch.4; Galvin (1979); TR 6-1
 - **Module:** `backend/applications/chessqc_6_1_longshore_transport.py`
-- **Regression test:** `test_6_1_longshore_transport`: PASS (CERC factor + ACES examples via effective rho_s)
 
-Validated by the regression test above: CERC factor + ACES examples via effective rho_s.
+_Validation note in the app docstring / build notes._
 
 ### 6-2 — Time-Dependent Beach and Dune Erosion  (I — exact)
 

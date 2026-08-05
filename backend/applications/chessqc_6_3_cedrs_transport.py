@@ -32,16 +32,30 @@ Method (ACES User's Guide Example 3):
     angle and the bin's midpoint height, and p_h the bin's occurrence fraction. The net
     transport is the signed sum; the gross is the sum of magnitudes.
 
-A note on the sediment density (inherited from 6-1). With physically standard quartz
-(rho_s = 2650) this returns correct-physics CERC transport; the ACES User's Guide example
-(net -854,849 yd^3/yr) is reproduced with the effective rho_s ~ 2319 that 6-1 documents
-(below quartz, not stated in the TR). CHESS-QC defaults to quartz and exposes rho_s.
+Why the ACES example needs an adjusted density here, and what it really is. The
+User's Guide example (net -854,849 yd^3/yr) is reproduced with an effective rho_s of
+about 2319 kg/m^3. That number is NOT a property of the sediment: it is standing in for
+the pre-1998 solitary-wave energy-flux coefficient, which is exactly 1.25 times the
+linear-wave one. Transport scales as 1/(rho_s - rho), so the density that buys exactly
+1.25 is 2325; the 2319 that was fitted to the example sits 0.5 percent from it. See the
+6-1 docstring, where running both vintages of the ACES source settles it. ACES's own
+sediment density is 5.14 slug/ft^3 = 2649 kg/m^3, which is quartz.
+
+6-1 now offers the coefficient vintage as an input and needs no density adjustment.
+This application cannot yet do the same, because it differs from ACES more deeply: ACES
+computes each CEDRS band through LSCTRN (Lstran.for:1011), which refracts and shoals the
+band's wave from its gauge depth to breaking and then applies the BREAKING energy-flux
+formula, whereas this applies the deepwater formula directly to the band height. Closing
+that needs wave period and gauge depth per band, which are not in the inputs here. The
+oracle for it now exists (tests/aces_oracle/fortran, `sh build.sh lst`, mode C); the gap
+is recorded in tests/aces_oracle/FINDINGS.md. Until then the density adjustment is kept,
+relabelled for what it is.
 
 Self-containment: zero sibling imports; embeds its own contract dataclasses and the G1033
 dataset. Runnable standalone:
     python chessqc_6_3_cedrs_transport.py
-which runs the User's-Guide Example-3 self-test (net to <1% with rho_s=2319) then prints
-the default (quartz) example. stdlib only.
+which runs the User's-Guide Example-3 self-test (net to <1% with the 2319 stand-in for
+the solitary coefficient) then prints the default (quartz) example. stdlib only.
 """
 from __future__ import annotations
 
@@ -136,7 +150,9 @@ INPUTS = (
     Field("rho_water", "Water density", "float", "kg/m^3", "kg/m^3", default=1025.18,
           lo=900.0, hi=1100.0, note="seawater ~1025"),
     Field("rho_sand", "Sediment density", "float", "kg/m^3", "kg/m^3", default=2650.0,
-          lo=1500.0, hi=3500.0, note="quartz ~2650; ~2319 reproduces the ACES example"),
+          lo=1500.0, hi=3500.0,
+          note="quartz ~2650, which is ACES's own value; ~2319 reproduces the published "
+               "example, standing in for its pre-1998 energy-flux coefficient"),
     Field("porosity", "Sediment porosity", "float", "", "", default=0.40, lo=0.0, hi=0.7,
           note="pore fraction; solids fraction a' = 1 - porosity"),
     Field("occ", "CEDRS percent-occurrence (x1000) by band x height", "table",
@@ -311,7 +327,8 @@ def _approx(a: float, b: float, tol: float = 1e-3) -> bool:
 
 def _self_tests() -> None:
     # 1) ACES User's Guide Example 3: theta=40, K=0.39, G1033 -> net -854,849 yd^3/yr,
-    #    reproduced with the effective rho_s = 2319 (as documented for 6-1).
+    #    reproduced with rho_s = 2319, which stands in for the pre-1998 solitary
+    #    energy-flux coefficient (exactly 1.25x the linear one); see the docstring.
     r = compute({"shore_azimuth": 40.0, "K": 0.39, "rho_water": 1025.18,
                  "rho_sand": 2319.0, "porosity": 0.40})
     net_yd = r.Q_net * _M3_TO_YD3
@@ -365,7 +382,7 @@ def _print_default_example() -> None:
         if p > 0:
             print(f"    {a:7.2f} deg  {p:6.2f}%  {q * _M3_TO_YD3:>13,.1f}")
     print(f"  note (quartz): the ACES User's Guide Example 3 net is -854,849 yd^3/yr "
-          f"(its effective rho_s ~ 2319; see docstring)")
+          f"(rho_s=2319 there stands in for the pre-1998 coefficient; see docstring)")
 
 
 if __name__ == "__main__":
