@@ -27,11 +27,11 @@ Empirical formulations are exact when their coefficients are known and the resul
 | 1-6 | Holland Hurricane Wind Model | I | Current | see notes |
 | 2-1 | Linear Wave Theory | I | Current | User's Guide oracle + 516 DOS cases |
 | 2-2 | Cnoidal Wave Theory | I | Current | User's Guide oracle + 236 DOS cases |
-| 2-3 | Fourier Series Wave Theory | I | Current | User's Guide oracle |
+| 2-3 | Fourier Series Wave Theory | I | Current | see notes |
 | 2-4 | Wave Parameters | I | Current | User's Guide oracle |
 | 2-5 | Solitary Wave Theory | I | Current | analytic / literature |
 | 3-1 | Linear Wave Theory with Snell's Law | I | Current | User's Guide oracle + 4,579 DOS cases |
-| 3-2 | Irregular Wave Transformation (Goda's Method) | II | Current | User's Guide oracle + 794 DOS cases |
+| 3-2 | Irregular Wave Transformation (Goda's Method) | II | Current | see notes + 794 DOS cases |
 | 3-3 | Combined Diffraction and Reflection by a Vertical Wedge | I | Current | User's Guide oracle + 214 DOS cases |
 | 3-4 | Vertical-Wedge Diffraction/Reflection on a Uniform Grid | I | Current | User's Guide oracle |
 | 4-1 | Breakwater Design (Hudson) | I | Current | User's Guide oracle + 1,530 DOS cases |
@@ -137,9 +137,8 @@ Validated by the regression test above: matches User's Guide Example 2-2, 1st or
 
 - **Source / references:** Rienecker & Fenton (1981); Fenton (1988); TR 2-3
 - **Module:** `backend/applications/chessqc_2_3_fenton_fourier.py`
-- **Regression test:** `test_2_3_fenton_fourier`: PASS (matches User's Guide Example 2-3)
 
-Validated by the regression test above: matches User's Guide Example 2-3.
+_Validation note in the app docstring / build notes._
 
 ### 2-4 — Wave Parameters  (I — exact)
 
@@ -173,10 +172,9 @@ Validated by the regression test above: Snell transformation matches User's Guid
 
 - **Source / references:** Goda (1975, 1985); Mitsuyasu (1975); Shuto (1974)
 - **Module:** `backend/applications/chessqc_3_2_goda_transformation.py`
-- **Regression test:** `test_3_2_goda_transformation`: PASS (User's Guide example; Ks/Hmean/Hrms exact, other heights within ~3%)
 - **ACES DOS oracle** (`GODA`): 794 swept cases over 1 sheet(s); 4/11 outputs within tolerance
 
-Validated by the regression test above: User's Guide example; Ks/Hmean/Hrms exact, other heights within ~3%.
+_Validation note in the app docstring / build notes._
 
 ### 3-3 — Combined Diffraction and Reflection by a Vertical Wedge  (I — exact)
 
