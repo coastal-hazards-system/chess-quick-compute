@@ -92,7 +92,7 @@ HAWAII_PYTHON = {k: v.replace(".m", ".py") for k, v in HAWAII_MATLAB.items()
 # reports for 3-2, not the closed-form model CHESS-QC 5-5 implements. Treating it as an
 # oracle for 5-5 was an earlier mapping error and is recorded in FINDINGS.
 COMPILED = {
-    "3-2": "goda", "6-5": "cgs", "7-1": "inlet",
+    "1-4": "tides", "3-2": "goda", "6-5": "cgs", "7-1": "inlet",
     "6-1": "lst / lst92", "6-3": "lst / lst92", "6-2": "kd", "2-3": "fwt",
 }
 
@@ -105,8 +105,9 @@ VERIFIED = {
     "1-2": "315 DOS cases, all 10 outputs clean. The H1/10 6.55-vs-6.30 dispute was "
            "settled from BETAR.FOR: ACES's own 100-bin quadrature (A1)",
     "1-3": "two recorded runs of the original program, all fitted distributions",
-    "1-4": "481 points of a full printed record; rms 0.078 ft, max 0.160 ft. The "
-           "astronomy is ruled out - node factors agree to 2.4e-6 (E6). Open (B9)",
+    "1-4": "the FORTRAN recompiled on its own deck: the full 481-point record to "
+           "0.0002 ft, and the node factors and phase constants of all 37 "
+           "constituents to 5e-7 and 0.01 deg (E14)",
     "1-5": "analytic: the Ekman-layer relations and their limits",
     "1-6": "analytic: Holland's profile, its gradient-wind balance and known limits",
     "2-1": "516 DOS cases over 4 sheets; 48 of 56 fields clean",
@@ -419,10 +420,12 @@ def main():
     w("1. **The original FORTRAN, recompiled and run.** The strongest available: the")
     w("   ACES computational routines separate cleanly from their screen layer and build")
     w("   with the compiler shipped alongside them, so results can be compared at full")
-    w("   precision on any input. Eight applications now have this.")
+    w("   precision on any input. "
+      f"{len({a for a in COMPILED if a in {m.aces_id for m, _, _ in apps}})} "
+      "applications now have this.")
     w("2. **Recorded DOS output.** 28,742 cases from the Hawaii workbooks, compared with")
     w("   absolute tolerances derived from the printed field widths rather than")
-    w("   percentages. Sixteen applications have this.")
+    w(f"   percentages. {len([a for a in summary])} applications have this.")
     w("3. **Analytic checks.** For applications with no ACES counterpart: closed-form")
     w("   identities, limiting cases and conservation properties. Weaker than either of")
     w("   the above, and labelled as such.")

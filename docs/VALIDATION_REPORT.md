@@ -22,7 +22,7 @@ Empirical formulations are exact when their coefficients are known and the resul
 | 1-1 | Windspeed Adjustment and Wave Growth | I | Current | analytic / literature + 1,017 DOS cases |
 | 1-2 | Beta-Rayleigh Distribution | I | Current | User's Guide oracle + 315 DOS cases |
 | 1-3 | Extremal Significant Wave Height Analysis | I | Current | User's Guide oracle |
-| 1-4 | Constituent Tide Record Generation | I | Current | analytic / literature |
+| 1-4 | Constituent Tide Record Generation | I | Current | see notes |
 | 1-5 | Near-surface Wind Speeds | II | Current | analytic / literature |
 | 1-6 | Holland Hurricane Wind Model | I | Current | see notes |
 | 2-1 | Linear Wave Theory | I | Current | User's Guide oracle + 516 DOS cases |
@@ -93,9 +93,8 @@ Validated by the regression test above: User's Guide Example 1-3 + two ACES DOS 
 
 - **Source / references:** Schureman (1971); Table A-5; TR 1-4
 - **Module:** `backend/applications/chessqc_1_4_tide_record.py`
-- **Regression test:** `test_1_4_tide_record`: PASS (Table 1-4-1 spot values; full DOS record measured)
 
-Validated by the regression test above: Table 1-4-1 spot values; full DOS record measured.
+_Validation note in the app docstring / build notes._
 
 ### 1-5 — Near-surface Wind Speeds  (II — standard)
 

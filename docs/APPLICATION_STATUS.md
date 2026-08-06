@@ -22,7 +22,7 @@ unresolved residual remains. Both are stated per application below.
 | 1-1 | Windspeed Adjustment and Wave Growth | exact | 1-1 | yes | yes | yes | 1017 | — |
 | 1-2 | Beta-Rayleigh Distribution | exact | 1-2 | yes | yes | yes | 315 | — |
 | 1-3 | Extremal Significant Wave Height Analysis | exact | 1-3 | yes | yes | yes | — | — |
-| 1-4 | Constituent Tide Record Generation | exact | 1-4 | yes | yes | yes | — | — |
+| 1-4 | Constituent Tide Record Generation | exact | 1-4 | yes | yes | yes | — | tides |
 | 1-5 | Near-surface Wind Speeds | standard | - | — | — | — | — | — |
 | 1-6 | Holland Hurricane Wind Model | exact | - | — | — | — | — | — |
 | 2-1 | Linear Wave Theory | exact | 2-1 | yes | yes | yes | 516 | — |
@@ -133,11 +133,12 @@ FORTRAN (`tests/aces_oracle/fortran`).
 - ACES FORTRAN source: `TIDES.FOR, CNS2LIB.FOR`, driver `TIDRV`
 - Hawaii 2017 MATLAB conversion: `ACES_MATLAB/drivers/tide_generation.m`
 - Hawaii 2017 Python conversion: `ACES_PYTHON/drivers/tide_generation.py`
+- **The original FORTRAN, compiled and runnable**: `sh tests/aces_oracle/fortran/build.sh tides`
 - Literature: Schureman (1971); Table A-5; TR 1-4
 
 **Verification and validation**
 
-- 481 points of a full printed record; rms 0.078 ft, max 0.160 ft. The astronomy is ruled out - node factors agree to 2.4e-6 (E6). Open (B9)
+- the FORTRAN recompiled on its own deck: the full 481-point record to 0.0002 ft, and the node factors and phase constants of all 37 constituents to 5e-7 and 0.01 deg (E14)
 - Self-tests in the module; a dedicated case in `tests/test_manual_oracle.py`
 
 ### 1-5 — Near-surface Wind Speeds
@@ -761,10 +762,10 @@ Three kinds of evidence appear, and they are not equally strong:
 1. **The original FORTRAN, recompiled and run.** The strongest available: the
    ACES computational routines separate cleanly from their screen layer and build
    with the compiler shipped alongside them, so results can be compared at full
-   precision on any input. Eight applications now have this.
+   precision on any input. 8 applications now have this.
 2. **Recorded DOS output.** 28,742 cases from the Hawaii workbooks, compared with
    absolute tolerances derived from the printed field widths rather than
-   percentages. Sixteen applications have this.
+   percentages. 16 applications have this.
 3. **Analytic checks.** For applications with no ACES counterpart: closed-form
    identities, limiting cases and conservation properties. Weaker than either of
    the above, and labelled as such.

@@ -4,9 +4,19 @@ Originating ACES application: 1-4 "Constituent Tide Record Generation" (function
 Wave Prediction). Predicts a water-level time series at a gage from the harmonic tidal
 constituents (amplitude and epoch per constituent) by the classical harmonic method.
 
-Classification: exact (closed-form harmonic synthesis with exact Schureman astronomical
-node factors and equilibrium arguments -- no empirical fitting; reproduces the User's Guide
-Table 1-4-1 to the stated tolerance).
+Classification: exact. Reproduces the ACES source, recompiled and run on its own
+TIDES.IN deck, across the whole 481-point record to 0.0002 ft.
+
+The astronomy is transcribed from ACES's own ORBIT, NFACS and GTERMS rather than
+re-derived from Schureman, after a from-scratch implementation was found to disagree
+with the source across the record while still passing a spot check on the nine values
+User's Guide Table 1-4-1 tabulates. Four things were wrong, and none of them was
+visible in that spot check: the time base used the gage longitude where ACES uses the
+standard meridian (the nearest 15 degrees) with a separate longitude term; the node
+factors for M1 and L2, which depend on the lunar perigee and are not simple functions
+of N, were taken from neighbouring constituents; LAMBDA2's Doodson coefficients were
+wrong; and node factors were evaluated at the record start where ACES uses its
+midpoint. See tests/aces_oracle/FINDINGS.md E14.
 
 Known limitation. Against the full 481-point record the ACES executable printed for this
 same deck (validationResults/module 1/Tide generation/dos results/test2IS.txt, which
@@ -329,6 +339,224 @@ ABOUT = {'summary': 'Synthesizes a water-level time series at a tide gage from h
                 'ACES Appendix Table A-5 (constituent speeds)']}
 
 
+# --- ACES's own tidal astronomy (CNS2LIB.FOR: ORBIT, NFACS, GTERMS, GAGINI) ------
+# Transcribed rather than re-derived. An earlier from-scratch Schureman
+# implementation disagreed with the source across the record; see FINDINGS.md E14.
+
+# Speeds in degrees per hour, and the number of tide cycles per day, for the 37
+# constituents ACES carries, in its own order (BLOCK DATA HACNST).
+ACST = (
+    28.9841042, 30.0, 28.4397295, 15.0410686, 57.9682084, 13.9430356, 86.9523127,
+    44.0251729, 60.0, 57.4238337, 28.5125831, 90.0, 27.9682084, 27.8953548,
+    16.1391017, 29.4556253, 15.0, 14.4966939, 15.5854433, 0.5443747, 0.0821373,
+    0.0410686, 1.0158958, 1.0980331, 13.4715145, 13.3986609, 29.9589333,
+    30.0410667, 12.8542862, 14.9589314, 31.0158958, 43.4761563, 29.5284789,
+    42.9271398, 30.0821373, 115.9364169, 58.9841042,
+)
+PCST = (2., 2., 2., 1., 4., 1., 6., 3., 4., 4., 2., 6., 2., 2., 1., 2., 1., 1.,
+        1., 0., 0., 0., 0., 0., 1., 1., 2., 2., 1., 1., 2., 3., 2., 3., 2., 8., 4.)
+
+_PI180 = 3.14159265 / 180.0        # ACES's own value, not math.pi/180
+
+
+def _ang360(a: float) -> float:
+    """ACES's ANG360 (ACECLIB.FOR:163): fold an angle into [0, 360)."""
+    a = math.fmod(a, 360.0)
+    return a + 360.0 if a < 0.0 else a
+
+
+def _arctan(y: float, x: float) -> float:
+    """ACES's ARCTAN (CNS2LIB.FOR:3): atan2 folded to [0, 360) and in degrees."""
+    if x == 0.0 and y == 0.0:
+        return 0.0
+    a = math.atan2(y, x)
+    if a < 0.0:
+        a += 2.0 * math.pi
+    return a * (180.0 / 3.14159265)
+
+
+def orbit(yr: float, dayj: float, hr: float) -> dict:
+    """Astronomical elements at a given epoch (subroutine ORBIT).
+
+    dayj is the day of the year; hr the hour within it. Returns the elements in
+    degrees under ACES's own names."""
+    x = math.floor((yr - 1901.0) / 4.0)
+    dyr = yr - 1900.0
+    dday = dayj + x - 1.0
+
+    dn = _ang360(259.1560564 - 19.328185764 * dyr
+                 - 0.0529539336 * dday - 0.0022064139 * hr)
+    n = dn * _PI180
+    dp = _ang360(334.3837214 + 40.66246584 * dyr
+                 + 0.111404016 * dday + 0.004641834 * hr)
+    i = math.acos(0.9136949 - 0.0356926 * math.cos(n))
+    di = _ang360(i / _PI180)
+    nu = math.asin(0.0897056 * math.sin(n) / math.sin(i))
+    dnu = nu / _PI180
+    xi = n - 2.0 * math.atan(0.64412 * math.tan(n / 2.0)) - nu
+    dxi = xi / _PI180
+    dpc = _ang360(dp - dxi)
+    dh = _ang360(280.1895014 - 0.238724988 * dyr
+                 + 0.9856473288 * dday + 0.0410686387 * hr)
+    dp1 = _ang360(281.2208569 + 0.01717836 * dyr
+                  + 0.000047064 * dday + 0.000001961 * hr)
+    ds = _ang360(277.0256206 + 129.38482032 * dyr
+                 + 13.176396768 * dday + 0.549016532 * hr)
+    nup = math.atan(math.sin(nu) / (math.cos(nu) + 0.334766 / math.sin(2.0 * i)))
+    nup2 = math.atan(math.sin(2.0 * nu)
+                     / (math.cos(2.0 * nu) + 0.0726184 / math.sin(i) ** 2)) / 2.0
+    return dict(DS=ds, DP=dp, DH=dh, DP1=dp1, DN=dn, DI=di, DNU=dnu, DXI=dxi,
+                DNUP=nup / _PI180, DNUP2=nup2 / _PI180, DPC=dpc)
+
+
+def node_factors(yr: float, dayj: float, hr: float) -> list:
+    """Node factors f for the 37 constituents (subroutine NFACS).
+
+    Equation numbers are Schureman's, as the source names them. Note 18 (M1) and
+    33 (L2) depend on the lunar perigee and are not simple functions of N; using a
+    neighbouring constituent's factor for them is wrong by a factor of about two
+    and about a third respectively."""
+    o = orbit(yr, dayj, hr)
+    i = o["DI"] * _PI180
+    nu = o["DNU"] * _PI180
+    pc = o["DPC"] * _PI180
+
+    sini, sini2 = math.sin(i), math.sin(i / 2.0)
+    sin2i = math.sin(2.0 * i)
+    cosi, cosi2 = math.cos(i), math.cos(i / 2.0)
+    tani2 = math.tan(i / 2.0)
+
+    eq73 = (2.0 / 3.0 - sini ** 2) / 0.5021
+    eq74 = sini ** 2 / 0.1578
+    eq75 = sini * cosi2 ** 2 / 0.3800
+    eq76 = math.sin(2 * i) / 0.7214
+    eq77 = sini * sini2 ** 2 / 0.0164
+    eq78 = cosi2 ** 4 / 0.9154
+    eq149 = cosi2 ** 6 / 0.8758
+    eq196 = math.sqrt(0.25 + 1.5 * (cosi * math.cos(2.0 * pc) / cosi2 ** 2)
+                      + (9.0 / 4.0) * (cosi ** 2 / cosi2 ** 4))
+    eq207 = eq75 * eq196
+    eq213 = math.sqrt(1.0 - 12.0 * tani2 ** 2 * math.cos(2.0 * pc) + 36.0 * tani2 ** 4)
+    eq215 = eq78 * eq213
+    eq227 = math.sqrt(0.8965 * sin2i ** 2 + 0.6001 * sin2i * math.cos(nu) + 0.1006)
+    eq235 = 0.001 + math.sqrt(19.0444 * sini ** 4
+                              + 2.7702 * sini ** 2 * math.cos(2.0 * nu) + 0.0981)
+
+    f = [0.0] * 38                      # 1-based, to match the source
+    f[1] = eq78;            f[2] = 1.0;             f[3] = eq78
+    f[4] = eq227;           f[5] = f[1] ** 2;       f[6] = eq75
+    f[7] = f[1] ** 3;       f[8] = f[1] * f[4];     f[9] = 1.0
+    f[10] = f[1] ** 2;      f[11] = eq78;           f[12] = 1.0
+    f[13] = eq78;           f[14] = eq78;           f[15] = eq77
+    f[16] = eq78;           f[17] = 1.0;            f[18] = eq207
+    f[19] = eq76;           f[20] = eq73;           f[21] = 1.0
+    f[22] = 1.0;            f[23] = eq78;           f[24] = eq74
+    f[25] = eq75;           f[26] = eq75;           f[27] = 1.0
+    f[28] = 1.0;            f[29] = eq75;           f[30] = 1.0
+    f[31] = eq78;           f[32] = eq149;          f[33] = eq215
+    f[34] = f[1] ** 2 * f[4]
+    f[35] = eq235;          f[36] = f[1] ** 4;      f[37] = eq78
+    return f
+
+
+def equilibrium_args(yr: float, dayj: float, hr: float,
+                     daym: float, hrm: float) -> list:
+    """Greenwich equilibrium arguments V0+u (subroutine GTERMS).
+
+    The slow elements and the hour angle come from the start of the record; the
+    nodal corrections from its middle. GAGINI calls it that way (CNS2LIB.FOR:107),
+    and evaluating both at one instant is not the same thing."""
+    a = orbit(yr, dayj, hr)
+    s, p, h, p1 = a["DS"], a["DP"], a["DH"], a["DP1"]
+    t = _ang360(180.0 + hr * (360.0 / 24.0))
+
+    b = orbit(yr, daym, hrm)
+    nu, xi = b["DNU"], b["DXI"]
+    nup, nup2 = b["DNUP"], b["DNUP2"]
+    i = b["DI"] * _PI180
+    pc = b["DPC"] * _PI180
+
+    e = [0.0] * 38
+    e[1] = 2.0 * (t - s + h) + 2.0 * (xi - nu)
+    e[2] = 2.0 * t
+    e[3] = 2.0 * (t + h) - 3.0 * s + p + 2.0 * (xi - nu)
+    e[4] = t + h - 90.0 - nup
+    e[5] = 4.0 * (t - s + h) + 4.0 * (xi - nu)
+    e[6] = t - 2.0 * s + h + 90.0 + 2.0 * xi - nu
+    e[7] = 6.0 * (t - s + h) + 6.0 * (xi - nu)
+    e[8] = 3.0 * (t + h) - 2.0 * s - 90.0 + 2.0 * (xi - nu) - nup
+    e[9] = 4.0 * t
+    e[10] = 4.0 * (t + h) - 5.0 * s + p + 4.0 * (xi - nu)
+    e[11] = 2.0 * t - 3.0 * s + 4.0 * h - p + 2.0 * (xi - nu)
+    e[12] = 6.0 * t
+    e[13] = 2.0 * (t + 2.0 * (h - s)) + 2.0 * (xi - nu)
+    e[14] = 2.0 * (t - 2.0 * s + h + p) + 2.0 * (xi - nu)
+    e[15] = t + 2.0 * s + h - 90.0 - 2.0 * xi - nu
+    e[16] = 2.0 * t - s + p + 180.0 + 2.0 * (xi - nu)
+    e[17] = t
+    q = _arctan((5.0 * math.cos(i) - 1.0) * math.tan(pc), 7.0 * math.cos(i) + 1.0)
+    e[18] = t - s + h - 90.0 + xi - nu + q
+    e[19] = t + s + h - p - 90.0 - nu
+    e[20] = s - p
+    e[21] = 2.0 * h
+    e[22] = h
+    e[23] = 2.0 * (s - h)
+    e[24] = 2.0 * s - 2.0 * xi
+    e[25] = t + 3.0 * (h - s) - p + 90.0 + 2.0 * xi - nu
+    e[26] = t - 3.0 * s + h + p + 90.0 + 2.0 * xi - nu
+    e[27] = 2.0 * t - h + p1
+    e[28] = 2.0 * t + h - p1 + 180.0
+    e[29] = t - 4.0 * s + h + 2.0 * p + 90.0 + 2.0 * xi - nu
+    e[30] = t - h + 90.0
+    e[31] = 2.0 * (t + s - h) + 2.0 * (nu - xi)
+    e[32] = 3.0 * (t - s + h) + 3.0 * (xi - nu)
+    r = _arctan(math.sin(2.0 * pc),
+                (1.0 / 6.0) * ((1.0 / math.tan(0.5 * i)) ** 2) - math.cos(2.0 * pc))
+    e[33] = 2.0 * (t + h) - s - p + 180.0 + 2.0 * (xi - nu) - r
+    e[34] = 3.0 * (t + h) - 4.0 * s + 90.0 + 4.0 * (xi - nu) + nup
+    e[35] = 2.0 * (t + h) - 2.0 * nup2
+    e[36] = 8.0 * (t - s + h) + 8.0 * (xi - nu)
+    e[37] = 2.0 * (2.0 * t - s + h) + 2.0 * (xi - nu)
+    for k in range(1, 38):
+        e[k] = _ang360(e[k])
+    return e
+
+
+def day_of_year(yr: int, month: int, day: int) -> float:
+    """ACES's DAYOYR: day number within the year, leap years included."""
+    md = (31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
+    d = sum(md[:month - 1]) + day
+    if month > 2 and (yr % 4 == 0 and (yr % 100 != 0 or yr % 400 == 0)):
+        d += 1
+    return float(d)
+
+
+def gage_alphas(yr: int, month: int, day: int, hour: float, length_hr: float,
+                glong: float, epochs) -> tuple:
+    """Node factors and phase constants for one gage (subroutine GAGINI).
+
+    `epochs` holds the constituent phase lags kappa in degrees, 1-based like the
+    rest. Returns (f, alpha), both 1-based over the 37 constituents.
+
+    The longitude enters twice and differently, which is the part that is easy to
+    get wrong: the time base is the *standard meridian* S, the nearest multiple of
+    15 degrees, while the phase correction uses the actual gage longitude."""
+    dayj = day_of_year(yr, month, day)
+    hrmid = hour + length_hr / 2.0
+    f = node_factors(float(yr), dayj, hrmid)
+    e = equilibrium_args(float(yr), dayj, hour, dayj, hrmid)
+
+    s = 15.0 * math.floor(glong / 15.0)
+    if math.fmod(glong, 15.0) > 7.5:
+        s += 15.0
+
+    alpha = [0.0] * 38
+    for nc in range(1, 38):
+        alpha[nc] = (e[nc] + ACST[nc - 1] * s / 15.0
+                     - PCST[nc - 1] * glong - epochs[nc])
+    return f, alpha
+
+
 def compute(inp: dict) -> Result:
     """Constituent tide record for SI inputs. Returns the elevation time series."""
     _validate(inp)
@@ -338,25 +566,27 @@ def compute(inp: dict) -> Result:
     interval = float(inp["interval_min"]) / 60.0
     H0 = float(inp["H0"]); lon = float(inp["gage_lon"])
 
-    # equilibrium argument: T from local midnight; slow longitudes at UT = hour - lon_west/15
-    ut0 = hour - lon / 15.0
-    s, h, p, N, p1 = _astro(_jd(year, month, day, ut0))
-    T = 15.0 * hour
-    f, u = _factors(N)
-
-    terms = []
+    # Node factors and phase constants exactly as GAGINI builds them: the node
+    # factors at the middle of the record, the equilibrium arguments at its start,
+    # the time base on the standard meridian and the phase correction on the actual
+    # gage longitude. See FINDINGS.md E14 for what each of those was worth.
+    epochs = [0.0] * 38
+    amps = [0.0] * 38
     for row in inp["constituents"]:
         if not row or len(row) < 3:
             continue
-        idx = int(round(float(row[0]))); amp = float(row[1]); kappa = float(row[2])
-        if amp == 0.0 or not (1 <= idx <= len(CANON)):
+        idx = int(round(float(row[0])))
+        if not (1 <= idx <= 37):
             continue
-        name = CANON[idx - 1]
-        speed, c, const, fkey, uc = _C[name]
-        V0 = c[0] * T + c[1] * s + c[2] * h + c[3] * p + c[4] * p1 + const
-        un = sum(sign * u[t] for t, sign in uc)
-        arg0 = (V0 + un - kappa) % 360.0
-        terms.append((speed, _fval(fkey, f) * amp, arg0))
+        amps[idx] = float(row[1])
+        epochs[idx] = float(row[2])
+    fnd, alpha = gage_alphas(year, month, day, hour, length, lon, epochs)
+
+    terms = []
+    for idx in range(1, 38):
+        if amps[idx] == 0.0:
+            continue
+        terms.append((ACST[idx - 1], fnd[idx] * amps[idx], alpha[idx]))
 
     n = max(2, int(round(length / interval)) + 1)
     t = np.linspace(0.0, length, n)
@@ -372,24 +602,84 @@ def compute(inp: dict) -> Result:
                   profile_h=hsum, notes="; ".join(notes))
 
 
-# --- self-tests (User's Guide Example 1-4 oracle) -------------------------------
+# --- self-tests -----------------------------------------------------------------
+# The ACES source recompiled and run on its own TIDES.IN deck (tests/aces_oracle/
+# fortran, `sh build.sh tides`), sampled every 20th point of the 481-point record.
+# Elevations in feet.
+_SRC_RECORD = (
+    (0, 4.2584), (20, 0.6385), (40, 0.8769), (60, 2.5875),
+    (80, -0.0033), (100, 4.1909), (120, 0.5342), (140, 1.1517),
+    (160, 2.5450), (180, -0.0190), (200, 3.9840), (220, 0.5279),
+    (240, 1.4001), (260, 2.5539), (280, -0.0286), (300, 3.6792),
+    (320, 0.5977), (340, 1.5907), (360, 2.6291), (380, -0.0454),
+    (400, 3.3398), (420, 0.7075), (440, 1.7088), (460, 2.7616),
+    (480, -0.0795),
+)
+# Node factors and phase constants the source produced for this gage and epoch, for
+# the four constituents an earlier from-scratch implementation got wrong (E14).
+_SRC_FA = {
+    16: (0.9660858, -118.8109),      # LAMBDA2: Doodson coefficients were wrong
+    17: (1.0000000, 279.0800),       # S1
+    18: (2.2318830, 87.3957),        # M1: node factor depends on the lunar perigee
+    33: (0.5990331, -271.8427),      # L2: likewise
+}
+
+
 def _self_tests() -> None:
-    r = compute({f.key: f.default for f in INPUTS})
-    # ACES User's Guide Table 1-4-1 (Buzzards Bay), elevations in ft at given hours
-    oracle = {0.0: 4.26, 0.25: 4.35, 0.5: 4.39, 0.75: 4.38, 1.0: 4.32,
-              118.5: 0.65, 119.0: 0.38, 119.75: 0.01, 120.0: -0.08}
+    inp = {f.key: f.default for f in INPUTS}
+    r = compute(inp)
     hft = r.profile_h / _FT
-    # the time axis is carried in SI seconds (the front-ends display it in hours)
+
+    # 1) the contract: SI seconds on the time axis, 15-minute steps, 120 hours
     assert abs(r.profile_t[-1] - 120.0 * 3600.0) < 1e-6, r.profile_t[-1]
     assert abs(r.profile_t[1] - r.profile_t[0] - 15.0 * 60.0) < 1e-9
+    assert r.n_constituents == 25, r.n_constituents
+    assert len(hft) == 481, len(hft)
+
+    # 2) the whole record against the recompiled source, not a handful of points
     worst = 0.0
-    for tt, exp in oracle.items():
-        i = int(round(tt / 0.25))
-        got = hft[i]
-        worst = max(worst, abs(got - exp))
-        assert abs(got - exp) <= 0.06, f"t={tt}: got {got:.2f} ft, manual {exp:.2f} ft"
-    assert r.n_constituents == 25
-    print(f"  self-tests: PASS (User's Guide Example 1-4, max dev {worst:.3f} ft over the record)")
+    for i, exp in _SRC_RECORD:
+        worst = max(worst, abs(hft[i] - exp))
+    assert worst < 5e-3, worst
+
+    # 3) the astronomy itself, for the four constituents that were wrong before.
+    #    These are checked directly because their amplitudes are small: an error in
+    #    them moves the record by only a few hundredths of a foot, which is exactly
+    #    how they survived a spot check on nine tabulated values.
+    epochs = [0.0] * 38
+    for row in inp["constituents"]:
+        idx = int(round(float(row[0])))
+        if 1 <= idx <= 37:
+            epochs[idx] = float(row[2])
+    fnd, alpha = gage_alphas(inp["year"], inp["month"], inp["day"],
+                             inp["hour"] / 3600.0, inp["length_hr"] / 3600.0,
+                             inp["gage_lon"], epochs)
+    for nc, (f_exp, a_exp) in _SRC_FA.items():
+        assert abs(fnd[nc] - f_exp) < 1e-5, (nc, fnd[nc], f_exp)
+        da = abs((alpha[nc] - a_exp + 180.0) % 360.0 - 180.0)
+        assert da < 0.05, (nc, alpha[nc], a_exp)
+
+    # 4) the standard meridian is the nearest 15 degrees, not the gage longitude:
+    #    70.62 W sits in the 75 W zone, and that distinction is the largest single
+    #    correction in this application
+    assert _ang360(-1.0) == 359.0
+    for lon, want in ((70.62, 75.0), (75.0, 75.0), (82.4, 75.0), (82.6, 90.0),
+                      (0.0, 0.0), (7.4, 0.0), (7.6, 15.0)):
+        s_ = 15.0 * math.floor(lon / 15.0)
+        if math.fmod(lon, 15.0) > 7.5:
+            s_ += 15.0
+        assert s_ == want, (lon, s_, want)
+
+    # 5) the User's Guide table it has always been checked against
+    manual = {0.0: 4.26, 0.25: 4.35, 0.5: 4.39, 0.75: 4.38, 1.0: 4.32,
+              118.5: 0.65, 119.0: 0.38, 119.75: 0.01, 120.0: -0.08}
+    wm = 0.0
+    for tt, exp in manual.items():
+        wm = max(wm, abs(hft[int(round(tt / 0.25))] - exp))
+    assert wm <= 0.01, wm
+
+    print(f"  self-tests: PASS (full 481-point record within {worst:.4f} ft of the "
+          f"recompiled source; User's Guide table within {wm:.3f} ft)")
 
 
 def _print_default_example() -> None:
