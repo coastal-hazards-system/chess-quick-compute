@@ -45,7 +45,7 @@ Empirical formulations are exact when their coefficients are known and the resul
 | 5-5 | Wave Setup | I | Current | User's Guide oracle |
 | 6-1 | Longshore Sediment Transport | I | Current | see notes |
 | 6-2 | Time-Dependent Beach and Dune Erosion | I | Current | analytic / literature |
-| 6-3 | Longshore Transport using CEDRS Statistics | II | Current | see notes |
+| 6-3 | Longshore Transport from a CEDRS Wave Climate | I | Current | analytic / literature |
 | 6-4 | Beach Nourishment Overfill Ratio and Volume | I | Current | User's Guide oracle + 13 DOS cases |
 | 6-5 | Composite Grain-Size Distribution | I | Current | User's Guide oracle |
 | 7-1 | Spatially Integrated Numerical Model for Inlet Hydraulics | I | Current | User's Guide oracle |
@@ -298,12 +298,12 @@ _Validation note in the app docstring / build notes._
 
 Validation, against the recompiled source on the decks ACES ships:  - `XSHORE2.IN`, generic profile, one wave record, no water-level forcing; - `XSHORE3.IN`, generic profile with a six-point surge on a 4 h interval and four wave records on a 5 h one, which ACES steps onto the shorter interval first; - `XSHORE4.IN`, a 53-point surveyed profile, resampled by cubic spline; - `XSHORE6.IN`, a 200-point surveyed profile.  The tabulated volume change and all four contour changes agree on every one of them to better than half of the source's printed digit (0.005). The first three are asserted in the self-tests, which carry the source's tables; the fourth is checked by the harness in tests/aces_oracle.  `XSHORE1.IN` is the one deck not reproduced. It drives its water level from a 37-constituent tidal synthesis, which this application does not carry - the water level is a supplied series here - so that deck is out of scope rather than wrong. It is recorded in FINDINGS.md.
 
-### 6-3 — Longshore Transport using CEDRS Statistics  (II — standard)
+### 6-3 — Longshore Transport from a CEDRS Wave Climate  (I — exact)
 
-- **Source / references:** SPM (1984) Ch.4; Gravens (1988); WIS Report 18; ACES User's Guide Example 6-1-3
+- **Source / references:** SPM (1984) Ch.4; Galvin (1979, 1980); Gravens (1988); Wang, Kraus & Davis (1998); ACES Technical Reference Ch. 6-1
 - **Module:** `backend/applications/chessqc_6_3_cedrs_transport.py`
 
-_Validation note in the app docstring / build notes._
+Validation, against the ACES source recompiled and run (tests/aces_oracle/fortran, `sh build.sh lst`, which builds both vintages) on `g1033.810` at 40 degrees, K = 0.39:  solitary (3/92)   -854,883 yd^3/yr      published Example 3: -854,849 linear   (2/98)   -683,902 yd^3/yr  reproduced here to better than 0.1 percent on the net and on each of the nine contributing bands.
 
 ### 6-4 — Beach Nourishment Overfill Ratio and Volume  (I — exact)
 

@@ -42,7 +42,7 @@ Each app header carries a fidelity class:
 - **Littoral Processes**
   - 6-1 Longshore Sediment Transport
   - 6-2 Time-Dependent Beach and Dune Erosion
-  - 6-3 Longshore Transport using CEDRS Statistics
+  - 6-3 Longshore Transport from a CEDRS Wave Climate
   - 6-4 Beach Nourishment Overfill Ratio and Volume
   - 6-5 Composite Grain-Size Distribution
 - **Inlet Processes**
@@ -1144,22 +1144,25 @@ Originating ACES application: 6-2 "Numerical Simulation of Time-Dependent Beach 
 
 *Module:* `backend/applications/chessqc_6_2_dune_erosion.py`
 
-### 6-3 — Longshore Transport using CEDRS Statistics  `[II]`
+### 6-3 — Longshore Transport from a CEDRS Wave Climate  `[I]`
 
 **Status:** Current.
 
-Originating ACES application: 6-3 "Longshore Sediment Transport using CEDRS percent- occurrence statistics" (functional area: Littoral Processes; the CEDRS branch of the original ACES 6-1 Longshore Sediment Transport, separated as its own application in ACES). It estimates the net and gross potential longshore transport at a site by summing the deepwater CERC transport over a directional wave climate supplied as a Coastal Engineering Data Retrieval System (CEDRS) "percent occurrence of wave height and period by direction" table.
+Originating ACES application: 6-1 "Longshore Sediment Transport", its third capability - "Transport using CEDRS statistical data: Percent Occurrence of wave height and period by direction" (`Lstran.for`, subroutines `lscband`, `lscomp` and `LSCTRN`). CHESS-QC carries it as its own application because its inputs and outputs are nothing like the single-condition case, which is CHESS-QC 6-1.
 
-**Inputs** (values in US units)
+**Inputs** (values in SI units)
 
 | Input | key | units (US/SI) | range | default | notes |
 | --- | --- | --- | --- | --- | --- |
-| Shore-normal azimuth | shore_azimuth | deg | 0 to 360 | 40 | seaward shore normal, measured clockwise from true north |
-| Empirical coefficient K | K | (none) | 0 to 1 | 0.39 | CERC coefficient; 0.39 for field data with significant wave height |
-| Water density | rho_water | kg/m^3 | 900 to 1100 | 1025.18 | seawater ~1025 |
-| Sediment density | rho_sand | kg/m^3 | 1500 to 3500 | 2650 | quartz ~2650, which is ACES's own value; ~2319 reproduces the published example, standing in for its pre-1998 energy-flux coefficient |
-| Sediment porosity | porosity | (none) | 0 to 0.7 | 0.4 | pore fraction; solids fraction a' = 1 - porosity |
-| CEDRS percent-occurrence (x1000) by band x height | occ | (none) | table: 0.00-0.49, 0.50-0.99, 1.00-1.49, 1.50-1.99, 2.00-2.49, 2.50-2.99, 3.00-3.49, 3.50-3.99, 4.00-4.49, 4.50-4.99, 5.00+ | 16 default rows | 16 rows (band azimuths 0,22.5,...,337.5 deg) x 11 height bins; default G1033 |
+| Shore-normal azimuth | shore_azimuth | deg | 0 to 360 | 40 | compass bearing of the outward shore normal; sets which direction bands reach the beach and at what angle |
+| Empirical coefficient K | K | (none) | 0 to 2 | 0.39 | CERC coefficient; 0.39 for field data with significant wave height |
+| Water depth at the gauge | gauge_depth | ft / m | 1 to 5000 | 68 | depth the CEDRS wave record applies at; the station header carries it (68.0 m for the shipped G1033 record) |
+| Coastline region | region | (none) | choices: Atlantic, Gulf, Pacific, Lake Erie, Lake Huron, Lake Michigan, Lake Ontario, Lake Superior | Gulf | selects the height and period class tables, which differ by region |
+| Energy-flux wave theory | wave_theory | (none) | choices: Linear (2/98 revision, SMS/Genesis consistent), Solitary (original ACES, reproduces the User's Guide example) | Linear (2/98 revision, SMS/Genesis consistent) | ACES shipped both. The solitary coefficient is 1.25x the linear one and is what the published example was computed with |
+| Water density | rho_water | kg/m^3 | 900 to 1100 | 1025.18 | seawater ~1025, fresh ~1000 |
+| Sediment density | rho_sand | kg/m^3 | 1500 to 3500 | 2650 | quartz sand ~2650, which is what ACES uses: its 5.14 slug/ft^3 is 2649 kg/m^3 |
+| Sediment porosity | porosity | (none) | 0 to 0.7 | 0.4 | pore fraction; solids fraction a' = 1 - porosity (ACES uses a' = 0.6) |
+| CEDRS percent occurrence (x1000) | occ | (none) | any | ((34, 30, 5, 0, 0, 0, 0, 0, 0, 0), (378, 532, 30, 0, 0, 0, 0, 0, 0, 0), (0, 780, 99, 0, 0, 0, 0, 0, 0, 0), (0, 0, 345, 3, 0, 0, 0, 0, 0, 0), (0, 0, 42, 0, 0, 0, 0, 0, 0, 0), (0, 0, 1, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (66, 41, 15, 0, 0, 0, 0, 0, 0, 0), (321, 602, 56, 0, 0, 0, 0, 0, 0, 0), (1, 888, 104, 0, 0, 0, 0, 0, 0, 0), (0, 0, 359, 1, 0, 0, 0, 0, 0, 0), (0, 0, 58, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (75, 18, 23, 0, 0, 0, 0, 0, 0, 0), (629, 915, 39, 0, 0, 0, 0, 0, 0, 0), (1, 1302, 135, 0, 0, 0, 0, 0, 0, 0), (0, 0, 592, 0, 0, 0, 0, 0, 0, 0), (0, 0, 126, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (213, 53, 135, 0, 0, 0, 0, 0, 0, 0), (675, 2250, 181, 0, 0, 0, 0, 0, 0, 0), (0, 3151, 532, 3, 0, 0, 0, 0, 0, 0), (0, 3, 1052, 6, 0, 0, 0, 0, 0, 0), (0, 0, 147, 3, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (472, 296, 75, 0, 0, 0, 0, 0, 0, 0), (980, 4433, 374, 0, 0, 0, 0, 0, 0, 0), (0, 2320, 4712, 159, 0, 0, 0, 0, 0, 0), (0, 18, 874, 831, 44, 0, 0, 0, 0, 0), (0, 0, 71, 39, 100, 0, 0, 0, 0, 0), (0, 0, 5, 0, 5, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (412, 345, 112, 0, 0, 0, 0, 0, 0, 0), (925, 4404, 545, 0, 0, 0, 0, 0, 0, 0), (0, 716, 4609, 547, 0, 0, 0, 0, 0, 0), (0, 0, 246, 828, 58, 0, 0, 0, 0, 0), (0, 0, 6, 23, 102, 1, 0, 0, 0, 0), (0, 0, 0, 3, 27, 0, 0, 0, 0, 0), (0, 0, 0, 0, 1, 5, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (496, 381, 39, 0, 0, 0, 0, 0, 0, 0), (853, 3417, 662, 1, 0, 0, 0, 0, 0, 0), (1, 638, 3307, 513, 3, 0, 0, 0, 0, 0), (0, 0, 119, 961, 136, 0, 0, 0, 0, 0), (0, 0, 0, 23, 160, 3, 0, 0, 0, 0), (0, 0, 0, 0, 15, 15, 0, 0, 0, 0), (0, 0, 0, 0, 0, 11, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (133, 128, 77, 0, 0, 0, 0, 0, 0, 0), (627, 1875, 477, 6, 0, 0, 0, 0, 0, 0), (1, 487, 2345, 319, 1, 0, 0, 0, 0, 0), (0, 0, 119, 766, 203, 0, 0, 0, 0, 0), (0, 0, 0, 25, 249, 6, 0, 0, 0, 0), (0, 0, 0, 0, 39, 5, 0, 0, 0, 0), (0, 0, 0, 0, 3, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (131, 71, 90, 0, 0, 0, 0, 0, 0, 0), (453, 1483, 277, 0, 0, 0, 0, 0, 0, 0), (0, 369, 1185, 191, 8, 0, 0, 0, 0, 0), (0, 0, 100, 503, 97, 0, 0, 0, 0, 0), (0, 0, 1, 34, 159, 1, 0, 0, 0, 0), (0, 0, 0, 0, 6, 5, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (75, 66, 66, 0, 0, 0, 0, 0, 0, 0), (458, 1401, 241, 11, 0, 0, 0, 0, 0, 0), (0, 241, 922, 160, 17, 0, 0, 0, 0, 0), (0, 0, 87, 302, 53, 6, 1, 0, 0, 0), (0, 0, 1, 15, 71, 0, 0, 0, 0, 0), (0, 0, 0, 0, 15, 3, 0, 0, 0, 0), (0, 0, 0, 0, 0, 3, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (78, 210, 124, 0, 0, 0, 0, 0, 0, 0), (557, 1810, 272, 25, 1, 0, 0, 0, 0, 0), (0, 361, 1630, 188, 22, 6, 0, 0, 0, 0), (0, 0, 83, 311, 59, 5, 0, 0, 0, 0), (0, 0, 0, 20, 85, 3, 0, 0, 0, 0), (0, 0, 0, 1, 35, 6, 0, 0, 0, 0), (0, 0, 0, 0, 0, 13, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (131, 191, 73, 0, 0, 0, 0, 0, 0, 0), (557, 1813, 260, 6, 0, 0, 0, 0, 0, 0), (1, 278, 968, 181, 6, 0, 0, 0, 0, 0), (0, 0, 80, 244, 37, 0, 0, 0, 0, 0), (0, 0, 0, 23, 63, 0, 0, 0, 0, 0), (0, 0, 0, 0, 6, 0, 1, 0, 0, 0), (0, 0, 0, 0, 0, 1, 3, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (121, 97, 46, 0, 0, 0, 0, 0, 0, 0), (391, 1031, 361, 10, 0, 0, 0, 0, 0, 0), (1, 140, 740, 189, 10, 0, 0, 0, 0, 0), (0, 0, 106, 290, 68, 0, 0, 0, 0, 0), (0, 0, 8, 46, 90, 0, 0, 0, 0, 0), (0, 0, 0, 0, 25, 1, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (44, 56, 58, 0, 0, 0, 0, 0, 0, 0), (301, 939, 330, 1, 0, 0, 0, 0, 0, 0), (0, 210, 869, 116, 1, 0, 0, 0, 0, 0), (0, 1, 179, 453, 6, 0, 0, 0, 0, 0), (0, 0, 8, 119, 42, 0, 0, 0, 0, 0), (0, 0, 0, 0, 3, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (49, 71, 35, 0, 0, 0, 0, 0, 0, 0), (256, 872, 106, 0, 0, 0, 0, 0, 0, 0), (0, 669, 588, 27, 0, 0, 0, 0, 0, 0), (0, 1, 285, 200, 1, 0, 0, 0, 0, 0), (0, 0, 10, 37, 1, 0, 0, 0, 0, 0), (0, 0, 1, 5, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (63, 41, 10, 0, 0, 0, 0, 0, 0, 0), (369, 619, 100, 0, 0, 0, 0, 0, 0, 0), (1, 795, 123, 0, 0, 0, 0, 0, 0, 0), (0, 5, 306, 3, 0, 0, 0, 0, 0, 0), (0, 0, 58, 3, 0, 0, 0, 0, 0, 0), (0, 0, 3, 1, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0), (0, 0, 0, 0, 0, 0, 0, 0, 0, 0)) | one row per (direction band, wave height class), band-major: the first 11 rows are band 1's height classes, the next 11 band 2's, and so on for 16 bands. Each row holds the 10 peak-period columns. This is the CEDRS station file laid out flat |
 
 **Outputs**
 
@@ -1167,13 +1170,14 @@ Originating ACES application: 6-3 "Longshore Sediment Transport using CEDRS perc
 | --- | --- | --- | --- |
 | Net longshore transport | Q_net | yd^3/yr / m^3/yr | scalar |
 | Gross longshore transport | Q_gross | yd^3/yr / m^3/yr | scalar |
-| Transport to the right (+) | Q_right | yd^3/yr / m^3/yr | scalar |
-| Transport to the left (-) | Q_left | yd^3/yr / m^3/yr | scalar |
-| Per-band angle from shore normal | band_angle | deg | profile |
-| Per-band contributing percentage | band_pct | % | profile |
-| Per-band transport rate | band_Q | yd^3/yr / m^3/yr | profile |
+| Transport to shore-right | Q_right | yd^3/yr / m^3/yr | scalar |
+| Transport to shore-left | Q_left | yd^3/yr / m^3/yr | scalar |
+| Wave approach angle | profile_X | deg | profile |
+| Contributing fraction | band_pct | % | profile |
+| Transport by band | band_Q | yd^3/yr / m^3/yr | profile |
+| Contributing bands | n_bands | (none) | scalar |
 
-*Reference:* SPM (1984) Ch.4; Gravens (1988); WIS Report 18; ACES User's Guide Example 6-1-3
+*Reference:* SPM (1984) Ch.4; Galvin (1979, 1980); Gravens (1988); Wang, Kraus & Davis (1998); ACES Technical Reference Ch. 6-1
 
 *Module:* `backend/applications/chessqc_6_3_cedrs_transport.py`
 
