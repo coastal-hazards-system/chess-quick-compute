@@ -49,8 +49,19 @@ Add an entry to the `CHESSQC_APPS` manifest in `apps.js`:
 { id: "2-1", name: "Linear Wave Theory", area: "Wave Theory",
   classification: "exact", src: "../../backend/applications/chessqc_2_1_linear_wave_theory.py" }
 ```
-Any application exposing the contract works with no other changes. Apps needing
-`scipy` (e.g. cnoidal/Fenton): add `await py.loadPackage("scipy")` in `boot()`.
+Any application exposing the contract works with no other changes. Whatever a module
+imports is loaded into Pyodide automatically (`loadPackagesFromImports`), so an app
+picking up `scipy` needs no edit here — but the package must exist in Pyodide.
+
+## Cache busting — bump `?v=` when shipping front-end changes
+The local scripts and stylesheet are referenced with a version query, e.g.
+`<script src="driver.js?v=20260811">`. **Change that stamp in every HTML page
+(`index`, `apps`, `calc`, `docs`) whenever `driver.js`, `apps.js`, `style.css`,
+`theme.js`, `symfmt.js`, `docs.js` or the vendored reader changes.** Without it a
+visitor's browser keeps the previous script against the newly deployed data, which
+fails in confusing ways: a cached driver asking for a record layout that no longer
+exists reports `load failed: HTTP 404`. The application sources and `bridge.py` are
+fetched with `cache: "no-cache"` and revalidate on their own, so they need no stamp.
 
 ## Fully offline (no CDN)
 1. Download a Pyodide release (`pyodide-<ver>.tar.bz2`) + the `numpy` wheel into `./vendor/`.

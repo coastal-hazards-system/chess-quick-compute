@@ -5,18 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>CHESS-QC — Calculator</title>
   <link rel="icon" href="data:,">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20260811">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.css" crossorigin="anonymous">
-  <script src="_prefs.js"></script>
-  <script src="theme.js"></script>
+  <script src="_prefs.js?v=20260811"></script>
+  <script src="theme.js?v=20260811"></script>
   <script src="https://cdn.jsdelivr.net/pyodide/v0.28.0/full/pyodide.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
-  <script src="apps.js"></script>
+  <script src="apps.js?v=20260811"></script>
   <!-- Parquet reader for the bundled station records and Parquet uploads. Vendored
        (see vendor/README.md), so it works offline and under a strict CSP. It is an
        ES module; expose the two entry points the classic driver script needs. -->
   <script type="module">
-    import { parquetMetadataAsync, parquetReadObjects } from "./vendor/hyparquet.esm.js";
+    import { parquetMetadataAsync, parquetReadObjects } from "./vendor/hyparquet.esm.js?v=20260811";
     window.CHESSQC_PARQUET = { parquetMetadataAsync, parquetReadObjects };
   </script>
 </head>
@@ -96,6 +96,6 @@
   <div id="status">loading…</div>
   <div id="overlay">Loading…</div>
 
-  <script src="driver.js"></script>
+  <script src="driver.js?v=20260811"></script>
 </body>
 </html>
