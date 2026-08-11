@@ -94,6 +94,7 @@ class Field:
     choices: tuple = ()
     columns: tuple = ()
     note: str = ""
+    data_dir: str = ""       # bundled-record folder under data/ for a `csv` field
     enable_if: tuple = ()    # (other_key, value): gray out (disable) unless that input == value
     show_if: tuple = ()        # (other_key, value): show this field only when inp[other_key] == value
 
@@ -121,14 +122,21 @@ APP_META = AppMeta(
 )
 
 # Bundled NOAA CO-OPS stations (id|label); the front-ends fetch
-# data/water_levels/<id>.csv. Records are full-resolution hourly water level (m).
+# data/monthly_means/<id>.parquet - the QC'd calendar-month means the CO-OPS 053 fit
+# runs on, carrying their station, units and vertical datum in the file metadata.
 STATIONS = (
     "8518750|The Battery, NY",
     "8651370|Duck, NC",
-    "8724580|Key West, FL",
+    "8735180|Dauphin Island, AL",
     "8761724|Grand Isle, LA",
     "8771450|Galveston Pier 21, TX",
+    "8774770|Rockport, TX",
+    "9755371|San Juan, PR",
 )
+
+# Vertical datums a CO-OPS record can be referenced to (the datum entries of the
+# station datum table; the range/interval entries there are not datums).
+_VDATUMS = ("MSL", "MLLW", "MLW", "MTL", "DTL", "MHW", "MHHW", "NAVD88", "STND")
 
 _FIT_COOPS = "Monthly GLS (default)"
 _FIT_OLS = "Raw-sample OLS"
@@ -176,10 +184,18 @@ _MIN_VALID_DAYS = 28.0
 
 INPUTS = (
     Field("csv", "Water-level record", "csv", default=_SAMPLE_CSV, choices=STATIONS,
-          note="Select a bundled NOAA station or upload your own CSV "
-               "(column 1 = date, column 2 = water level in m). Header and blank "
-               "water-level rows are ignored. Hourly records and ready-made "
-               "monthly means are both accepted."),
+          data_dir="monthly_means",
+          note="Select a bundled NOAA station (its QC'd monthly means, which carry "
+               "their own vertical datum) or upload a record of your own: Parquet "
+               "written by the CHESS/PyStorm engines, or a CSV with column 1 = date "
+               "and column 2 = water level in m. Header rows and blank levels are "
+               "ignored. Hourly records and ready-made monthly means both work."),
+    Field("vdatum", "Vertical datum", "choice", default="MSL", choices=_VDATUMS,
+          note="Datum the record is referenced to. Filled in automatically from a "
+               "bundled station or an uploaded Parquet file, which state it in "
+               "their metadata; a CSV cannot, so select it yourself when you upload "
+               "one. The trend itself is datum-invariant - this travels with the "
+               "series as metadata and labels the detrended output."),
     Field("fit_mode", "Trend estimator", "choice", default=_FIT_COOPS,
           choices=(_FIT_COOPS, _FIT_OLS, _FIT_GIVEN),
           note="Monthly GLS is NOAA's published CO-OPS 053 procedure: calendar-month "
@@ -229,6 +245,10 @@ OUTPUTS = (
     Out("dof", "Degrees of freedom", "", "", "scalar",
         note="Degrees of freedom of the GLS fit, N* - p, with N* the consecutive "
              "quasi-differenced month pairs and p the regression columns."),
+    Out("vdatum_out", "Vertical datum", "", "", "scalar",
+        note="Datum the record and the detrended series are referenced to; carried "
+             "from the record's metadata or set by the operator, and passed down the "
+             "workflow with the series."),
     Out("epoch_year", "Epoch center (datum) year", "yr", "yr", "scalar",
         note="Decimal year the detrended series is referenced to: the center of "
              "the National Tidal Datum Epoch, where detrended equals observed."),
@@ -284,6 +304,7 @@ class Result:
     seasonal_range: float
     n_months: float
     dof: float
+    vdatum_out: str
     epoch_year: float
     total_trend: float
     record_years: float
@@ -725,6 +746,7 @@ def compute(inp: dict) -> Result:
     # The epoch center is where the trend is removed, not where it is fitted:
     # CO-OPS 053 takes the mean of the two epoch year labels (1992.0 for 1983-2001).
     epoch = (float(inp["ntde_start"]) + float(inp["ntde_end"])) / 2.0
+    vdatum = str(inp.get("vdatum", "MSL") or "MSL")
 
     mode = str(inp.get("fit_mode", _FIT_COOPS))
     fit = None
@@ -775,6 +797,7 @@ def compute(inp: dict) -> Result:
             f"{slope * 1000:.2f} mm/yr, no confidence interval; referenced to the "
             f"{epoch:.1f} epoch center"
         ]
+    notes.append(f"datum {vdatum}")
     notes.append(f"n={n} samples over {record_years:.1f} yr"
                  + (f" ({gaps} gaps skipped)" if gaps else ""))
     if len(t) != len(pt):
@@ -793,7 +816,7 @@ def compute(inp: dict) -> Result:
         seasonal_range=(fit["seasonal_range"] if fit else 0.0),
         n_months=float(fit["n_months"] if fit else 0),
         dof=float(fit["dof"] if fit else 0),
-        epoch_year=epoch, total_trend=total_trend,
+        vdatum_out=vdatum, epoch_year=epoch, total_trend=total_trend,
         record_years=record_years, n_samples=float(n), rms_residual=rms,
         converged=("yes" if (fit is None or fit["converged"]) else "no"),
         pivot_line=epoch,

@@ -12,6 +12,13 @@
   <script src="https://cdn.jsdelivr.net/pyodide/v0.28.0/full/pyodide.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.11/dist/katex.min.js" crossorigin="anonymous"></script>
   <script src="apps.js"></script>
+  <!-- Parquet reader for the bundled station records and Parquet uploads. Vendored
+       (see vendor/README.md), so it works offline and under a strict CSP. It is an
+       ES module; expose the two entry points the classic driver script needs. -->
+  <script type="module">
+    import { parquetMetadataAsync, parquetReadObjects } from "./vendor/hyparquet.esm.js";
+    window.CHESSQC_PARQUET = { parquetMetadataAsync, parquetReadObjects };
+  </script>
 </head>
 <body>
   <header>

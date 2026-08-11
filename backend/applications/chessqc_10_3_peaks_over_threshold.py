@@ -78,6 +78,7 @@ class Field:
     choices: tuple = ()
     columns: tuple = ()
     note: str = ""
+    data_dir: str = ""       # bundled-record folder under data/ for a `csv` field
     show_if: tuple = ()
 
 
@@ -106,9 +107,11 @@ APP_META = AppMeta(
 STATIONS = (
     "8518750|The Battery, NY",
     "8651370|Duck, NC",
-    "8724580|Key West, FL",
+    "8735180|Dauphin Island, AL",
     "8761724|Grand Isle, LA",
     "8771450|Galveston Pier 21, TX",
+    "8774770|Rockport, TX",
+    "9755371|San Juan, PR",
 )
 
 # Small embedded sample: 6 years of daily residual-like values built from an annual
@@ -136,8 +139,12 @@ _PLOT_MAX = 4000
 
 INPUTS = (
     Field("csv", "Water-level / NTR record", "csv", default=_SAMPLE_CSV, choices=STATIONS,
-          note="Select a bundled NOAA station or upload your own CSV (column 1 = date, "
-               "column 2 = value). Typically the detrended water level (10-1) or NTR (10-2)."),
+          data_dir="detrended_levels",
+          note="Select a bundled NOAA station (its detrended hourly water level, the "
+               "series 10-1 produces) or upload your own record: Parquet written by "
+               "the CHESS/PyStorm engines, or a CSV with column 1 = date and column "
+               "2 = value. Typically the detrended level (10-1) or the non-tidal "
+               "residual (10-2)."),
     Field("target_events_per_year", "Target events per year", "float", "1/yr", "1/yr",
           default=10.0, lo=0.1, hi=365.0,
           note="average number of independent peaks per year to retain (matches PST)"),

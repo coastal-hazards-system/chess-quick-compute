@@ -1502,7 +1502,8 @@ Functional area: Coastal Hazards. Estimates the long-term sea-level trend of a w
 
 | Input | key | units (US/SI) | range | default | notes |
 | --- | --- | --- | --- | --- | --- |
-| Water-level record | csv | (none) | CSV text / uploaded file | embedded sample | Select a bundled NOAA station or upload your own CSV (column 1 = date, column 2 = water level in m). Header and blank water-level rows are ignored. Hourly records and ready-made monthly means are both accepted. |
+| Water-level record | csv | (none) | CSV text / uploaded file | embedded sample | Select a bundled NOAA station (its QC'd monthly means, which carry their own vertical datum) or upload a record of your own: Parquet written by the CHESS/PyStorm engines, or a CSV with column 1 = date and column 2 = water level in m. Header rows and blank levels are ignored. Hourly records and ready-made monthly means both work. |
+| Vertical datum | vdatum | (none) | choices: MSL, MLLW, MLW, MTL, DTL, MHW, MHHW, NAVD88, STND | MSL | Datum the record is referenced to. Filled in automatically from a bundled station or an uploaded Parquet file, which state it in their metadata; a CSV cannot, so select it yourself when you upload one. The trend itself is datum-invariant - this travels with the series as metadata and labels the detrended output. |
 | Trend estimator | fit_mode | (none) | choices: Monthly GLS (default), Raw-sample OLS, Specified slope | Monthly GLS (default) | Monthly GLS is NOAA's published CO-OPS 053 procedure: calendar-month means fitted with a seasonal cycle and AR(1) errors, which is the only option here that yields a confidence interval. Raw-sample OLS regresses every sample on time instead (no seasonal term, no serial-correlation correction), for records too short for the monthly fit. Or supply a published rate directly. |
 | Level shifts (optional) | level_shifts | (none) | table: Shift year | 0 default rows | Add a row per CONFIRMED step discontinuity in the record - a gauge relocation or datum change - as the decimal year it takes effect (e.g. 1947.5). Each adds an indicator that absorbs the step, so it cannot be soaked up by the trend instead. Leave empty when the record has no documented steps. |
 | NTDE start year | ntde_start | yr | 1800 to 2100 | 1983 | National Tidal Datum Epoch start year; with the end year it sets the epoch center the detrended series is referenced to. It plays no part in the trend fit. |
@@ -1519,6 +1520,7 @@ Functional area: Coastal Hazards. Estimates the long-term sea-level trend of a w
 | Fitted seasonal range | seasonal_range | ft / m | scalar |
 | Complete months in fit | n_months | (none) | scalar |
 | Degrees of freedom | dof | (none) | scalar |
+| Vertical datum | vdatum_out | (none) | scalar |
 | Epoch center (datum) year | epoch_year | yr | scalar |
 | Total trend over record | total_trend | ft / m | scalar |
 | Record length | record_years | yr | scalar |
@@ -1578,7 +1580,7 @@ Functional area: Coastal Hazards. Extracts independent storm peaks from a contin
 
 | Input | key | units (US/SI) | range | default | notes |
 | --- | --- | --- | --- | --- | --- |
-| Water-level / NTR record | csv | (none) | CSV text / uploaded file | embedded sample | Select a bundled NOAA station or upload your own CSV (column 1 = date, column 2 = value). Typically the detrended water level (10-1) or NTR (10-2). |
+| Water-level / NTR record | csv | (none) | CSV text / uploaded file | embedded sample | Select a bundled NOAA station (its detrended hourly water level, the series 10-1 produces) or upload your own record: Parquet written by the CHESS/PyStorm engines, or a CSV with column 1 = date and column 2 = value. Typically the detrended level (10-1) or the non-tidal residual (10-2). |
 | Target events per year | target_events_per_year | 1/yr | 0.1 to 365 | 10 | average number of independent peaks per year to retain (matches PST) |
 | Inter-event window | interevent_hours | hr | 1 to 2160 | 48 | minimum separation between independent events |
 | Declustering method | method | (none) | choices: hydrograph, peak_gap | hydrograph | hydrograph: group + per-group max; peak_gap: sequential gap filter |

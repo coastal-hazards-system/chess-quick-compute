@@ -65,6 +65,64 @@ const fmtNum = (x) => {
   return (+x.toPrecision(Math.max(d, 2))).toString();
 };
 
+// --- Parquet station records / uploads -----------------------------------------
+// The bundled records are Parquet written by the PyStorm engines: the columns plus a
+// `pystorm` footer carrying the station, product, units and vertical datum. Reading
+// it here means the datum travels with the data instead of being retyped, and the
+// calculator keeps taking plain (date, value) text the way it always has.
+const PARQUET_MAGIC = "PAR1";
+
+const isParquet = (buf) =>
+  buf.byteLength > 4 && new TextDecoder().decode(new Uint8Array(buf, 0, 4)) === PARQUET_MAGIC;
+
+// decimal year -> YYYY-MM-15, so a monthly-mean table lands on its own calendar month
+const _monthStamp = (y, m) => `${y}-${String(m).padStart(2, "0")}-15`;
+
+async function readParquetSeries(buf) {
+  const api = window.CHESSQC_PARQUET;
+  if (!api) throw new Error("Parquet reader not loaded");
+  const meta = await api.parquetMetadataAsync(buf);
+  const kv = {};
+  for (const e of meta.key_value_metadata || []) kv[e.key] = e.value;
+  let info = {};
+  try { info = kv.pystorm ? JSON.parse(kv.pystorm) : {}; } catch (e) { info = {}; }
+  const rows = await api.parquetReadObjects({ file: buf });
+  if (!rows.length) throw new Error("Parquet file holds no rows");
+  const cols = Object.keys(rows[0]);
+  const has = (c) => cols.includes(c);
+  const lines = ["date,value"];
+  if (has("year") && has("month") && has("mean")) {
+    // monthly-mean table: keep the engine's own completeness verdict, and write the
+    // months it rejected as gaps so the fit excludes them rather than re-deriving
+    for (const r of rows) {
+      const ok = has("complete") ? r.complete : r.mean != null;
+      lines.push(`${_monthStamp(r.year, r.month)},${ok && r.mean != null ? r.mean : ""}`);
+    }
+  } else {
+    const tc = cols.find((c) => /date|time/i.test(c)) || cols[0];
+    const vc = cols.find((c) => c !== tc && /level|value|mean|dwl|wl/i.test(c))
+      || cols.find((c) => c !== tc);
+    for (const r of rows) {
+      const t = r[tc], v = r[vc];
+      const stamp = t instanceof Date ? t.toISOString().slice(0, 16).replace("T", " ") : String(t);
+      lines.push(`${stamp},${v == null ? "" : v}`);
+    }
+  }
+  return { csv: lines.join("\n"), datum: info.datum_label || "", unit: info.unit_label || "",
+           station: info.station_id || "", rows: rows.length };
+}
+
+// Fill the vertical-datum control from a record that carries one. A CSV cannot, so
+// there the operator's own selection stands.
+function applyDatum(datum) {
+  if (!datum) return;
+  const sel = document.querySelector('[data-key="vdatum"]');
+  if (sel && [...sel.options].some((o) => o.value === datum)) {
+    sel.value = datum;
+    applyShowIf(); applyEnableIf();
+  }
+}
+
 // The bridge sends non-finite scalars as string tokens (JSON has no Infinity/NaN).
 // Show them as the symbols an engineer expects rather than the raw token: a neutrally
 // stratified boundary layer really does have an infinite Monin-Obukhov length.
@@ -265,7 +323,7 @@ function buildForm() {
         o.value = id; o.textContent = name ? `${id} — ${name}` : id; sel.appendChild(o);
       }
       const file = document.createElement("input");
-      file.type = "file"; file.accept = ".csv,text/csv";
+      file.type = "file"; file.accept = ".parquet,.csv,text/csv";
       const status = document.createElement("span"); status.className = "unit";
       status.textContent = "built-in sample";
       const orlab = document.createElement("span");
@@ -279,18 +337,35 @@ function buildForm() {
         status.textContent = "loading…";
         try {
           const dir = fld.data_dir || "water_levels";
-          const resp = await fetch(`../../data/${dir}/${sel.value}.csv`);
+          const resp = await fetch(`../../data/${dir}/${sel.value}.parquet`);
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-          block._csvText = await resp.text();
-          status.textContent = `loaded ${sel.options[sel.selectedIndex].textContent}`;
+          const rec = await readParquetSeries(await resp.arrayBuffer());
+          block._csvText = rec.csv;
+          applyDatum(rec.datum);       // the station record carries its own datum
+          status.textContent = `loaded ${sel.options[sel.selectedIndex].textContent}`
+            + (rec.datum ? ` · ${rec.datum}` : "");
           clearOutputs();              // different data: drop the previous result
         } catch (e) { status.textContent = `load failed: ${e.message}`; }
       });
       file.addEventListener("change", async () => {
         const f = file.files && file.files[0]; if (!f) return;
         sel.value = ""; status.textContent = "loading…";
-        try { block._csvText = await f.text(); status.textContent = `loaded ${f.name}`; clearOutputs(); }
-        catch (e) { status.textContent = `read failed: ${e.message}`; }
+        try {
+          const buf = await f.arrayBuffer();
+          if (isParquet(buf)) {
+            // a native Parquet record states its own datum; a CSV cannot, so there
+            // the operator's selection is what stands
+            const rec = await readParquetSeries(buf);
+            block._csvText = rec.csv;
+            applyDatum(rec.datum);
+            status.textContent = `loaded ${f.name}` + (rec.datum ? ` · ${rec.datum}` : "")
+              + (rec.datum ? "" : " · set the datum below");
+          } else {
+            block._csvText = new TextDecoder().decode(buf);
+            status.textContent = `loaded ${f.name} · CSV: set the datum below`;
+          }
+          clearOutputs();
+        } catch (e) { status.textContent = `read failed: ${e.message}`; }
       });
       ctrls.append(sel, orlab, file, status);
       block.append(lab, ctrls); box.appendChild(block);

@@ -87,10 +87,11 @@ APP_META = AppMeta(
     next_apps=(("10-3", "Peaks Over Threshold"),),
 )
 
+# Bundled gauges offered here are those holding BOTH a detrended water level and a
+# matching tide prediction, so the two records a residual needs always pair up.
 STATIONS = (
     "8518750|The Battery, NY",
     "8651370|Duck, NC",
-    "8724580|Key West, FL",
     "8761724|Grand Isle, LA",
     "8771450|Galveston Pier 21, TX",
 )
@@ -117,7 +118,7 @@ _PLOT_MAX = 4000
 
 INPUTS = (
     Field("csv_wl", "Water-level record", "csv", default=_SAMPLE_WL, choices=STATIONS,
-          data_dir="water_levels",
+          data_dir="detrended_levels",
           note="Observed (ideally detrended, via 10-1) water level: a bundled NOAA "
                "station or an uploaded CSV (column 1 = date, column 2 = level in m)."),
     Field("csv_tide", "Tide prediction", "csv", default=_SAMPLE_TIDE, choices=STATIONS,

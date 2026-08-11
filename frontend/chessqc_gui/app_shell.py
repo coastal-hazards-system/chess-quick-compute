@@ -180,6 +180,44 @@ def _clamp_bound(x: float) -> float:
     return float(x)
 
 
+# --- Parquet station records / uploads ------------------------------------------
+# The bundled records are Parquet written by the PyStorm engines: the columns plus a
+# `pystorm` footer carrying the station, product, units and vertical datum. Reading it
+# here means the datum travels with the data instead of being retyped (mirrored in
+# frontend/chessqc_web/driver.js).
+def _read_parquet_series(path: str) -> tuple:
+    """Parquet file -> (csv text of date,value rows; vertical datum label)."""
+    import json as _json
+    import pyarrow.parquet as pq                      # optional: only for Parquet input
+
+    pf = pq.ParquetFile(path)
+    meta = pf.schema_arrow.metadata or {}
+    try:
+        info = _json.loads(meta[b"pystorm"].decode()) if b"pystorm" in meta else {}
+    except (ValueError, UnicodeDecodeError):
+        info = {}
+    tbl = pf.read().to_pydict()
+    cols = list(tbl)
+    lines = ["date,value"]
+    if {"year", "month", "mean"} <= set(cols):
+        # monthly-mean table: keep the engine's completeness verdict and write the
+        # months it rejected as gaps, so the fit excludes them rather than re-deriving
+        ok_col = tbl.get("complete")
+        for i, (y, mo, mean) in enumerate(zip(tbl["year"], tbl["month"], tbl["mean"])):
+            ok = (ok_col[i] if ok_col is not None else True) and mean is not None
+            lines.append(f"{int(y)}-{int(mo):02d}-15," + (f"{mean:.6f}" if ok else ""))
+    else:
+        tc = next((c for c in cols if "date" in c.lower() or "time" in c.lower()), cols[0])
+        vc = next((c for c in cols if c != tc and any(
+            k in c.lower() for k in ("level", "value", "mean", "dwl", "wl"))),
+            next(c for c in cols if c != tc))
+        for t, v in zip(tbl[tc], tbl[vc]):
+            stamp = t.strftime("%Y-%m-%d %H:%M") if hasattr(t, "strftime") else str(t)
+            lines.append(f"{stamp}," + ("" if v is None else f"{v:.6f}"))
+    return "\n".join(lines), str(info.get("datum_label") or "")
+
+
+
 class CalculatorWindow(QtWidgets.QMainWindow):
     def __init__(self, app, on_home=None, apps=None, on_switch=None, parent=None):
         super().__init__(parent)
@@ -746,29 +784,44 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         data = w._combo.itemData(idx)
         if data == "__upload__":
             path, _ = QtWidgets.QFileDialog.getOpenFileName(
-                self, "Select water-level CSV", "", "CSV files (*.csv);;All files (*)")
+                self, "Select water-level record", "",
+                "Records (*.parquet *.csv);;Parquet (*.parquet);;CSV (*.csv);;All files (*)")
             if not path:                              # cancelled -> revert selection
                 w._combo.blockSignals(True)
                 w._combo.setCurrentIndex(w._last_idx)
                 w._combo.blockSignals(False)
                 return
             try:
-                with open(path, encoding="utf-8", errors="replace") as fh:
-                    w._csv_text = fh.read()
-            except OSError as e:
+                if path.lower().endswith(".parquet"):
+                    # a native record states its own datum; a CSV cannot, so there the
+                    # operator's selection is what stands
+                    w._csv_text, datum = _read_parquet_series(path)
+                    self._apply_datum(datum)
+                    w._status.setText(f"uploaded {os.path.basename(path)}"
+                                      + (f" · {datum}" if datum else ""))
+                else:
+                    with open(path, encoding="utf-8", errors="replace") as fh:
+                        w._csv_text = fh.read()
+                    w._status.setText(f"uploaded {os.path.basename(path)} · CSV: set the datum")
+            except Exception as e:
                 w._status.setText(f"read failed: {e}")
                 return
-            w._status.setText(f"uploaded {os.path.basename(path)}")
         else:                                         # bundled station id
             sub = getattr(f, "data_dir", "water_levels") or "water_levels"
+            stem = os.path.join(_DATA_ROOT, sub, str(data))
             try:
-                with open(os.path.join(_DATA_ROOT, sub, f"{data}.csv"),
-                          encoding="utf-8", errors="replace") as fh:
-                    w._csv_text = fh.read()
-            except OSError as e:
+                if os.path.exists(stem + ".parquet"):
+                    w._csv_text, datum = _read_parquet_series(stem + ".parquet")
+                    self._apply_datum(datum)
+                else:
+                    with open(stem + ".csv", encoding="utf-8", errors="replace") as fh:
+                        w._csv_text = fh.read()
+                    datum = ""
+            except Exception as e:
                 w._status.setText(f"load failed: {e}")
                 return
-            w._status.setText(f"loaded {w._combo.itemText(idx)}")
+            w._status.setText(f"loaded {w._combo.itemText(idx)}"
+                              + (f" · {datum}" if datum else ""))
         w._last_idx = idx
         self._clear_outputs()          # different data: drop the previous result
 
@@ -877,6 +930,16 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             else:
                 out[f.key] = units.to_si(w.value(), self._unit(f))
         return out
+
+    def _apply_datum(self, datum: str) -> None:
+        """Fill the vertical-datum control from a record that carries one."""
+        if not datum:
+            return
+        w = self._widgets.get("vdatum")
+        if isinstance(w, QtWidgets.QComboBox):
+            i = w.findText(datum)
+            if i >= 0:
+                w.setCurrentIndex(i)
 
     def _clear_outputs(self):
         """Empty-output state: the app opens with its defaults loaded and nothing
