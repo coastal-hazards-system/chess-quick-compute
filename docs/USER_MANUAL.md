@@ -1496,30 +1496,37 @@ First Quick Compute tool beyond the original 34 ACES applications (functional ar
 
 **Status:** Current.
 
-Functional area: Coastal Hazards. Removes the long-term linear sea-level trend from a water-level record by least-squares regression of level on time, so that the residual series reflects variability about the trend rather than the trend itself.
+Functional area: Coastal Hazards. Estimates the long-term sea-level trend of a water-level record and removes it, leaving a series that varies about the tidal datum rather than about a moving mean.
 
 **Inputs** (values in SI units)
 
 | Input | key | units (US/SI) | range | default | notes |
 | --- | --- | --- | --- | --- | --- |
-| Water-level record | csv | (none) | CSV text / uploaded file | embedded sample | Select a bundled NOAA station or upload your own CSV (column 1 = date, column 2 = water level in m). Header and blank water-level rows are ignored. |
-| Trend reference | method | (none) | choices: NTDE midpoint (pivot), Record mean (no pivot) | NTDE midpoint (pivot) | Pivot the trend at the NTDE midpoint (NOAA datum convention) or center it on the record mean. |
-| NTDE start year | ntde_start | yr | 1800 to 2100 | 1983 | National Tidal Datum Epoch start year (inclusive); used only with the NTDE midpoint pivot |
-| NTDE end year | ntde_end | yr | 1800 to 2100 | 2001 | National Tidal Datum Epoch end year (inclusive) |
-| Slope source | fit_mode | (none) | choices: Fit (least squares), Specified slope | Fit (least squares) | Fit the slope from the record, or apply a supplied slope. |
-| Specified slope | slope_value | ft/yr / m/yr | -1 to 1 | 0.003 | used only when Slope source = Specified slope |
+| Water-level record | csv | (none) | CSV text / uploaded file | embedded sample | Select a bundled NOAA station or upload your own CSV (column 1 = date, column 2 = water level in m). Header and blank water-level rows are ignored. Hourly records and ready-made monthly means are both accepted. |
+| Trend estimator | fit_mode | (none) | choices: CO-OPS 053 (monthly GLS), Ordinary least squares, Specified slope | CO-OPS 053 (monthly GLS) | CO-OPS 053 fits monthly means with a seasonal cycle and AR(1) errors (NOAA's published procedure); ordinary least squares regresses the raw samples on time; or supply a slope directly. |
+| Month completeness floor | min_valid_days | d | 1 to 31 | 28 | Days' worth of valid samples a calendar month must hold to enter the fit; incomplete months are excluded, never interpolated. |
+| Level shifts | level_shifts | yr | any | () | Decimal years of confirmed step discontinuities (gauge relocation, datum shift), as a JSON list, e.g. [1947.5]. Each adds a dummy that absorbs the step instead of letting it bias the slope. |
+| NTDE start year | ntde_start | yr | 1800 to 2100 | 1983 | National Tidal Datum Epoch start year; with the end year it sets the epoch center the detrended series is referenced to. It plays no part in the trend fit. |
+| NTDE end year | ntde_end | yr | 1800 to 2100 | 2001 | National Tidal Datum Epoch end year (inclusive). |
+| Specified slope | slope_value | in/yr / mm/yr | -1000 to 1000 | 3 | used only when the estimator is a supplied slope |
 
 **Outputs**
 
 | Output | key | units (US/SI) | kind |
 | --- | --- | --- | --- |
-| Linear trend (slope) | slope_per_year | ft/yr / m/yr | scalar |
-| Pivot (reference) year | pivot_year | yr | scalar |
+| Sea-level trend (slope) | slope_per_year | in/yr / mm/yr | scalar |
+| Trend 95% CI half-width | ci_halfwidth | in/yr / mm/yr | scalar |
+| Residual AR(1) rho | rho_ar1 | (none) | scalar |
+| Fitted seasonal range | seasonal_range | ft / m | scalar |
+| Complete months in fit | n_months | (none) | scalar |
+| Degrees of freedom | dof | (none) | scalar |
+| Epoch center (datum) year | epoch_year | yr | scalar |
 | Total trend over record | total_trend | ft / m | scalar |
 | Record length | record_years | yr | scalar |
-| Samples used in fit | n_samples | (none) | scalar |
+| Samples in record | n_samples | (none) | scalar |
 | RMS residual about trend | rms_residual | ft / m | scalar |
-| NTDE midpoint | pivot_line | yr | vline |
+| Fit converged | converged | (none) | scalar |
+| Epoch center | pivot_line | yr | vline |
 | Profile: year | profile_year | yr | profile |
 | Profile: observed | profile_original | ft / m | profile |
 | Profile: linear trend | profile_trend | ft / m | profile |
@@ -1527,7 +1534,7 @@ Functional area: Coastal Hazards. Removes the long-term linear sea-level trend f
 | Profile: datum | profile_datum | ft / m | profile |
 | handoff | handoff_csv | (none) | data |
 
-*Reference:* Zervas (2009) NOAA CO-OPS 053; NTDE datum convention
+*Reference:* Zervas (2009) NOAA CO-OPS 053; Cochrane & Orcutt (1949); NTDE datum convention
 
 *Module:* `backend/applications/chessqc_10_1_water_level_detrending.py`
 

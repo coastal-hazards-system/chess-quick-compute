@@ -377,7 +377,7 @@ Validation: Bodine TM-35 Chesapeake Bay Entrance example (Pc=27.57, Pn=29.92 inH
 
 ### 10-1 — Water Level Detrending  (II — standard)
 
-- **Source / references:** Zervas (2009) NOAA CO-OPS 053; NTDE datum convention
+- **Source / references:** Zervas (2009) NOAA CO-OPS 053; Cochrane & Orcutt (1949); NTDE datum convention
 - **Module:** `backend/applications/chessqc_10_1_water_level_detrending.py`
 
 _Validation note in the app docstring / build notes._
