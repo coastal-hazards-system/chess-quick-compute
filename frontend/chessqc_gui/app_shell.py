@@ -203,7 +203,7 @@ class CalculatorWindow(QtWidgets.QMainWindow):
         self._build_ui()
         self.resize(960, 700)
         self._apply_handoff()   # inject a series carried from the previous workflow step
-        self._on_compute()  # populate inputs/outputs from defaults (no CSV fetch)
+        self._clear_outputs()   # inputs only on open; the outputs follow from Compute
         self._focus_first_input()
 
     def _apply_handoff(self):
@@ -741,7 +741,7 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             w._csv_text = "" if f.default is None else str(f.default)
             w._status.setText("built-in sample")
             w._last_idx = 0
-            self._on_compute()
+            self._clear_outputs()      # different data: drop the previous result
             return
         data = w._combo.itemData(idx)
         if data == "__upload__":
@@ -770,7 +770,7 @@ class CalculatorWindow(QtWidgets.QMainWindow):
                 return
             w._status.setText(f"loaded {w._combo.itemText(idx)}")
         w._last_idx = idx
-        self._on_compute()
+        self._clear_outputs()          # different data: drop the previous result
 
     def _input_decimals(self, f, unit) -> int:
         """Decimal places for an input spin box: at least the global display count,
@@ -877,6 +877,21 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             else:
                 out[f.key] = units.to_si(w.value(), self._unit(f))
         return out
+
+    def _clear_outputs(self):
+        """Empty-output state: the app opens with its defaults loaded and nothing
+        computed, so what is on screen is always the result of the inputs currently
+        in the form (parity with the web front-end)."""
+        self._last_result = None
+        for lab in self._value_labels.values():
+            lab.setText("—")
+        if self._has_grid or self._has_profiles:
+            self.figure.clear()
+            self.canvas.draw_idle()
+            self.table.clearContents()
+            self.table.setRowCount(0)
+        self._set_status(f"units: {self.system} · ready · press Compute to evaluate "
+                         f"the inputs · {self.meta.cite}", ok=True)
 
     def _on_compute(self):
         try:
@@ -1173,8 +1188,12 @@ class CalculatorWindow(QtWidgets.QMainWindow):
             w.setValue(units.from_si(si_val, new_u))
             w.blockSignals(False)
         self.system = new
+        # results belong to the inputs they came from: re-render them in the new units
+        # when there are any, otherwise just restate the ready line
         if self._last_result is not None:
             self._render(self._last_result)
+        else:
+            self._clear_outputs()
 
     def _on_reset(self):
         for f in self.inputs:
@@ -1199,7 +1218,7 @@ class CalculatorWindow(QtWidgets.QMainWindow):
                 w.blockSignals(True)
                 w.setValue(units.from_si(float(f.default), self._unit(f)))
                 w.blockSignals(False)
-        self._on_compute()
+        self._clear_outputs()
 
     # ---- table copy/export ----
     def _table_tsv(self) -> str:

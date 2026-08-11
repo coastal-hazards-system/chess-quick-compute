@@ -166,8 +166,31 @@ _m = importlib.util.module_from_spec(_s); sys.modules["chessqc_app"] = _m; _s.lo
   if (rb) rb.checked = true;
   const sel = $("appSelect"); if (sel) sel.value = id;
   buildForm();
-  doCompute();
+  clearOutputs();       // inputs only on open; the outputs follow from Compute
   focusFirstInput();
+}
+
+// Empty-output state: the app opens with its defaults loaded and nothing computed,
+// so what is on screen is always the result of the inputs currently in the form.
+function clearOutputs() {
+  lastRes = null;
+  const vbox = $("values");
+  if (vbox) {
+    vbox.innerHTML = "";
+    const hint = document.createElement("div");
+    hint.className = "await-compute";
+    hint.textContent = "Press Compute to evaluate the inputs.";
+    vbox.appendChild(hint);
+  }
+  const cv = $("plot");
+  if (cv) {
+    cv._res = null; cv._plotBox = null; cv._viewX = null;
+    const ctx = cv.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, cv.width, cv.height);
+  }
+  const tp = $("tablePane"); if (tp) tp.innerHTML = "";
+  setStatus(`units: ${system} · ready · ${contract.meta.cite}`, true);
 }
 
 function buildForm() {
@@ -251,7 +274,7 @@ function buildForm() {
         file.value = "";
         if (!sel.value) {
           block._csvText = String(fld.default || ""); status.textContent = "built-in sample";
-          doCompute(); return;
+          clearOutputs(); return;      // different data: drop the previous result
         }
         status.textContent = "loading…";
         try {
@@ -260,19 +283,19 @@ function buildForm() {
           if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
           block._csvText = await resp.text();
           status.textContent = `loaded ${sel.options[sel.selectedIndex].textContent}`;
-          doCompute();
+          clearOutputs();              // different data: drop the previous result
         } catch (e) { status.textContent = `load failed: ${e.message}`; }
       });
       file.addEventListener("change", async () => {
         const f = file.files && file.files[0]; if (!f) return;
         sel.value = ""; status.textContent = "loading…";
-        try { block._csvText = await f.text(); status.textContent = `loaded ${f.name}`; doCompute(); }
+        try { block._csvText = await f.text(); status.textContent = `loaded ${f.name}`; clearOutputs(); }
         catch (e) { status.textContent = `read failed: ${e.message}`; }
       });
       ctrls.append(sel, orlab, file, status);
       block.append(lab, ctrls); box.appendChild(block);
       // Default to the built-in sample (no network); a station CSV is fetched only
-      // when the user selects one. Outputs are prepopulated from the sample.
+      // when the user selects one. Nothing is computed until Compute is pressed.
       continue;
     }
     const row = document.createElement("div"); row.className = "row"; row.dataset.fieldwrap = fld.key;
@@ -1082,7 +1105,10 @@ function onUnits(newSys) {
     });
   }
   system = newSys;
+  // Results belong to the inputs they were computed from: re-render them in the new
+  // units when there are any, otherwise just restate the ready line.
   if (lastRes) render(lastRes);
+  else setStatus(`units: ${system} · ready · ${contract.meta.cite}`, true);
 }
 
 const sig = (x) => (Number.isFinite(x) ? +x.toPrecision(6) : x);
@@ -1092,7 +1118,7 @@ function fail(msg) { $("overlay").textContent = "Error: " + msg; setStatus(msg, 
 // --- wire up controls ---
 document.addEventListener("DOMContentLoaded", () => {
   $("compute").addEventListener("click", doCompute);
-  $("reset").addEventListener("click", () => { buildForm(); doCompute(); focusFirstInput(); });
+  $("reset").addEventListener("click", () => { buildForm(); clearOutputs(); focusFirstInput(); });
   // Enter anywhere in the inputs (except multi-line JSON/table textareas) runs Compute.
   $("inputs").addEventListener("keydown", (e) => {
     if (e.key === "Enter" && e.target.tagName !== "TEXTAREA") { e.preventDefault(); doCompute(); }
@@ -1116,17 +1142,28 @@ document.addEventListener("DOMContentLoaded", () => {
       $("plotPane").style.display = b.dataset.tab === "plot" ? "" : "none";
       $("tablePane").style.display = b.dataset.tab === "table" ? "" : "none";
     }));
-  $("copy").addEventListener("click", () => navigator.clipboard.writeText(tableCSV("\t")));
+  // every export needs something computed first; say so rather than emitting a blank
+  const needResult = () => {
+    if (lastRes) return true;
+    setStatus("nothing to export yet - press Compute first", false);
+    return false;
+  };
+  $("copy").addEventListener("click", () => {
+    if (needResult()) navigator.clipboard.writeText(tableCSV("\t"));
+  });
   $("csv").addEventListener("click", () => {
+    if (!needResult()) return;
     const blob = new Blob([tableCSV(",")], { type: "text/csv" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "profile.csv"; a.click();
   });
   $("report").addEventListener("click", () => {
+    if (!needResult()) return;
     const blob = new Blob([reportText()], { type: "text/plain" });
     const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
     a.download = `chessqc_${contract.meta.aces_id}_report.txt`; a.click();
   });
   $("png").addEventListener("click", () => {
+    if (!needResult()) return;
     const a = document.createElement("a"); a.href = $("plot").toDataURL("image/png");
     a.download = `chessqc_${contract.meta.aces_id}_plot.png`; a.click();
   });
@@ -1139,7 +1176,10 @@ document.addEventListener("DOMContentLoaded", () => {
     requestAnimationFrame(() => drawPlotInto(lastRes, big));  // size known after layout
   });
   $("plotClose").addEventListener("click", () => { $("plotModal").style.display = "none"; });
-  $("bigReset").addEventListener("click", () => { big._viewX = null; drawPlotInto(lastRes, big); });
+  $("bigReset").addEventListener("click", () => {
+    if (!lastRes) return;
+    big._viewX = null; drawPlotInto(lastRes, big);
+  });
   $("bigPng").addEventListener("click", () => {
     const a = document.createElement("a"); a.href = big.toDataURL("image/png");
     a.download = `chessqc_${contract.meta.aces_id}_plot.png`; a.click();

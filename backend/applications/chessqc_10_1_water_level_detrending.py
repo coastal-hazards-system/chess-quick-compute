@@ -130,8 +130,8 @@ STATIONS = (
     "8771450|Galveston Pier 21, TX",
 )
 
-_FIT_COOPS = "CO-OPS 053 (monthly GLS)"
-_FIT_OLS = "Ordinary least squares"
+_FIT_COOPS = "Monthly GLS (default)"
+_FIT_OLS = "Raw-sample OLS"
 _FIT_GIVEN = "Specified slope"
 
 # Embedded monthly-mean sample (the default, so the app computes without a file):
@@ -167,6 +167,13 @@ _PLOT_MAX = 4000
 _DAYS_TO_EPOCH = 719163          # datetime(1970,1,1).toordinal()
 _SECONDS_PER_DAY = 86400.0
 
+# Days' worth of valid samples a calendar month must hold to enter the fit. A method
+# constant of the procedure, not an operator choice: CO-OPS 053 averages "all the
+# hourly data for each COMPLETE calendar month", and 28 days stays close to that
+# while tolerating a few missing hours. Incomplete months are excluded, never
+# interpolated across.
+_MIN_VALID_DAYS = 28.0
+
 INPUTS = (
     Field("csv", "Water-level record", "csv", default=_SAMPLE_CSV, choices=STATIONS,
           note="Select a bundled NOAA station or upload your own CSV "
@@ -175,18 +182,19 @@ INPUTS = (
                "monthly means are both accepted."),
     Field("fit_mode", "Trend estimator", "choice", default=_FIT_COOPS,
           choices=(_FIT_COOPS, _FIT_OLS, _FIT_GIVEN),
-          note="CO-OPS 053 fits monthly means with a seasonal cycle and AR(1) "
-               "errors (NOAA's published procedure); ordinary least squares "
-               "regresses the raw samples on time; or supply a slope directly."),
-    Field("min_valid_days", "Month completeness floor", "float", "d", "d", default=28.0,
-          lo=1.0, hi=31.0,
-          note="Days' worth of valid samples a calendar month must hold to enter "
-               "the fit; incomplete months are excluded, never interpolated.",
-          enable_if=("fit_mode", _FIT_COOPS)),
-    Field("level_shifts", "Level shifts", "list", "yr", "yr", default=(),
-          note="Decimal years of confirmed step discontinuities (gauge relocation, "
-               "datum shift), as a JSON list, e.g. [1947.5]. Each adds a dummy that "
-               "absorbs the step instead of letting it bias the slope.",
+          note="Monthly GLS is NOAA's published CO-OPS 053 procedure: calendar-month "
+               "means fitted with a seasonal cycle and AR(1) errors, which is the "
+               "only option here that yields a confidence interval. Raw-sample OLS "
+               "regresses every sample on time instead (no seasonal term, no "
+               "serial-correlation correction), for records too short for the "
+               "monthly fit. Or supply a published rate directly."),
+    Field("level_shifts", "Level shifts (optional)", "table", default=(),
+          columns=(("Shift year", "yr", "yr"),),
+          note="Add a row per CONFIRMED step discontinuity in the record - a gauge "
+               "relocation or datum change - as the decimal year it takes effect "
+               "(e.g. 1947.5). Each adds an indicator that absorbs the step, so it "
+               "cannot be soaked up by the trend instead. Leave empty when the "
+               "record has no documented steps.",
           enable_if=("fit_mode", _FIT_COOPS)),
     Field("ntde_start", "NTDE start year", "int", "yr", "yr", default=1983,
           lo=1800, hi=2100,
@@ -624,7 +632,7 @@ ABOUT = {'summary': 'Estimates the long-term sea-level trend of a water-level re
             'origin; the tidal-datum epoch enters only when the trend is subtracted.',
  'method_key': 'fit_mode',
  'methods': [{'name': 'CO-OPS 053 monthly GLS (seasonal + AR(1))',
-              'when': 'CO-OPS 053 (monthly GLS)',
+              'when': 'Monthly GLS (default)',
               'tag': 'preferred',
               'note': "NOAA's published sea-level trend procedure (Zervas 2009, Steps "
                       '1-8): monthly means, seasonal constants, Cochrane-Orcutt AR(1) '
@@ -661,8 +669,8 @@ ABOUT = {'summary': 'Estimates the long-term sea-level trend of a water-level re
                              'desc': 'Detrended series, pivoted at the epoch center so it '
                                      'stays on the tidal datum (1992.0 for the 1983-2001 '
                                      'NTDE)'}]},
-             {'name': 'Ordinary least squares',
-              'when': 'Ordinary least squares',
+             {'name': 'Raw-sample ordinary least squares',
+              'when': 'Raw-sample OLS',
               'tag': 'standard',
               'note': 'Straight regression of every sample on time: no seasonal cycle and '
                       'no serial-correlation correction, so it carries no confidence '
@@ -729,9 +737,11 @@ def compute(inp: dict) -> Result:
             raise ValueError("record times are constant - cannot fit a trend")
         slope = float(np.dot(tc, yf) / denom)
     else:
-        shifts = tuple(float(s) for s in (inp.get("level_shifts") or ()))
-        mt, my, serial, month = _monthly_means(
-            sec, yr, mo, y, float(inp.get("min_valid_days", 28.0)))
+        # the table field hands back one row per shift; a bare list is accepted too
+        shifts = tuple(float(row[0] if isinstance(row, (list, tuple)) else row)
+                       for row in (inp.get("level_shifts") or ())
+                       if row not in ((), [], None, ""))
+        mt, my, serial, month = _monthly_means(sec, yr, mo, y, _MIN_VALID_DAYS)
         fit = _fit_seasonal_trend(mt, my, serial, month, shifts)
         slope = fit["slope"]
 
@@ -761,7 +771,7 @@ def compute(inp: dict) -> Result:
             notes.append("rho did not meet the iteration tolerance")
     else:
         notes = [
-            f"{'supplied' if mode == _FIT_GIVEN else 'ordinary least-squares'} slope "
+            f"{'supplied' if mode == _FIT_GIVEN else 'raw-sample least-squares'} slope "
             f"{slope * 1000:.2f} mm/yr, no confidence interval; referenced to the "
             f"{epoch:.1f} epoch center"
         ]
